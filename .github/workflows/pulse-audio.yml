@@ -1,0 +1,21 @@
+name: PULSE Daily Audio
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 6 * * *"
+permissions:
+  contents: read
+jobs:
+  audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install edge-tts requests
+      - name: Create and upload audio
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python pulse_audio.py
