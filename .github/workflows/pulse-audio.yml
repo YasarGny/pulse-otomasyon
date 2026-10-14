@@ -22,4 +22,5 @@ jobs:
       - name: Create and upload audio
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          REPAIR_AUDIO: "1"
         run: python pulse_audio.py
