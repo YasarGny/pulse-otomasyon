@@ -1,27 +1,35 @@
 <!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PULSE Ses Oynatıcı Testi</title>
+<meta name="theme-color" content="#101522"><title>PULSE | Günün Sesli Özeti</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#171b23;color:#f7f8fb;font:16px system-ui,-apple-system,sans-serif;padding:22px}
-main{max-width:640px;margin:auto}.sub{color:#aeb9c7;font-size:14px}button{background:#0ba58d;border:0;border-radius:14px;padding:15px 22px;font-weight:700;font-size:16px;color:white;cursor:pointer}button:disabled{opacity:.5}#status{margin-top:18px;color:#c8d1dd}h2{margin:0 0 8px}
-</style></head><body><main><h2>🎧 PULSE · Sesli Özet</h2><p class="sub">Notion Android gömme testi · Gerçek haber sesi içermez.</p>
-<button id="play">▶ Test sesini çal</button><p id="status" role="status">Hazır · 2 saniyelik ses</p>
-</main><script>
-let ctx,osc;
-const button=document.getElementById('play'),status=document.getElementById('status');
-button.addEventListener('click',async()=>{
- try{
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-  if(!AudioContextClass)throw new Error('Web Audio API kullanılamıyor');
-  ctx=ctx||new AudioContextClass();await ctx.resume();
-  const oscillator=ctx.createOscillator(),gain=ctx.createGain(),now=ctx.currentTime;
-  oscillator.type='sine';oscillator.frequency.value=440;
-  gain.gain.setValueAtTime(0.001,now);gain.gain.linearRampToValueAtTime(.2,now+.06);
-  gain.gain.setValueAtTime(.2,now+1.7);gain.gain.linearRampToValueAtTime(.001,now+2);
-  oscillator.connect(gain);gain.connect(ctx.destination);
-  oscillator.start(now);oscillator.stop(now+2.01);
-  button.disabled=true;status.textContent='Çalıyor...';
-  oscillator.onended=()=>{button.disabled=false;status.textContent='Tamamlandı · Ses duyulduysa gömme testi başarılı'};
- }catch(err){button.disabled=false;status.textContent='Oynatılamadı: '+err.message}
-});
+:root{color-scheme:dark;--bg:#101522;--panel:#171e2c;--muted:#9aa8bd;--line:#30394c;--accent:#72ead0}
+*{box-sizing:border-box}html,body{margin:0;background:transparent;color:#f6f8fc;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:auto;padding:4px}.player{border:1px solid #343d50;background:linear-gradient(135deg,#202b3e 0%,#141b29 72%);border-radius:23px;padding:24px;box-shadow:0 12px 34px #0002}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-size:12px;letter-spacing:.19em;font-weight:800;color:var(--accent)}.tag{border:1px solid #405269;border-radius:30px;padding:5px 10px;color:#c6d4e4;font-size:11px}
+h1{font-size:clamp(23px,5vw,32px);letter-spacing:-.035em;margin:22px 0 7px;line-height:1.2}.desc{font-size:13px;color:#aebdd0;margin:0 0 22px}
+.controls{display:flex;align-items:center;gap:16px}.play{height:62px;width:62px;flex:none;border:0;border-radius:50%;background:#72ead0;color:#102b32;font-size:25px;cursor:pointer;display:grid;place-items:center;box-shadow:0 7px 25px #72ead026}.play:disabled{opacity:.45;cursor:not-allowed}
+.track{flex:1;min-width:0}.times{display:flex;justify-content:space-between;font-size:12px;color:#b6c4d4;font-variant-numeric:tabular-nums;margin-top:9px}
+input[type=range]{width:100%;margin:0;accent-color:#72ead0;cursor:pointer;height:18px}
+.bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px;padding-top:15px;border-top:1px solid #344052}.status{color:#b9c6d8;font-size:12px;line-height:1.5}.volume{display:flex;align-items:center;gap:7px;color:#b8c8d9;font-size:12px}.volume input{width:72px}
+@media(max-width:400px){.player{padding:17px}.volume input{width:45px}.play{width:54px;height:54px}}
+</style></head><body><main><section class="player" aria-label="PULSE ses oynatıcı">
+<div class="top"><span class="brand">◉ PULSE AUDIO</span><span class="tag">GÜNLÜK BÜLTEN</span></div>
+<h1>Günün Sesli Özeti</h1><p class="desc" id="date">Güncel haberler, tek bir kayıtta.</p>
+<div class="controls"><button id="play" class="play" aria-label="Oynat" disabled>▶</button><div class="track"><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Ses kaydında ilerle"><div class="times"><span id="current">0:00</span><span id="duration">0:00</span></div></div></div>
+<div class="bottom"><span id="status" class="status" role="status">Ses kaydı kontrol ediliyor…</span><label class="volume">♫ <input id="volume" type="range" min="0" max="100" value="100" aria-label="Ses düzeyi"></label></div>
+<audio id="audio" preload="metadata" playsinline></audio>
+</section></main>
+<script>
+const audio=document.getElementById('audio'),play=document.getElementById('play'),seek=document.getElementById('seek'),status=document.getElementById('status'),current=document.getElementById('current'),duration=document.getElementById('duration');
+const fmt=n=>Number.isFinite(n)?Math.floor(n/60)+':'+String(Math.floor(n%60)).padStart(2,'0'):'0:00';
+const sync=()=>{play.textContent=audio.paused?'▶':'Ⅱ';play.setAttribute('aria-label',audio.paused?'Oynat':'Duraklat')};
+play.onclick=async()=>{try{if(audio.paused)await audio.play();else audio.pause()}catch(e){status.textContent='Oynatma başarısız: '+e.message}sync()};
+audio.addEventListener('play',()=>{status.textContent='Şimdi çalıyor';sync()});audio.addEventListener('pause',sync);
+audio.addEventListener('ended',()=>{status.textContent='Dinleme tamamlandı';sync()});
+audio.addEventListener('timeupdate',()=>{current.textContent=fmt(audio.currentTime);if(Number.isFinite(audio.duration)&&audio.duration>0)seek.value=Math.round(audio.currentTime/audio.duration*1000)});
+audio.addEventListener('loadedmetadata',()=>{duration.textContent=fmt(audio.duration);status.textContent='Dinlemeye hazır'});
+audio.addEventListener('error',()=>{status.textContent='Ses yüklenemedi. Biraz sonra tekrar deneyin.';play.disabled=true});
+seek.oninput=()=>{if(Number.isFinite(audio.duration)&&audio.duration>0)audio.currentTime=seek.value/1000*audio.duration};
+document.getElementById('volume').oninput=e=>audio.volume=Number(e.target.value)/100;
+(async()=>{try{const res=await fetch('./latest.json?ts='+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('Kayıt henüz yayımlanmadı');const data=await res.json();if(!data.audio||!/^[-\w./]+\.mp3$/.test(data.audio)||data.audio.includes('..'))throw Error('Geçersiz ses dosyası');audio.src='./'+data.audio+'?v='+encodeURIComponent(data.date||'latest');document.getElementById('date').textContent=(data.title||'Günlük teknoloji ve otomobil haberleri')+(data.date?' · '+data.date:'');play.disabled=false;status.textContent='Dinlemeye hazır'}catch(e){status.textContent='Günlük ses hazırlanıyor. Lütfen biraz sonra tekrar deneyin.'}})();
 </script></body></html>
