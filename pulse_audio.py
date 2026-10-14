@@ -11,7 +11,7 @@ async def main():
  today=datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
  months="Ocak Şubat Mart Nisan Mayıs Haziran Temmuz Ağustos Eylül Ekim Kasım Aralık".split()
  date=f"{today.day} {months[today.month-1]} {today.year}"
- if date.lower() not in " ".join(txt(b) for b in blocks[:15]).lower():
+ if date.lower() not in " ".join(txt(b) for b in blocks[:15]).lower() and (str(today.day)+" "+months[today.month-1].upper()+" "+str(today.year)).lower() not in " ".join(txt(b) for b in blocks[:15]).lower():
   raise RuntimeError("Bugünün bülteni henüz sayfada değil")
  marker="PULSE-AUDIO-"+today.strftime("%Y%m%d")
  if any(marker in txt(b) for b in blocks): return
