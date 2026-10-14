@@ -32,24 +32,38 @@ async def main():
    if summary: stories.append(txt(b)+". "+summary)
  if not stories: raise RuntimeError("Haber bulunamadı")
  speech="Merhaba. PULSE günlük teknoloji bülteni. Bugün "+date+". "+" ".join(stories[:5])+" Ayrıntılar PULSE sayfasında. Yarın görüşmek üzere."
- filename="pulse.mp3"
+
  await edge_tts.Communicate(speech,"tr-TR-EmelNeural").save("original.mp3")
- subprocess.run(["ffmpeg","-v","error","-y","-i","original.mp3","-vn","-ac","2","-ar","44100","-c:a","libmp3lame","-b:a","128k",filename],check=True)
- check=subprocess.run(["ffprobe","-v","error","-select_streams","a:0","-show_entries","stream=codec_name,duration","-of","default=noprint_wrappers=1",filename],capture_output=True,text=True,check=True)
- print("Validated audio:",check.stdout.strip(),"bytes:",os.path.getsize(filename))
- if "codec_name=mp3" not in check.stdout or os.path.getsize(filename)<20000: raise RuntimeError("MP3 doğrulaması başarısız")
- upload=req("POST","/file_uploads",json={"mode":"single_part","filename":filename,"content_type":"audio/mpeg"})
- with open(filename,"rb") as f:
-  r=requests.post(API+"/file_uploads/"+upload["id"]+"/send",headers=HEAD,files={"file":(filename,f,"audio/mpeg")},timeout=120)
- r.raise_for_status()
+ formats=[
+  ("pulse.mp3","audio/mpeg",["-c:a","libmp3lame","-b:a","128k"],"MP3"),
+  ("pulse.m4a","audio/mp4",["-c:a","aac","-b:a","128k"],"M4A")
+ ]
+ uploads=[]
+ for filename,mime,codec,label in formats:
+  subprocess.run(["ffmpeg","-v","error","-y","-i","original.mp3","-vn","-ac","2","-ar","44100",*codec,filename],check=True)
+  info=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",filename],capture_output=True,text=True,check=True)
+  duration=float(info.stdout.strip())
+  subprocess.run(["ffmpeg","-v","error","-i",filename,"-f","null","-"],check=True)
+  print(label,"duration:",duration,"bytes:",os.path.getsize(filename))
+  if duration<15 or os.path.getsize(filename)<20000: raise RuntimeError(label+" audio validation failed")
+  upload=req("POST","/file_uploads",json={"mode":"single_part","filename":filename,"content_type":mime})
+  with open(filename,"rb") as stream:
+   response=requests.post(API+"/file_uploads/"+upload["id"]+"/send",headers=HEAD,files={"file":(filename,stream,mime)},timeout=120)
+  response.raise_for_status()
+  uploads.append((label,upload["id"]))
  def rt(s): return [{"type":"text","text":{"content":s}}]
+ children=[{"object":"block","type":"heading_2","heading_2":{"rich_text":rt("🎧 Günün Sesli Özeti")}}]
+ for label,uid in uploads:
+  children.append({"object":"block","type":"paragraph","paragraph":{"rich_text":rt(label+" ses kaydı")}})
+  children.append({"object":"block","type":"audio","audio":{"type":"file_upload","file_upload":{"id":uid}}})
+ children.append({"object":"block","type":"paragraph","paragraph":{"rich_text":rt(marker)}})
+ req("PATCH",f"/blocks/{PAGE}/children",json={"children":children,"after":blocks[0]["id"]})
  if os.environ.get("REPAIR_AUDIO") == "1":
   for i,b in enumerate(blocks):
    if marker in txt(b):
     for old in blocks[max(0,i-2):i+1]:
      if old["type"] in ("heading_2","audio","paragraph"):
       req("DELETE","/blocks/"+old["id"])
- children=[{"object":"block","type":"heading_2","heading_2":{"rich_text":rt("🎧 Günün Sesli Özeti")}},{"object":"block","type":"audio","audio":{"type":"file_upload","file_upload":{"id":upload["id"]}}},{"object":"block","type":"paragraph","paragraph":{"rich_text":rt(marker)}}]
- req("PATCH",f"/blocks/{PAGE}/children",json={"children":children,"after":blocks[0]["id"]})
+
  print("Sesli özet yüklendi")
 asyncio.run(main())
