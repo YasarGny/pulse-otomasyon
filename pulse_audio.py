@@ -24,7 +24,9 @@ async def main():
  if normalize(date) not in normalize(page_intro) and today.strftime("%d.%m.%Y") not in page_intro:
   raise RuntimeError("Bugünün bülteni henüz sayfada değil")
  marker="PULSE-AUDIO-"+today.strftime("%Y%m%d")
- if any(marker in txt(b) for b in blocks) and os.environ.get("REPAIR_AUDIO") != "1": return
+ if any(marker in txt(b) for b in blocks) and os.environ.get("REPAIR_AUDIO") != "1":
+  print("Today audio already exists; skipping")
+  return
  stories=[]
  for i,b in enumerate(blocks):
   if b["type"]=="heading_3":
@@ -40,36 +42,34 @@ async def main():
  speech+=" ".join("Sıradaki haber. "+for_voice(story) for story in stories[:5])
  speech+=" Bugünün öne çıkan haberleri bunlardı. Ayrıntılar Pals sayfasında. Yarın görüşmek üzere."
  await edge_tts.Communicate(speech,"tr-TR-EmelNeural",rate="-5%").save("original.mp3")
- formats=[
-  ("pulse.mp3","audio/mpeg",["-c:a","libmp3lame","-b:a","128k"],"MP3"),
-  ("pulse.m4a","audio/mp4",["-c:a","aac","-b:a","128k"],"M4A")
- ]
- uploads=[]
- for filename,mime,codec,label in formats:
-  subprocess.run(["ffmpeg","-v","error","-y","-i","original.mp3","-vn","-ac","2","-ar","44100",*codec,filename],check=True)
-  info=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",filename],capture_output=True,text=True,check=True)
-  duration=float(info.stdout.strip())
-  subprocess.run(["ffmpeg","-v","error","-i",filename,"-f","null","-"],check=True)
-  print(label,"duration:",duration,"bytes:",os.path.getsize(filename))
-  if duration<15 or os.path.getsize(filename)<20000: raise RuntimeError(label+" audio validation failed")
-  upload=req("POST","/file_uploads",json={"mode":"single_part","filename":filename,"content_type":mime})
-  with open(filename,"rb") as stream:
-   response=requests.post(API+"/file_uploads/"+upload["id"]+"/send",headers=HEAD,files={"file":(filename,stream,mime)},timeout=120)
-  response.raise_for_status()
-  uploads.append((label,upload["id"]))
+ filename="pulse.mp3"
+ subprocess.run(["ffmpeg","-v","error","-y","-i","original.mp3","-vn","-ac","2","-ar","44100","-c:a","libmp3lame","-b:a","128k",filename],check=True)
+ info=subprocess.run(["ffprobe","-v","error","-show_entries","format=duration","-of","default=noprint_wrappers=1:nokey=1",filename],capture_output=True,text=True,check=True)
+ duration=float(info.stdout.strip())
+ if duration<15 or os.path.getsize(filename)<20000: raise RuntimeError("Audio validation failed")
+ upload=req("POST","/file_uploads",json={"mode":"single_part","filename":filename,"content_type":"audio/mpeg"})
+ with open(filename,"rb") as stream:
+  response=requests.post(API+"/file_uploads/"+upload["id"]+"/send",headers=HEAD,files={"file":(filename,stream,"audio/mpeg")},timeout=120)
+ response.raise_for_status()
+ print("MP3 uploaded, duration:",duration)
  def rt(s): return [{"type":"text","text":{"content":s}}]
- children=[{"object":"block","type":"heading_2","heading_2":{"rich_text":rt("🎧 Günün Sesli Özeti")}}]
- for label,uid in uploads:
-  children.append({"object":"block","type":"paragraph","paragraph":{"rich_text":rt(label+" ses kaydı")}})
-  children.append({"object":"block","type":"audio","audio":{"type":"file_upload","file_upload":{"id":uid}}})
- children.append({"object":"block","type":"paragraph","paragraph":{"rich_text":rt(marker)}})
+ children=[
+  {"object":"block","type":"heading_2","heading_2":{"rich_text":rt("🎧 Günün Sesli Özeti")}},
+  {"object":"block","type":"audio","audio":{"type":"file_upload","file_upload":{"id":upload["id"]}}},
+  {"object":"block","type":"paragraph","paragraph":{"rich_text":rt(marker)}}
+ ]
  req("PATCH",f"/blocks/{PAGE}/children",json={"children":children,"after":blocks[0]["id"]})
- if os.environ.get("REPAIR_AUDIO") == "1":
-  for i,b in enumerate(blocks):
-   if marker in txt(b):
-    for old in blocks[max(0,i-2):i+1]:
-     if old["type"] in ("heading_2","audio","paragraph"):
+ if os.environ.get("REPAIR_AUDIO")=="1":
+  for i,block in enumerate(blocks):
+   if marker in txt(block):
+    start=i
+    while start>0 and blocks[start-1]["type"] in ("audio","paragraph","heading_2"):
+     if blocks[start-1]["type"]=="heading_2" and "Günün Sesli Özeti" not in txt(blocks[start-1]):
+      break
+     start-=1
+     if blocks[start]["type"]=="heading_2": break
+    if start<i and blocks[start]["type"]=="heading_2" and "Günün Sesli Özeti" in txt(blocks[start]):
+     for old in blocks[start:i+1]:
       req("DELETE","/blocks/"+old["id"])
-
  print("Sesli özet yüklendi")
 asyncio.run(main())
