@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PULSE Ses Oynatıcı Testi</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#171b23;color:#f7f8fb;font:16px system-ui,-apple-system,sans-serif;padding:22px}
+main{max-width:640px;margin:auto}.sub{color:#aeb9c7;font-size:14px}button{background:#0ba58d;border:0;border-radius:14px;padding:15px 22px;font-weight:700;font-size:16px;color:white;cursor:pointer}button:disabled{opacity:.5}#status{margin-top:18px;color:#c8d1dd}h2{margin:0 0 8px}
+</style></head><body><main><h2>🎧 PULSE · Sesli Özet</h2><p class="sub">Notion Android gömme testi · Gerçek haber sesi içermez.</p>
+<button id="play">▶ Test sesini çal</button><p id="status" role="status">Hazır · 2 saniyelik ses</p>
+</main><script>
+let ctx,osc;
+const button=document.getElementById('play'),status=document.getElementById('status');
+button.addEventListener('click',async()=>{
+ try{
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass)throw new Error('Web Audio API kullanılamıyor');
+  ctx=ctx||new AudioContextClass();await ctx.resume();
+  const oscillator=ctx.createOscillator(),gain=ctx.createGain(),now=ctx.currentTime;
+  oscillator.type='sine';oscillator.frequency.value=440;
+  gain.gain.setValueAtTime(0.001,now);gain.gain.linearRampToValueAtTime(.2,now+.06);
+  gain.gain.setValueAtTime(.2,now+1.7);gain.gain.linearRampToValueAtTime(.001,now+2);
+  oscillator.connect(gain);gain.connect(ctx.destination);
+  oscillator.start(now);oscillator.stop(now+2.01);
+  button.disabled=true;status.textContent='Çalıyor...';
+  oscillator.onended=()=>{button.disabled=false;status.textContent='Tamamlandı · Ses duyulduysa gömme testi başarılı'};
+ }catch(err){button.disabled=false;status.textContent='Oynatılamadı: '+err.message}
+});
+</script></body></html>
