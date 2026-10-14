@@ -1,4 +1,4 @@
-import os, asyncio, datetime, requests, edge_tts
+import os, asyncio, datetime, requests, edge_tts, re, unicodedata
 API="https://api.notion.com/v1"
 HEAD={"Authorization":"Bearer "+os.environ["NOTION_TOKEN"],"Notion-Version":"2022-06-28"}
 PAGE="3f922115ab848156bb1fc0649973c0b5"
@@ -17,7 +17,11 @@ async def main():
  today=datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
  months="Ocak Şubat Mart Nisan Mayıs Haziran Temmuz Ağustos Eylül Ekim Kasım Aralık".split()
  date=f"{today.day} {months[today.month-1]} {today.year}"
- if date.casefold() not in " ".join(nested_text(b) for b in blocks[:8]).casefold():
+ page_intro=" ".join(nested_text(b) for b in blocks[:8])
+ def normalize(s):
+  return "".join(ch for ch in unicodedata.normalize("NFKD",s.casefold()) if not unicodedata.combining(ch))
+ print("Beklenen tarih:",date,"Sayfa başlangıcı:",repr(page_intro[:450]))
+ if normalize(date) not in normalize(page_intro) and today.strftime("%d.%m.%Y") not in page_intro:
   raise RuntimeError("Bugünün bülteni henüz sayfada değil")
  marker="PULSE-AUDIO-"+today.strftime("%Y%m%d")
  if any(marker in txt(b) for b in blocks): return
