@@ -31,9 +31,15 @@ async def main():
    summary=next((txt(x) for x in blocks[i+1:i+4] if x["type"]=="paragraph" and txt(x)),"")
    if summary: stories.append(txt(b)+". "+summary)
  if not stories: raise RuntimeError("Haber bulunamadı")
- speech="Merhaba. PULSE günlük teknoloji bülteni. Bugün "+date+". "+" ".join(stories[:5])+" Ayrıntılar PULSE sayfasında. Yarın görüşmek üzere."
-
- await edge_tts.Communicate(speech,"tr-TR-EmelNeural").save("original.mp3")
+ def for_voice(s):
+  substitutions={"PULSE":"Pals","AI":"yapay zeka","DeepMind":"Diip Maynd","AlphaFold":"Alfa Fold","Google":"Gugıl","Cloud":"Klaud"}
+  for original,pronunciation in substitutions.items():
+   s=re.sub(r"\\b"+re.escape(original)+r"\\b",pronunciation,s,flags=re.I)
+  return s
+ speech="Merhaba. Pals günlük teknoloji bültenine hoş geldiniz. Bugün "+date+". "
+ speech+=" ".join("Sıradaki haber. "+for_voice(story) for story in stories[:5])
+ speech+=" Bugünün öne çıkan haberleri bunlardı. Ayrıntılar Pals sayfasında. Yarın görüşmek üzere."
+ await edge_tts.Communicate(speech,"tr-TR-EmelNeural",rate="-5%").save("original.mp3")
  formats=[
   ("pulse.mp3","audio/mpeg",["-c:a","libmp3lame","-b:a","128k"],"MP3"),
   ("pulse.m4a","audio/mp4",["-c:a","aac","-b:a","128k"],"M4A")
