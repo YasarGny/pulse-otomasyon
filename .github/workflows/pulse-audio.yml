@@ -1,11 +1,6 @@
 name: PULSE Daily Audio
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'pulse_audio.py'
-      - '.github/workflows/pulse-audio.yml'
   schedule:
     - cron: "20 6 * * *"
 permissions:
@@ -25,5 +20,4 @@ jobs:
       - name: Create and upload audio
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          REPAIR_AUDIO: "1"
         run: python pulse_audio.py
