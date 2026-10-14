@@ -1,6 +1,10 @@
 name: PULSE Daily Audio
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pulse_audio.py'
   schedule:
     - cron: "20 6 * * *"
 permissions:
