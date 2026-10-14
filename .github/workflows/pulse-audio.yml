@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'pulse_audio.py'
+      - '.github/workflows/pulse-audio.yml'
   schedule:
     - cron: "20 6 * * *"
 permissions:
