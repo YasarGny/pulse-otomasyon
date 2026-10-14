@@ -1,0 +1,28 @@
+name: Diagnose Notion Audio
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - diagnose_notion_audio.py
+      - .github/workflows/diagnose-audio.yml
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install diagnostics
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install requests
+      - name: Check Notion-hosted audio
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python diagnose_notion_audio.py
