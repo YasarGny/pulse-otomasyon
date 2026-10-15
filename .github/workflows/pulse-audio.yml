@@ -21,12 +21,11 @@ jobs:
           python-version: "3.12"
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: pip install requests
+      - run: pip install requests edge-tts
       - name: Generate real daily narration
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PULSE_SUMMARY_VOICE_ID: ${{ vars.PULSE_SUMMARY_VOICE_ID }}
         run: python pulse_audio.py
       - name: Publish audio to GitHub Pages
         run: |
