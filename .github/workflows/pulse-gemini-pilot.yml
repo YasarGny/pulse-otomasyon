@@ -1,0 +1,39 @@
+name: Yeni Sekme Gemini Pilot
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - pulse_gemini_pilot.py
+      - .github/workflows/pulse-gemini-pilot.yml
+permissions:
+  contents: write
+concurrency:
+  group: yeni-sekme-gemini
+  cancel-in-progress: false
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install requests
+      - name: Generate Gemini multi-speaker pilot
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python pulse_gemini_pilot.py
+      - name: Publish isolated Gemini pilot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web-player/pilot-duo-gemini.mp3 web-player/pilot-duo-gemini.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish Yeni Sekme Gemini pilot"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
