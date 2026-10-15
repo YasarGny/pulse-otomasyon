@@ -56,10 +56,10 @@ $('volume').oninput=e=>{a.volume=Number(e.target.value)/100;paint(e.target)};
 let activeVersion='',pendingAudio=null;
 async function checkLatest(){
  try{
-  const r=await fetch('./latest.json?nocache='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+  const r=await fetch('./latest.json?nocache='+Date.now(),{cache:'no-store'});
   if(!r.ok)throw Error('metadata');
   const d=await r.json();
-  if(!/^[-\\w./]+\\.mp3$/.test(d.audio||'')||d.audio.includes('..'))throw Error('audio');
+  if(!/^[a-zA-Z0-9_./-]+\.mp3$/.test(d.audio||'')||d.audio.includes('..'))throw Error('audio');
   const version=String(d.version||d.date||'latest');
   if(version===activeVersion&&loaded)return;
   const nextSrc='./'+d.audio+'?v='+encodeURIComponent(version);
