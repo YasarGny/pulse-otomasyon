@@ -21,7 +21,7 @@ def stories_from_notion():
     # Pilot intentionally reads the currently published issue, even if the workflow
     # runs on a later calendar day. The production daily audio retains its date guard.
     intro=" ".join(rich(x) for x in b[:5])
-    match=re.search(r"(\\d{1,2})\\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\\s+(20\\d{2})",intro,re.I)
+    match=re.search(r"(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(20\d{2})",intro,re.I)
     if not match:raise RuntimeError("Published issue date not found in Notion")
     date=match.group(0)
     active=False; stories=[]
@@ -39,7 +39,7 @@ def clean(s):
     s=re.sub(r"\bAI\b","yapay zekâ",s,flags=re.I)
     return re.sub(r"\s+"," ",s).strip()
 def conversation(date,stories):
-    d=[("Yaşar",f"Merhaba, Pals Muhabbet'e hoş geldiniz. Ben Yaşar. Bugün {date}. Necdet'le günün ilginç teknoloji haberlerini konuşacağız."),
+    d=[("Yaşar",f"Merhaba, Yeni Sekme'e hoş geldiniz. Ben Yaşar. Bugün {date}. Necdet'le günün ilginç teknoloji haberlerini konuşacağız."),
        ("Necdet","Selam Yaşar. Ben de birkaç gelişme seçtim. Haberleri sadece okumayalım, ne anlama geldiklerini de tartışalım.")]
     questions=["Peki bu gelişmenin günlük hayattaki karşılığı ne olabilir?","Burada sence en önemli ayrıntı ne?","Güzel ama bunun önünde ne gibi engeller var?","Bu haberin teknoloji dünyası açısından anlamı ne?","Bu gelişmeye biraz temkinli yaklaşmak gerekir mi?"]
     for i,(title,summary) in enumerate(stories):
@@ -55,8 +55,8 @@ def conversation(date,stories):
             "Teknolojiye talep yüksek olsa bile finansman şartları yatırım kararlarını etkileyebilir. Borsa hareketini tek başına talep göstergesi saymamak lazım."
         ][i%5]))
         d.append((other,"Yani heyecan verici tarafı var ama sonucu görmek için biraz beklemek gerekiyor. Bir sonraki gelişmeye geçelim." if i<len(stories)-1 else "Bugünkü haberlerin ortak noktası da bu: teknolojinin gerçek dünyadaki etkisi."))
-    d.extend([("Yaşar","Bugünlük bu kadar. Ayrıntılı haberleri ve kaynakları Pals bülteninde bulabilirsiniz."),
-              ("Necdet","Pals Muhabbet'te görüşmek üzere!")])
+    d.extend([("Yaşar","Bugünlük bu kadar. Ayrıntılı haberleri ve kaynakları PULSE bülteninde bulabilirsiniz."),
+              ("Necdet","Yeni Sekme'te görüşmek üzere!")])
     return d
 async def main():
     date,stories=stories_from_notion()
