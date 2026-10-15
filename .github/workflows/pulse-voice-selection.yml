@@ -1,18 +1,18 @@
-name: PULSE Recover Existing Voice Previews
+name: PULSE Turkish Voice Comparison (Temporary)
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  recover:
+  compare:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Retrieve saved voice previews without creating new voices
+      - name: Read four existing voices with one identical Turkish script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -24,42 +24,50 @@ jobs:
           from pathlib import Path
           from google import genai
 
-          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          out = Path("voice-recovery")
+          voices = {
+              "yasar-3": "voice_p94xlklc2103",
+              "necdet-4": "voice_bb81iykarlon",
+              "necdet-5": "voice_vbozaw08r6hv",
+              "necdet-6": "voice_t53vbt24f9js",
+          }
+          script = (
+              "Yaşar, bence yapay zekâda asıl mesele hız değil. "
+              "Her yeni model daha güçlü oluyor ama günlük hayatımızı gerçekten kolaylaştırıyor mu? "
+              "Örneğin telefondaki yapay zekâ internetsiz çalışsa hem daha hızlı hem de daha özel olur. "
+              "Ben biraz da buna bakıyorum."
+          )
+          out = Path("voice-comparison")
           out.mkdir(exist_ok=True)
-          wanted = {"PULSE Necdet 4", "PULSE Necdet 5", "PULSE Necdet 6"}
-          saved = [{"name": "Yaşar 3", "id": "voice_p94xlklc2103", "file": "previous-selection"}]
-          response = client.voices.list(type_=["prompted"], language_code=["tr-TR"])
-          matched = {}
-          for item in response.voices or []:
-              name = item.display_name or ""
-              if name in wanted and name not in matched:
-                  matched[name] = item.id
-          missing = sorted(wanted - set(matched))
-          if missing:
-              raise RuntimeError("Stored voices not found: " + ", ".join(missing))
-          for name in sorted(wanted):
-              voice_id = matched[name]
-              voice = client.voices.get(id=voice_id)
-              audio = getattr(voice, "sample_audio", None)
-              if not audio or not getattr(audio, "data", None):
-                  raise RuntimeError("No saved sample for " + name)
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+          for name, voice_id in voices.items():
+              print("Synthesizing existing voice:", name, flush=True)
+              response = client.interactions.create(
+                  model="gemini-3.8-flash-tts",
+                  input=[{"type": "user_input", "content": [{
+                      "type": "text", "text": script,
+                      "annotations": [{"type": "speech_metadata",
+                                       "style": "Konuşma dili Türkçe. Doğal, samimi ve sakin teknoloji sohbeti; haber spikeri gibi okuma."}]
+                  }]}],
+                  response_format={"type": "audio"},
+                  generation_config={"speech_config": [{"voice": voice_id}]},
+              )
+              audio = response.output_audio
+              if not audio or not audio.data:
+                  raise RuntimeError("Missing audio for " + name)
               raw = audio.data
-              data = base64.b64decode(raw) if isinstance(raw, str) else bytes(raw)
-              if data[:4] != b"RIFF":
-                  raise RuntimeError("Unexpected WAV format for " + name)
-              filename = name.lower().replace("pulse ", "").replace(" ", "-") + ".wav"
-              (out / filename).write_bytes(data)
-              saved.append({"name": name, "id": voice_id, "file": filename})
-              print("Recovered:", name, voice_id)
+              wav = base64.b64decode(raw) if isinstance(raw, str) else bytes(raw)
+              if wav[:4] != b"RIFF" or len(wav) < 5000:
+                  raise RuntimeError("Invalid WAV for " + name)
+              (out / (name + ".wav")).write_bytes(wav)
+              print("Completed", name, len(wav), "bytes", flush=True)
           (out / "voice-ids.json").write_text(
-              json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
-          print("Recovered all three existing voice previews; created zero new voices.")
+              json.dumps(voices, indent=2), encoding="utf-8")
+          print("Four Turkish comparison clips ready. No new voices created.")
           PY
-      - name: Upload recovered previews
+      - name: Download comparisons
         uses: actions/upload-artifact@v4
         with:
-          name: pulse-recovered-necdet-voices
-          path: voice-recovery/
+          name: pulse-turkish-voice-comparison
+          path: voice-comparison/
           if-no-files-found: error
           retention-days: 7
