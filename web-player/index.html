@@ -53,5 +53,25 @@ a.addEventListener('error',()=>{failed=true;play.disabled=true;setStatus('Ses ka
 seek.oninput=()=>{paint(seek);if(Number.isFinite(a.duration)&&a.duration>0)a.currentTime=a.duration*Number(seek.value)/1000};
 speed.onclick=()=>{speedIndex=(speedIndex+1)%speeds.length;const rate=speeds[speedIndex];a.playbackRate=rate;a.defaultPlaybackRate=rate;a.preservesPitch=true;speed.querySelector('.speed-value').textContent=String(rate).replace('.',',')+'×';speed.setAttribute('aria-label','Oynatma hızı: '+String(rate).replace('.',',')+' kat')};
 $('volume').oninput=e=>{a.volume=Number(e.target.value)/100;paint(e.target)};
-(async()=>{try{const r=await fetch('./latest.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error();const d=await r.json();if(!/^[-\w./]+\.mp3$/.test(d.audio||'')||d.audio.includes('..'))throw Error();a.src='./'+d.audio+'?v='+encodeURIComponent(d.date||'latest');$('date').textContent=d.date||'Günlük yayın';loaded=true;play.disabled=false;refresh()}catch(e){failed=true;setStatus('Ses kaydı bilgisi alınamadı. Sayfayı yenileyin.');refresh()}})();
+let activeVersion='',pendingAudio=null;
+async function checkLatest(){
+ try{
+  const r=await fetch('./latest.json?nocache='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+  if(!r.ok)throw Error('metadata');
+  const d=await r.json();
+  if(!/^[-\\w./]+\\.mp3$/.test(d.audio||'')||d.audio.includes('..'))throw Error('audio');
+  const version=String(d.version||d.date||'latest');
+  if(version===activeVersion&&loaded)return;
+  const nextSrc='./'+d.audio+'?v='+encodeURIComponent(version);
+  if(loaded&&!a.paused&&!a.ended){pendingAudio={src:nextSrc,version,date:d.date};return}
+  activeVersion=version;pendingAudio=null;loaded=true;failed=false;
+  a.src=nextSrc;a.load();$('date').textContent=d.date||'Günlük yayın';
+  $('current').textContent='0:00';$('duration').textContent='0:00';seek.value=0;paint(seek);setStatus('');refresh();
+ }catch(e){if(!loaded){failed=true;setStatus('Ses kaydı bilgisi alınamadı. Tekrar deneniyor…');refresh()}}
+}
+a.addEventListener('pause',()=>{if(pendingAudio)checkLatest()});
+a.addEventListener('ended',()=>{if(pendingAudio)checkLatest()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkLatest()});
+window.addEventListener('pageshow',()=>checkLatest());
+checkLatest();setInterval(checkLatest,60000);
 </script></body></html>
