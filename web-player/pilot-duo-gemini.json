@@ -1,0 +1,9 @@
+{
+  "duration": 132,
+  "voices": {
+    "Yaşar": "Puck",
+    "Necdet": "Charon"
+  },
+  "model": "gemini-2.5-flash-preview-tts",
+  "version": "1ad759932a421a08"
+}
