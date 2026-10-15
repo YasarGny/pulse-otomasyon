@@ -12,7 +12,7 @@ from pulse_podcast_writer import generate
 
 NOTION_PAGE = "3f922115ab848156bb1fc0649973c0b5"
 VOICES = {"Yaşar": "Puck", "Necdet": "Algenib"}
-MODEL = "gemini-2.5-flash-preview-tts"
+MODEL = os.getenv("PULSE_TTS_MODEL", "gemini-3.8-flash-tts")
 OUT = Path("web-player")
 
 def plain(block):
