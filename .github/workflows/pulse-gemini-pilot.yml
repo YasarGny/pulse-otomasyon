@@ -6,6 +6,7 @@ on:
     paths:
       - pulse_gemini_pilot.py
       - pulse_podcast_writer.py
+      - pulse_podcast_audio.py
       - .github/workflows/pulse-gemini-pilot.yml
 permissions:
   contents: write
@@ -15,7 +16,7 @@ concurrency:
 jobs:
   pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
