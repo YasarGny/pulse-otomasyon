@@ -17,7 +17,7 @@ Haberlerin doğrulanmış olgularını değiştirme, sayı, tarih, alıntı, şi
 Kaynaklarda olmayan bir bilgiyi kesin gerçek gibi sunma. Yorum ve olasılıkları açıkça ayır.
 Görüş ayrılığı ZORUNLU DEĞİL; yalnızca yoruma açık, gerçekten tartışılabilir konularda olsun.
 Her haberde aynı soru-cevap düzenini, kalıp geçişleri, boş övgüleri ve tekrarlanan "haklısın"ları KULLANMA.
-Gerçek sohbet hissi için kısa ve uzun konuşma sıraları, yerinde mizah, doğal merak, somut gerekçeler ve konu bağlantıları kur.
+Gerçek sohbet hissi için kısa ve uzun konuşma sıraları, yerinde mizah, doğal merak, somut gerekçeler ve konu bağlantıları kur.\nKRİTİK: Sunucu değiştiğinde yeni konuşmacı önceki kişinin son iddiasına, sorusuna, yorumuna veya kaygısına SOMUT yanıt versin. Aynı haberin sıradaki bilgi paragrafını başka sunucuya paylaştırma. Gerekirse tek sunucu haberi kısaca özetlesin, diğeri kendi yorumunu ve nedenini eklesin. Her dönüşte zorlama itiraz olmasın.\nHaber anlatımı ve sohbeti ayır: doğrulanmış bilgi kısa ve net; ardından neden önemli, kimin hayatını etkiler, hangi belirsizlik var gibi gerekçeli düşünceler. Farklı bakış açısı zorunlu değil.\nSoru sırf karşıdaki konuşsun diye sorulmasın; gerçek meraktan doğsun. İki kişinin de kendine özgü düşünce akışı olsun. Art arda iki kişinin aynı haberin eksik cümlesini tamamlamasını engelle.
 Rol yaparak yaşanmış kişisel anı veya sahte deneyim anlatma. Gerçek kişilerden ses taklidi yapma.
 Abartılı heyecan, gereksiz çatışma, yapay kahkaha, aşırı argo ve sunucu etiketlerini konuşma metnine katma.
 Her konuşma satırı yaklaşık 1-4 cümle olsun. Bir konuşmacı en fazla 100 kelime aralıksız konuşsun.
@@ -26,14 +26,15 @@ Açılış mutlaka PULSE sunar: Yeni Sekme program adıyla başlasın; Yaşar ve
 YALNIZCA geçerli JSON döndür: {"turns":[{"speaker":"Yaşar","text":"..."},{"speaker":"Necdet","text":"..."}]}.
 Başka anahtar veya markdown döndürme."""
 
-def generate(stories):
-    source = [{"id": i + 1, "headline": title, "verified_summary": summary} for i, (title, summary) in enumerate(stories)]
-    today = datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%d.%m.%Y")
-    payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM}]},
-        "contents": [{"role": "user", "parts": [{"text": "Yayın tarihi (Türkiye): " + today + ". Bu doğrulanmış haber notlarıyla süre sınırı olmadan, haberlerin gerçekten gerektirdiği uzunlukta özgün bir Türkçe sohbet hazırla. Haberler arasında anlamlı bağlantılar kur. Her haberde gerçek yorum, gerekçe ve somut çıkarım olsun. Haber dışı olgusal iddia ekleme. JSON haberler: " + json.dumps(source, ensure_ascii=False)}]}],
-        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.85, "maxOutputTokens": 8192},
-    }
+EDITOR = """Sen bağımsız Yeni Sekme podcast editörüsün. Verilen iki sunuculu Türkçe metni DÜZENLE.
+En önemli sorun: sunucuların tek bir makalenin cümlelerini sırayla okumaları. Bir sunucu değiştiğinde diğeri öncekine gerçek yanıt versin: yorum, somut çıkarım, gerekçeli soru, açıklama, farklı açı veya anlamlı kabul. Salt haber metnini sürdürme.
+Doğrulanmış haber notları dışına olgusal iddia, rakam, kaynak veya sahte kişisel deneyim EKLEME.
+Doğrulanmış gerçeklerde zoraki fikir ayrılığı YAPMA. Aynı fikirde olmak doğal; boş "aynen", "kesinlikle" tekrarlarını azalt.
+Düşünceyi nefes alınabilir kısa cümlelerle ifade et. Süreyi doldurmak için uzatma.
+PULSE sunar: Yeni Sekme açılışı, Türkçe yayın tarihi, Yaşar ve Necdet tanıtımı, doğal kapanış ve kaynak yönlendirmesi korunsun.
+Çıktı sadece JSON: {"turns":[{"speaker":"Yaşar","text":"..."},...]}."""
+
+def _request(payload):
     response = requests.post(
         "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent",
         headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"], "Content-Type": "application/json"},
@@ -45,7 +46,9 @@ def generate(stories):
     if not candidates:
         raise RuntimeError("No script candidates returned")
     raw = "".join(part.get("text", "") for part in candidates[0].get("content", {}).get("parts", []))
-    result = json.loads(raw)
+    return json.loads(raw)
+
+def _validate(result):
     turns = result.get("turns", [])
     if not 14 <= len(turns) <= 150:
         raise RuntimeError("Invalid number of dialogue turns")
@@ -53,5 +56,27 @@ def generate(stories):
         raise RuntimeError("Invalid dialogue speaker or text")
     if len({t["speaker"] for t in turns}) != 2:
         raise RuntimeError("Both presenters must participate")
+    return turns
+
+def generate(stories):
+    source = [{"id": i + 1, "headline": title, "verified_summary": summary} for i, (title, summary) in enumerate(stories)]
+    today = datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%d.%m.%Y")
+    payload = {
+        "system_instruction": {"parts": [{"text": SYSTEM}]},
+        "contents": [{"role": "user", "parts": [{"text": "Yayın tarihi (Türkiye): " + today + ". Bu doğrulanmış haber notlarıyla süre sınırı olmadan, haberlerin gerçekten gerektirdiği uzunlukta özgün bir Türkçe sohbet hazırla. Haberler arasında anlamlı bağlantılar kur. Her haberde gerçek yorum, gerekçe ve somut çıkarım olsun. Haber dışı olgusal iddia ekleme. JSON haberler: " + json.dumps(source, ensure_ascii=False)}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.85, "maxOutputTokens": 8192},
+    }
+    draft = _request(payload)
+    _validate(draft)
+    edit_payload = {
+        "system_instruction": {"parts": [{"text": EDITOR}]},
+        "contents": [{"role": "user", "parts": [{"text": "Kaynak haber notları: " + json.dumps(source, ensure_ascii=False) + "\\nYayın tarihi: " + today + "\\nDüzenlenecek diyalog: " + json.dumps(draft, ensure_ascii=False)}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.45, "maxOutputTokens": 8192},
+    }
+    try:
+        turns = _validate(_request(edit_payload))
+    except (ValueError, KeyError, RuntimeError) as exc:
+        print("Editorial pass failed; using validated draft:", exc)
+        turns = _validate(draft)
     dialogue = "\n".join(t["speaker"] + ": " + re.sub(r"\\s+", " ", t["text"]).strip() for t in turns)
     return dialogue, turns
