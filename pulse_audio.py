@@ -80,12 +80,15 @@ async def main():
     if len(stories) < 3:
         raise RuntimeError("En az üç güncel haber bulunamadı; yayın yapılmadı.")
 
-    script = "Merhaba. Pals günlük teknoloji bültenine hoş geldiniz. Bugün " + date + ". "
-    script += " ".join("Sıradaki haber. " + voice(story) for story in stories[:5])
-    script += " Bugünün öne çıkan haberleri bunlardı. Ayrıntılar Pals sayfasında. Yarın görüşmek üzere."
+    # Natural news transitions; avoid repeating the same cue before every item.
+    openings = ["İlk haberimiz: ", "Şimdi bir başka gelişmeye bakalım. ", "Sırada dikkat çekici bir haber var. ", "Bir diğer önemli konu ise şu: ", "Son olarak, "]
+    script = "Merhaba, Pals günlük teknoloji gündemine hoş geldiniz. Bugün " + date + ". "
+    for i, story in enumerate(stories[:5]):
+        script += openings[i] + voice(story).strip() + " "
+    script += " Günün önemli gelişmeleri bunlardı. Ayrıntılar ve haber kaynakları Pals sayfasında. Yarın görüşmek üzere."
 
     OUT.mkdir(exist_ok=True)
-    await edge_tts.Communicate(script, "tr-TR-EmelNeural", rate="-5%").save("pulse-source.mp3")
+    await edge_tts.Communicate(script, "tr-TR-EmelNeural", rate="+8%").save("pulse-source.mp3")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", "pulse-source.mp3", "-vn", "-ac", "1", "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "96k", str(OUT / "latest.mp3")], check=True)
     duration = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(OUT / "latest.mp3")], text=True).strip())
     if duration < 20 or (OUT / "latest.mp3").stat().st_size < 15000:
