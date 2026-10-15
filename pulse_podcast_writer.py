@@ -75,8 +75,12 @@ def generate(stories):
     }
     try:
         turns = _validate(_request(edit_payload))
+        original_words = sum(len(t["text"].split()) for t in draft["turns"])
+        edited_words = sum(len(t["text"].split()) for t in turns)
+        if edited_words < original_words * 0.78:
+            raise RuntimeError("Editorial pass removed too much meaningful discussion")
     except (ValueError, KeyError, RuntimeError) as exc:
-        print("Editorial pass failed; using validated draft:", exc)
+        print("Editorial pass rejected; using validated draft:", exc)
         turns = _validate(draft)
     dialogue = "\n".join(t["speaker"] + ": " + re.sub(r"\\s+", " ", t["text"]).strip() for t in turns)
     return dialogue, turns
