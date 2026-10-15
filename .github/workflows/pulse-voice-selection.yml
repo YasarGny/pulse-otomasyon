@@ -1,0 +1,76 @@
+name: PULSE Gemini Voice Selection (Temporary)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  voice-selection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Create six persistent voices and download previews
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -m pip install 'google-genai>=2.25.0,<3'
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          from google import genai
+
+          profiles = [
+              ("yasar-1", "Yaşar 1", "A 30-year-old Turkish man from western Türkiye, naturally warm and conversational, medium pitch, clear modern Istanbul Turkish, lively but not theatrical. Sounds like a curious tech podcast host chatting with a friend, not reading news."),
+              ("yasar-2", "Yaşar 2", "A 31-year-old Turkish man with bright friendly mid-range voice, subtle smile in the voice, lightly energetic, spontaneous natural pacing, authentic Türkiye Turkish accent, never a radio announcer."),
+              ("yasar-3", "Yaşar 3", "A 30-year-old Turkish male speaker with relaxed resonant mid-low voice, approachable and thoughtful, casual everyday Turkish pronunciation, expressive but restrained, sounds like a real podcast conversation."),
+              ("necdet-1", "Necdet 1", "A 31-year-old Turkish man with calm warm slightly deeper voice, clear contemporary Turkish, analytical and thoughtful yet friendly, relaxed natural speech with subtle humor, never old-sounding."),
+              ("necdet-2", "Necdet 2", "A 30-year-old Turkish male speaker with a gently textured baritone, friendly playful undertone, easy conversational rhythm, authentic Turkish accent, distinct from a bright mid-pitched co-host."),
+              ("necdet-3", "Necdet 3", "A 31-year-old Turkish man with smooth steady medium-low voice, curious and witty, understated warmth, naturally paced everyday Istanbul Turkish, no commercial narration or robotic cadence."),
+          ]
+          out = Path("voice-selection")
+          out.mkdir(exist_ok=True)
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+          records = []
+          for slug, name, description in profiles:
+              print("Creating", name, flush=True)
+              created = client.voices.create(
+                  store=True,
+                  voice={
+                      "model": "gemini-3.8-flash-tts",
+                      "type": "prompted",
+                      "display_name": "PULSE " + name,
+                      "gender": "male",
+                      "language_code": "tr-TR",
+                      "prompted": {"input": description},
+                  },
+              )
+              if not created.id or not str(created.id).startswith("voice_"):
+                  raise RuntimeError("Voice creation returned no persistent voice ID")
+              preview = getattr(created, "sample_audio", None)
+              if preview is None or not getattr(preview, "data", None):
+                  raise RuntimeError("No voice preview returned for " + name)
+              data = preview.data
+              if isinstance(data, str):
+                  data = base64.b64decode(data)
+              if not bytes(data).startswith(b"RIFF"):
+                  raise RuntimeError("Unexpected audio preview format for " + name)
+              (out / (slug + ".wav")).write_bytes(bytes(data))
+              records.append({"name": name, "id": created.id, "file": slug + ".wav"})
+              (out / "voice-ids.json").write_text(
+                  json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
+              )
+          print("Six previews and reusable voice IDs generated.")
+          PY
+      - name: Downloadable previews (7 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-gemini-voice-selection
+          path: voice-selection/
+          if-no-files-found: warn
+          retention-days: 7
