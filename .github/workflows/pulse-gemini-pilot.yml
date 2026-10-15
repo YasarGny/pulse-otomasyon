@@ -33,9 +33,23 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web-player/pilot-duo-gemini.mp3 web-player/pilot-duo-gemini.json web-player/pilot-duo-gemini-script.json
-          if ! git diff --cached --quiet; then
+          # Preserve the newly rendered files while moving onto the latest remote main.
+          # Never rebase generated binary audio: simultaneous runs can update the same files.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --mixed origin/main
+            git add web-player/pilot-duo-gemini.mp3 web-player/pilot-duo-gemini.json web-player/pilot-duo-gemini-script.json
+            if git diff --cached --quiet; then
+              echo "Pilot files are already up to date."
+              exit 0
+            fi
             git commit -m "Publish Yeni Sekme Gemini pilot"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
+            if git push origin HEAD:main; then
+              echo "Pilot published successfully."
+              exit 0
+            fi
+            echo "Remote updated during publish (attempt $attempt); retrying."
+            sleep 3
+          done
+          echo "Could not publish pilot after five attempts."
+          exit 1
