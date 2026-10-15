@@ -131,7 +131,7 @@ def synthesize(group, destination, number):
 def render(turns, target):
     # Show ident is kept in the same synthesis call to minimize voice drift and quota usage.
     ident = [{"speaker": "Yaşar", "text": "PULSE sunar. Yeni Sekme."}]
-    # One synthesis request keeps voice identity within a single generation.\n    # Never silently split the dialogue: that can change the perceived speaker.\n    groups = [ident + turns]
+    # Keep the full dialogue in one request to reduce voice drift.\n    groups = [ident + turns]
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder)
         paths = []
