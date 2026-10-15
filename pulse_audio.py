@@ -120,7 +120,7 @@ def main():
             }]}],
             "response_format": {"type": "audio", "mime_type": "audio/wav"},
             "generation_config": {"speech_config": [{
-                "voice": os.getenv("PULSE_SUMMARY_VOICE_ID", "Algenib")
+                "voice": (os.getenv("PULSE_SUMMARY_VOICE_ID") or "Algenib")
             }]},
         },
         timeout=300,
