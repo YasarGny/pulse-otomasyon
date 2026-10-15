@@ -10,7 +10,7 @@ from pathlib import Path
 import requests
 
 NOTION_PAGE = "3f922115ab848156bb1fc0649973c0b5"
-VOICES = {"Yaşar": "Puck", "Necdet": "Charon"}
+VOICES = {"Yaşar": "Puck", "Necdet": "Algenib"}
 MODEL = "gemini-2.5-flash-preview-tts"
 OUT = Path("web-player")
 
@@ -48,26 +48,40 @@ def read_news():
     return stories[:5]
 
 def script(stories):
+    """Short, distinct conversational turns instead of repetitive Q&A."""
     lines = [
-        ("Yaşar", "PULSE sunar: Yeni Sekme. Merhaba, ben Yaşar."),
-        ("Necdet", "Ben de Necdet. Bugün teknoloji dünyasında neler olmuş, birlikte konuşalım."),
+        ("Yaşar", "PULSE sunar: Yeni Sekme. Selam! Ben Yaşar."),
+        ("Necdet", "Ben de Necdet. Bugün yine teknoloji gündemi dolu. Kahveler hazırsa başlayalım."),
+        ("Yaşar", "Hazır. Ama bugün başlıkları okuyup kaçmak yok; ne işe yarıyor, onu da konuşacağız."),
     ]
-    prompts = ["Burada seni en çok şaşırtan ne?", "Peki bu gelişmenin önündeki engel ne olabilir?", "Bu haber neden önemli?", "Sence güvenlik tarafında neye dikkat etmek gerek?", "Bu işin maliyet boyutu nasıl etkilenir?"]
+    reactions = [
+        ("Necdet", "İlginç. Ama duyurulan şeyle gerçek hayatta çalışması aynı şey değil, değil mi?"),
+        ("Yaşar", "Aynen öyle. İşin güzel tarafı var; bir de henüz cevaplanmamış sorular var."),
+        ("Yaşar", "Dur, burada asıl dikkatimi çeken şey şu: Bu gelişme sadece şirketleri değil, kullanıcıları da etkileyebilir."),
+        ("Necdet", "Kesinlikle. Ama etkisinin ne kadar büyük olacağını görmek için biraz zaman lazım."),
+        ("Necdet", "Peki bu gelişme gerçekten oyunu değiştirir mi, yoksa şimdilik beklenti mi?"),
+        ("Yaşar", "Bence hemen kesin konuşmayalım. Önce uygulamada ne olduğuna bakmak lazım."),
+        ("Yaşar", "Bir saniye, burada güvenlik ve kontrol meselesini atlamayalım."),
+        ("Necdet", "Haklısın. Teknoloji ne kadar güçlü olursa olsun, denetim kısmı da önemli."),
+        ("Necdet", "Şimdi bunun bir de maliyet tarafı var. Heyecan tamam ama faturayı kim ödeyecek?"),
+        ("Yaşar", "İşte o soru önemli. Teknoloji kadar sürdürülebilir olması da gerekiyor."),
+    ]
     for i, (title, summary) in enumerate(stories):
         lead = "Yaşar" if i % 2 == 0 else "Necdet"
-        other = "Necdet" if lead == "Yaşar" else "Yaşar"
-        lines.append((lead, title + ". " + summary))
-        lines.append((other, prompts[i]))
-        lines.append((lead, "Henüz açıklanan bilgilerle kesin bir sonuca varamayız. Ama bu gelişmenin sektördeki etkisini takip etmek önemli."))
+        lines.append((lead, ("Şöyle bir gelişme var: " if i else "İlk konu dikkat çekici: ") + title + ". " + summary))
+        lines.extend(reactions[i * 2:i * 2 + 2])
         if i < len(stories) - 1:
-            lines.append((other, "Evet, sıradaki habere geçelim."))
-    lines += [("Yaşar", "Bugünlük bu kadar. Kaynaklar ve haberlerin ayrıntıları PULSE bülteninde."), ("Necdet", "Yeni Sekme'de görüşmek üzere.")]
-    return "\n".join(name + ": " + text for name, text in lines)
+            lines.append(("Necdet" if lead == "Yaşar" else "Yaşar", ["Neyse, bir diğer habere bakalım.", "Peki, şimdi başka bir konuya geçelim.", "Güzel, sırada ne var?", "Tamam, bir de şuna bakalım."][i]))
+    lines.extend([
+        ("Yaşar", "Bugünlük bizden bu kadar. Haberlerin kaynakları PULSE bülteninde."),
+        ("Necdet", "Bir sonraki Yeni Sekme'de görüşürüz. Kendinize iyi bakın."),
+    ])
+    return "\\n".join(name + ": " + text for name, text in lines)
 
 def main():
     dialogue = script(read_news())
     payload = {
-        "contents": [{"parts": [{"text": "Türkçe, iki ayrı erkek sunucunun doğal, canlı ve normal hızda teknoloji sohbeti. Sunucu adlarına göre konuş. Metinde olmayan bilgi ekleme.\n\n" + dialogue}]}],
+        "contents": [{"parts": [{"text": "İki farklı erkek sunucunun samimi Türkçe teknoloji podcast sohbeti. Yaşar genç, sıcak, canlı; Necdet daha tok, olgun, sakin ve hafif esprili. Sesler belirgin şekilde ayrı duyulsun. İkisi de acele etmeden, orta-yavaş doğal konuşma temposuyla, cümle aralarında nefes alıp kısa duraklamalar yaparak konuşsun. Haber spikeri gibi okuma; arkadaş sohbeti gibi sıcak, yer yer gülümseyerek konuş. Konuşma etiketlerini seslendirme. Metne yeni olgusal iddia ekleme.\n\n" + dialogue}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
