@@ -80,14 +80,14 @@ def main():
 
     # Prepare a concise, fact-grounded single-narrator script with Gemini.
     # The Notion issue is the only factual source; the model may not invent news.
-    source = "\n".join(f"{i+1}. {item}" for i, item in enumerate(stories[:5]))
+    source = "\n".join(f"{i+1}. {item}" for i, item in enumerate(stories))
     model = os.getenv("PULSE_SUMMARY_SCRIPT_MODEL", "gemini-3.8-flash")
     prompt = (
         "Sen PULSE Türkçe teknoloji bülteni editörüsün. Aşağıdaki doğrulanmış "
-        "haber notlarından, doğal ve akıcı, yaklaşık 2-4 dakikalık tek sunuculu "
+        "haber notlarından, doğal ve akıcı, haber sayısına göre yaklaşık 3-7 dakikalık tek sunuculu "
         "sesli özet metni oluştur. Önce en önemli gelişmeyle gir, haberleri "
         "önemine göre işle, her birinin neden önemli olduğunu açıkla. "
-        "Gereksiz açılış kalıpları ve mekanik sıra numaraları kullanma. "
+        "Her haberi mutlaka ayrı ve anlaşılır biçimde ele al, hiçbirini atlama; her haberin ne olduğunu ve neden önemli olduğunu açıkla. Gereksiz açılış kalıpları ve mekanik sıra numaraları kullanma. "
         "Kaynakta olmayan tarih, rakam, alıntı veya iddia ekleme. "
         "Yalnızca seslendirilecek düz metni döndür. Tarih: " + date
         + "\nHaberler:\n" + source
@@ -96,7 +96,7 @@ def main():
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
         json={"contents": [{"parts": [{"text": prompt}]}],
-              "generationConfig": {"temperature": 0.35, "maxOutputTokens": 1400}},
+              "generationConfig": {"temperature": 0.35, "maxOutputTokens": 3000}},
         timeout=120,
     )
     response.raise_for_status()
@@ -104,7 +104,7 @@ def main():
     if not candidates:
         raise RuntimeError("Gemini did not return a narration script")
     script = "".join(p.get("text", "") for p in candidates[0]["content"]["parts"]).strip()
-    if not 450 <= len(script) <= 3500:
+    if not 450 <= len(script) <= 11000:
         raise RuntimeError("Narration script failed length validation")
 
     # Gemini 3.8 TTS REST Interactions API: default complete RIFF/WAV output.
@@ -152,7 +152,7 @@ def main():
     if duration < 20 or (OUT / "latest.mp3").stat().st_size < 15000:
         raise RuntimeError("Generated audio failed validation")
     (OUT / "latest.json").write_text(json.dumps({"date": date, "audio": "latest.mp3", "version": hashlib.sha256((OUT / "latest.mp3").read_bytes()).hexdigest()[:16], "title": "Günün Sesli Özeti", "duration": round(duration)}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("PULSE ready:", date, "stories:", len(stories[:5]), "duration:", round(duration), "seconds")
+    print("PULSE ready:", date, "stories:", len(stories), "duration:", round(duration), "seconds")
 
 
 if __name__ == "__main__":
