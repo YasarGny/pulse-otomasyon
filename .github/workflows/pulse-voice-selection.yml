@@ -1,4 +1,4 @@
-name: PULSE Two-Host Podcast Pilot (Temporary)
+name: PULSE Separate-Speaker Pilot (Temporary)
 on:
   workflow_dispatch:
 permissions:
@@ -6,53 +6,86 @@ permissions:
 jobs:
   pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install audio processing tools
+      - name: Install audio dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          ffmpeg -version | head -n 1
-      - name: Render Yaşar 3 and Necdet 7 conversation
+          python -m pip install 'google-genai>=2.25.0,<3'
+      - name: Render independently voiced Turkish conversation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PULSE_YASAR_VOICE_ID: voice_p94xlklc2103
-          PULSE_NECDET_VOICE_ID: voice_013isn56gi20
         run: |
-          python -m pip install requests
           python - <<'PY'
-          import json
+          import base64, json, os, subprocess, wave
           from pathlib import Path
-          from pulse_podcast_audio import render
+          from google import genai
 
+          voices = {"Yaşar": "voice_p94xlklc2103", "Necdet": "voice_013isn56gi20"}
           turns = [
-              {"speaker":"Yaşar","text":"Selam Necdet! Bugün telefonlardaki yapay zekâyı konuşalım. Her yeni model daha akıllı diyorlar ama ben hâlâ şarj aletimi yanımda taşıyorum. Bir gariplik yok mu?"},
-              {"speaker":"Necdet","text":"Var tabii! Telefon düşünmeyi öğreniyor ama günün sonunda yine priz arıyoruz. Şaka bir yana, asıl mesele yapay zekânın telefonda mı, bulutta mı çalıştığı."},
-              {"speaker":"Yaşar","text":"Tam da onu soracaktım. Mesela internetsizken fotoğraf düzenleyebilsem, konuşmalarımı çevirebilsem... Hem daha hızlı olmaz mı?"},
-              {"speaker":"Necdet","text":"Çoğu durumda evet. Üstelik verilerin cihazdan çıkmaması mahremiyet açısından da avantaj. Ama güçlü modeller işlemciyi yoruyor. İşte o noktada pil, ısınma ve performans arasında denge gerekiyor."},
-              {"speaker":"Yaşar","text":"Yani telefon üreticilerinin bize daha fazla özellik göstermesi yetmiyor. O özellikleri gün boyunca rahatça kullanabilmemiz gerekiyor."},
-              {"speaker":"Necdet","text":"Kesinlikle. Bir de şu var: Her iş için devasa bir model şart değil. Küçük, iyi optimize edilmiş modeller bazen günlük kullanımda daha mantıklı. Mesela bildirimleri özetlemek için veri merkezine koşmaya gerek yok."},
-              {"speaker":"Yaşar","text":"Güzel örnek. Benim istediğim de bu zaten: Yapay zekâ beni daha fazla ayar yapmaya zorlamasın, arka planda gerçekten işimi kolaylaştırsın."},
-              {"speaker":"Necdet","text":"Aynen. İyi teknoloji kendini sürekli hatırlatmaz. Sen işini yaparsın, o yardımcı olur. Hatta bazen kullandığını bile fark etmezsin."},
-              {"speaker":"Yaşar","text":"Peki senin için iyi bir telefon yapay zekâsının ilk şartı ne? Hız mı, gizlilik mi, pil ömrü mü?"},
-              {"speaker":"Necdet","text":"Önce güvenilirlik derim. Yanlış bilgi verip çok hızlı cevaplamasının kimseye faydası yok. Sonra gizlilik ve pil. Hız zaten bunların yanında gelmeli."},
-              {"speaker":"Yaşar","text":"Güzel. Demek ki daha akıllı telefon demek sadece daha büyük model demek değil. Kullanıcıya daha az zahmet, daha fazla fayda demek."},
-              {"speaker":"Necdet","text":"Tam olarak öyle. Yeni Sekme'nin bu kısa denemesinde bunu konuşmuş olduk. Bir sonraki bölümde gerçek haberlerle devam ederiz."},
-              {"speaker":"Yaşar","text":"Dinlediğiniz için teşekkürler. Görüşmek üzere!"},
+              ("Yaşar", "Selam Necdet. Telefonlardaki yapay zekâ gerçekten işe yarıyor mu, yoksa biraz fazla mı abartıyoruz?"),
+              ("Necdet", "Bence ikisi de. Fotoğraf düzenleme ve çeviri güzel, ama bunları yapmak için her seferinde internete bağlanmak zorunda olmak pek akıllıca değil."),
+              ("Yaşar", "Kesinlikle. Benim istediğim, telefonun bunları hızlıca ve mümkünse kendi içinde yapması. Peki pil ne olacak?"),
+              ("Necdet", "İşte işin püf noktası o. Güçlü model kadar verimli işlemci de gerekiyor. Yoksa akıllı telefon, şarj aletinin en yakın arkadaşı olur."),
+              ("Yaşar", "Güzel söyledin. Yani gerçek yenilik, gösterişli özelliklerden çok günlük hayatı kolaylaştırmak."),
+              ("Necdet", "Aynen öyle Yaşar. Teknoloji bize hizmet etmeli; biz teknolojiye değil."),
           ]
-          Path("pilot-output").mkdir(exist_ok=True)
-          info = render(turns, Path("pilot-output/yeni-sekme-yasar3-necdet7.mp3"))
-          Path("pilot-output/metadata.json").write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
-          print(json.dumps(info, ensure_ascii=False))
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+          out = Path("pilot-output")
+          out.mkdir(exist_ok=True)
+          segments = []
+          for i, (speaker, words) in enumerate(turns, 1):
+              print(f"Rendering {i}/{len(turns)}: {speaker}", flush=True)
+              response = client.interactions.create(
+                  model="gemini-3.8-flash-tts",
+                  input=[{"type": "user_input", "content": [{
+                      "type": "text", "text": words,
+                      "annotations": [{"type": "speech_metadata",
+                          "style": "Yalnızca Türkçe. Doğal ve samimi bir teknoloji sohbeti. "
+                                   "Bu karakterin kendi sesini koru, başka konuşmacıyı taklit etme."}]
+                  }]}],
+                  response_format={"type": "audio"},
+                  generation_config={"speech_config": [{"voice": voices[speaker]}]},
+              )
+              audio = response.output_audio
+              if not audio or not audio.data:
+                  raise RuntimeError(f"Missing audio on turn {i}")
+              raw = base64.b64decode(audio.data) if isinstance(audio.data, str) else bytes(audio.data)
+              if raw[:4] != b"RIFF":
+                  raise RuntimeError(f"Unexpected WAV format on turn {i}")
+              wav = out / f"turn-{i:02d}-{speaker.lower()}.wav"
+              wav.write_bytes(raw)
+              segments.append(wav)
+          manifest = out / "concat.txt"
+          with manifest.open("w", encoding="utf-8") as f:
+              for i, wav in enumerate(segments):
+                  f.write("file '" + wav.name + "'\n")
+                  if i < len(segments)-1:
+                      gap = out / f"gap-{i:02d}.wav"
+                      subprocess.run(["ffmpeg","-v","error","-y","-f","lavfi","-i",
+                                      "anullsrc=r=24000:cl=mono","-t","0.25",
+                                      "-c:a","pcm_s16le",str(gap)],check=True)
+                      f.write("file '" + gap.name + "'\n")
+          subprocess.run(["ffmpeg","-v","error","-y","-f","concat","-safe","0",
+                          "-i",str(manifest),"-af","loudnorm=I=-18:TP=-2:LRA=11",
+                          "-c:a","libmp3lame","-b:a","128k",
+                          str(out/"yeni-sekme-ayri-sesler.mp3")],check=True)
+          (out/"metadata.json").write_text(json.dumps({
+              "method":"independent single-speaker calls",
+              "voices":voices,"turns":len(turns)
+          },ensure_ascii=False,indent=2),encoding="utf-8")
+          print("Pilot ready. Existing daily podcast not changed.")
           PY
       - name: Upload pilot without publishing
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: yeni-sekme-yasar3-necdet7-pilot
+          name: yeni-sekme-ayri-sesler-pilot
           path: pilot-output/
+          if-no-files-found: warn
           retention-days: 7
