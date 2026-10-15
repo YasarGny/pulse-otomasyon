@@ -1,18 +1,18 @@
-name: PULSE Gemini Voice Selection (Temporary)
+name: PULSE Recover Existing Voice Previews
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  voice-selection:
+  recover:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Create three alternative Necdet voices
+      - name: Retrieve saved voice previews without creating new voices
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -24,53 +24,42 @@ jobs:
           from pathlib import Path
           from google import genai
 
-          # Yaşar 3 is already selected as the reference candidate.
-          # Do not create it again or spend credits on duplicate voices.
-          yasar_reference = {"name": "Yaşar 3", "id": "voice_p94xlklc2103", "file": "previous-selection"}
-          profiles = [
-              ("necdet-4", "Necdet 4", "Yalnızca Türkçe konuşan 30 yaşında bir erkek. İstanbul Türkçesiyle konuşur. Ses rengi Yaşar'ın rahat ve hafif tok sesinden belirgin şekilde farklıdır: daha aydınlık, orta perdeli, canlı ve zeki. Doğal sohbet, samimi küçük espriler, yapay sunucu tonlaması yok. Türkçe örnek konuşma üret."),
-              ("necdet-5", "Necdet 5", "Yalnızca Türkçe konuşan 31 yaşında bir erkek. İnce olmayan ama açık ve net, hafif pürüzlü orta perde, neşeli ve hızlı olmayan akıcı konuşma. Yaşar'ın tok sesine karşı daha çevik ve farklı tınıda, analitik ve samimi. Radyo spikeri gibi değil, yakın arkadaşıyla teknoloji konuşuyor. Türkçe örnek konuşma üret."),
-              ("necdet-6", "Necdet 6", "Yalnızca Türkçe konuşan 30 yaşında bir erkek. Yumuşak ama parlak, orta yükseklikte, hafif gülümseyen ses; belirgin artikülasyon, doğal duraksamalar, sıcak ve düşünceli konuşma. Yaşar'ın hafif tok ve ağırbaşlı tınısından kolayca ayırt edilir. Abartılı oyunculuk yok. Türkçe örnek konuşma üret."),
-          ]
-          out = Path("voice-selection")
-          out.mkdir(exist_ok=True)
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          records = [yasar_reference]
-          for slug, name, description in profiles:
-              print("Creating", name, flush=True)
-              created = client.voices.create(
-                  store=True,
-                  voice={
-                      "model": "gemini-3.8-flash-tts",
-                      "type": "prompted",
-                      "display_name": "PULSE " + name,
-                      "gender": "male",
-                      "language_code": "tr-TR",
-                      "prompted": {"input": description},
-                  },
-              )
-              if not created.id or not str(created.id).startswith("voice_"):
-                  raise RuntimeError("Voice creation returned no persistent voice ID")
-              preview = getattr(created, "sample_audio", None)
-              if preview is None or not getattr(preview, "data", None):
-                  raise RuntimeError("No voice preview returned for " + name)
-              data = preview.data
-              if isinstance(data, str):
-                  data = base64.b64decode(data)
-              if not bytes(data).startswith(b"RIFF"):
-                  raise RuntimeError("Unexpected audio preview format for " + name)
-              (out / (slug + ".wav")).write_bytes(bytes(data))
-              records.append({"name": name, "id": created.id, "file": slug + ".wav"})
-              (out / "voice-ids.json").write_text(
-                  json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
-              )
-          print("Three new Necdet previews generated; Yaşar 3 ID retained.")
+          out = Path("voice-recovery")
+          out.mkdir(exist_ok=True)
+          wanted = {"PULSE Necdet 4", "PULSE Necdet 5", "PULSE Necdet 6"}
+          saved = [{"name": "Yaşar 3", "id": "voice_p94xlklc2103", "file": "previous-selection"}]
+          response = client.voices.list(type_=["prompted"], language_code=["tr-TR"])
+          matched = {}
+          for item in response.voices or []:
+              name = item.display_name or ""
+              if name in wanted and name not in matched:
+                  matched[name] = item.id
+          missing = sorted(wanted - set(matched))
+          if missing:
+              raise RuntimeError("Stored voices not found: " + ", ".join(missing))
+          for name in sorted(wanted):
+              voice_id = matched[name]
+              voice = client.voices.get(id=voice_id)
+              audio = getattr(voice, "sample_audio", None)
+              if not audio or not getattr(audio, "data", None):
+                  raise RuntimeError("No saved sample for " + name)
+              raw = audio.data
+              data = base64.b64decode(raw) if isinstance(raw, str) else bytes(raw)
+              if data[:4] != b"RIFF":
+                  raise RuntimeError("Unexpected WAV format for " + name)
+              filename = name.lower().replace("pulse ", "").replace(" ", "-") + ".wav"
+              (out / filename).write_bytes(data)
+              saved.append({"name": name, "id": voice_id, "file": filename})
+              print("Recovered:", name, voice_id)
+          (out / "voice-ids.json").write_text(
+              json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
+          print("Recovered all three existing voice previews; created zero new voices.")
           PY
-      - name: Downloadable previews (7 days)
-        if: always()
+      - name: Upload recovered previews
         uses: actions/upload-artifact@v4
         with:
-          name: pulse-necdet-alternatives
-          path: voice-selection/
-          if-no-files-found: warn
+          name: pulse-recovered-necdet-voices
+          path: voice-recovery/
+          if-no-files-found: error
           retention-days: 7
