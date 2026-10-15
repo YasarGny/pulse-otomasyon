@@ -2,67 +2,71 @@
   "turns": [
     {
       "speaker": "Yaşar",
-      "text": "PULSE sunar: Yeni Sekme'den herkese merhaba. Ben Yaşar. Takvimler 15 Ekim 2026'yı gösteriyor. Donanımdan güvenliğe, yapay zekânın farklı katmanlarını konuşacağız."
+      "text": "Herkese merhaba. Yeni Sekme'de ben Yaşar."
     },
     {
       "speaker": "Necdet",
-      "text": "Ben Necdet. Robotların çevreyi anlama çabasından finansal baskılara kadar ilginç başlıklar var. Hesai'nin yeni duyurusuyla başlayalım istersen."
+      "text": "Ben de Necdet. 15 Ekim 2026'dayız. Bugün robotların algısından çip fabrikalarının kapasite sınırlarına, hatta yapay zekâ yatırımlarının finansal yüküne uzanan epey katmanlı konularımız var."
     },
     {
       "speaker": "Yaşar",
-      "text": "Lidar üreticisi Hesai, insansı robotlar için Kosmo adlı bir 3B algılama sistemi tanıttı. Cihazda lidar ile kamera bir araya getirilmiş. Amaç, robotun çevresinden yüksek kaliteli mekânsal veri toplamak."
+      "text": "Fiziksel dünyadan başlayalım. Çinli Hesai, insansı robotlar için Kosmo adını verdiği yeni bir 3B algılama kamerasını duyurdu. Lidar ile kamerayı tek bir pakette birleştiriyorlar. Amaç, robotların gerçek dünyayı daha iyi algılaması için yüksek kaliteli mekânsal veri toplamak."
     },
     {
       "speaker": "Necdet",
-      "text": "Kameralar tek başına derinlik kestiriminde yanılabiliyor, ayrı lidar üniteleri de hacim kaplıyordu. İkisini tek gövdede buluşturmak, verinin robot tarafından anlık işlenmesini epey kolaylaştırabilir."
+      "text": "Otomotiv tarafında lidarla zaten çok güçlüler. İnsansı robotlarda sırf kameralarla derinlik kestirmenin sınırları var. Lidar mekânsal veriyi kesinleştirir ama robot gövdesinde ağırlık ve güç tüketimi kritik bir denge yaratıyor."
     },
     {
       "speaker": "Yaşar",
-      "text": "Tabii bu boyuttaki mekânsal veriyi akıcı şekilde işlemek, güçlü çipler gerektiriyor. O çiplerin üretimi de ayrı bir darboğaz sinyali veriyor."
+      "text": "Yazılım tarafındaki temel sıkıntı da o belirsizlikti zaten. Milimetrik derinlik verisi doğrudan gelince, robotun nesneleri kavraması ya da dengede kalması çok daha az hata payıyla yönetilebilir."
     },
     {
       "speaker": "Necdet",
-      "text": "ASML tam da bunu işaret etti. Yapay zekâ kaynaklı yoğun talebin 2027 ve 2028 yıllarında mevcut kapasitelerini aşabileceğini belirtip üretim hacmini artırmayı gündeme aldılar."
+      "text": "Fakat bu kadar zengin veriyi işlemek, arka planda daha güçlü işlemciler gerektiriyor. Bu da bizi doğrudan çip tedarikçilerine götürüyor. ASML, yapay zekâ kaynaklı talebin 2027 ile 2028 döneminde üretim kapasitesini zorlayabileceğini belirterek kapasite artışını masaya yatırdı."
     },
     {
       "speaker": "Yaşar",
-      "text": "Çip litografisinde kritik bir noktadalar. Üç yıl sonrasının talebine bugünden hazırlanmazlarsa donanım tedariki doğrudan tıkanır."
+      "text": "Tasarımcılar sürekli yeni sipariş veriyor ama litografi makinelerini üretmek aylar, bazen yıllar alıyor. ASML bugünden 2027 sonrasını işaret ediyorsa, donanım darboğazı kısa vadede çözülmeyecek demektir."
     },
     {
       "speaker": "Necdet",
-      "text": "Mesele sadece makineyi üretmek de değil. Bu devasa yatırımları finanse etmek giderek zorlaşıyor."
+      "text": "Üstelik bu devasa tesislerin finansmanı da ucuz değil. 14 Ekim'de ABD'de faiz artışı beklentileri güçlenince, borçla büyüyen yapay zekâ altyapı şirketlerinin hisselerinde sert düşüşler görüldü."
     },
     {
       "speaker": "Yaşar",
-      "text": "Piyasa da dün bunu hissetti. Borçlanarak büyüyen yapay zekâ altyapı şirketlerinin hisseleri, ABD'de faiz artışı beklentilerinin güçlenmesiyle 14 Ekim'de geriledi."
+      "text": "Teknolojik vizyon tam burada finansal gerçekliğe çarpıyor. Herkes altyapısını büyütmek istiyor ama borçlanma maliyeti artınca o sunucu yatırımlarının geri dönüş hesabı çok daha hassas hale geliyor."
     },
     {
       "speaker": "Necdet",
-      "text": "Altyapı yatırımları devasa sermaye istiyor. Borçlanma maliyeti arttığında şirketlerin kârlılık takvimi doğrudan ileriye öteleniyor."
+      "text": "Büyük teknoloji devleri nakit gücüyle bunu yönetebilir belki. Fakat bağımsız araştırmacılar bu maliyetlerin altında ezilme riskiyle karşı karşıya. Google'ın Avrupa hamlesi de sanırım bu boşluğu hedefliyor."
     },
     {
       "speaker": "Yaşar",
-      "text": "Sermaye sıkışırken Google ise araştırma tarafında elini açıyor. Google DeepMind ve Google Cloud, Avrupa'daki 200'e kadar araştırmacıya ileri modellerine erişim ve toplam 3 milyon dolarlık hesaplama kredisi sunacak."
+      "text": "Evet, Google DeepMind ve Google Cloud, Avrupa'daki 200'e kadar araştırmacıya gelişmiş modellerine erişim hakkı ve toplamda 3 milyon dolarlık hesaplama kredisi sağlayacağını açıkladı. Akademinin ileri seviye modellere dokunabilmesi adına önemli bir destek."
     },
     {
       "speaker": "Necdet",
-      "text": "Avrupa'daki araştırmacıların en büyük sıkıntısı hesaplama gücüydü. Dağıtılacak bu kredi, bağımsız laboratuvarlar için somut bir alan açabilir."
+      "text": "Milyar dolarlık eğitim bütçelerinin yanında 3 milyon dolar mütevazı görünebilir ama odaklanmış 200 araştırmacı için gayet somut bir imkân. Bir yandan da modeller geliştikçe güvenlik riskleri büyüyor."
     },
     {
       "speaker": "Yaşar",
-      "text": "DeepMind cephesinden bir de güvenlik uyarısı geldi. Demis Hassabis, yapay zekâ ajanlarının karıştığı güvenlik olaylarının gelecekteki daha büyük riskler için erken uyarı olduğunu söyledi ve uluslararası standart çağrısı yaptı."
+      "text": "Demis Hassabis'in son uyarısı da tam bu noktada geldi. Yapay zekâ ajanlarının karıştığı güvenlik olaylarının henüz başlangıç olduğunu, bunların daha ciddi risklerin erken uyarısı sayılması gerektiğini söyledi. Uluslararası standart çağrısında bulundu."
     },
     {
       "speaker": "Necdet",
-      "text": "Ajanlar sistemler üzerinde doğrudan eylem aldıkça ufak bir açık bile zincirleme etki yaratabiliyor. Hassabis'in standart vurgusu tam da bu otonom adımlara yönelik olsa gerek."
+      "text": "Ajanlar artık sadece metin üretmiyor; sistemler üzerinde işlem yapıp yetki kullanıyor. Oradaki bir açık doğrudan operasyonel risk demek. Standart çağrısı çok haklı ama küresel rekabet bu kadar sertken ortak kural koymak hiç kolay olmayacak."
     },
     {
       "speaker": "Yaşar",
-      "text": "Algoritmaların yetkisi arttıkça denetim ihtiyacı da büyüyor. Bugün konuştuğumuz tüm başlıkların detaylarına bültendeki kaynaklardan ulaşabilirsiniz. Yeni Sekme'yi dinlediğiniz için teşekkürler."
+      "text": "Donanımdan güvenliğe kadar her katmanın birbirine bağlandığı bir dönemdeyiz. Bugün konuştuğumuz tüm başlıkların detaylarını bültendeki kaynak notlarında bulabilirsiniz."
     },
     {
       "speaker": "Necdet",
-      "text": "Yarın yeniden görüşmek üzere, hoşça kalın."
+      "text": "Bir sonraki bölümde görüşmek üzere, hoşça kalın."
+    },
+    {
+      "speaker": "Yaşar",
+      "text": "Kendinize iyi bakın."
     }
   ],
   "voices": {
