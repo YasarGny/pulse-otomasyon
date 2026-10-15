@@ -2,67 +2,67 @@
   "turns": [
     {
       "speaker": "Yaşar",
-      "text": "PULSE sunar: Yeni Sekme. Ben Yaşar, karşımda her zamanki gibi Necdet. 15 Ekim 2026 tarihindeyiz ve bugün yapay zekânın sadece modellerden ibaret olmadığını, işin çipine, parasına ve hatta fiziksel gövdesine uzanan zinciri konuşacağız."
+      "text": "PULSE sunar: Yeni Sekme'den herkese merhaba. Ben Yaşar. Takvimler 15 Ekim 2026'yı gösteriyor. Donanımdan güvenliğe, yapay zekânın farklı katmanlarını konuşacağız."
     },
     {
       "speaker": "Necdet",
-      "text": "Selamlar herkese. Zincir gerçekten ilginç bir noktada. Bir yanda 2028'e kadar çip yetiştiremeyeceğinden endişelenen devler var, diğer yanda finansman tarafında esen soğuk rüzgârlar. Nereden başlayalım?"
+      "text": "Ben Necdet. Robotların çevreyi anlama çabasından finansal baskılara kadar ilginç başlıklar var. Hesai'nin yeni duyurusuyla başlayalım istersen."
     },
     {
       "speaker": "Yaşar",
-      "text": "ASML ile başlayalım istersen. Çip üretim makinelerinin kalbindeki şirket, yapay zekâ kaynaklı bu çılgın talebin 2027 ve 2028 döneminde mevcut kapasitelerini zorlayabileceğini açıkladı. Bu yüzden üretim kapasitelerini artırmayı masaya yatırmış durumdalar."
+      "text": "Lidar üreticisi Hesai, insansı robotlar için Kosmo adlı bir 3B algılama sistemi tanıttı. Cihazda lidar ile kamera bir araya getirilmiş. Amaç, robotun çevresinden yüksek kaliteli mekânsal veri toplamak."
     },
     {
       "speaker": "Necdet",
-      "text": "ASML'nin bunu söylemesi kritik. Çünkü litografi makineleri öyle sipariş verip altı ayda fabrikanıza kurabileceğiniz şeyler değil. Yıllar süren bir tedarik ve kurulum süreci var. Yani sektörün bugünden 2028'i planlaması şart, aksi takdirde en gelişmiş yapay zekâ modelleri bile silikon kuyruğunda bekleyebilir."
+      "text": "Kameralar tek başına derinlik kestiriminde yanılabiliyor, ayrı lidar üniteleri de hacim kaplıyordu. İkisini tek gövdede buluşturmak, verinin robot tarafından anlık işlenmesini epey kolaylaştırabilir."
     },
     {
       "speaker": "Yaşar",
-      "text": "Fakat bu silikonları alıp veri merkezine koymak için de para gerekiyor. Tam ASML kapasite artırımını değerlendirirken, piyasalarda başka bir gerçeklik belirdi. Dün, yani 14 Ekim'de, ABD'deki faiz artışı beklentileri güçlenince, borçla büyüyen yapay zekâ altyapı şirketlerinin hisseleri belirgin şekilde geriledi."
+      "text": "Tabii bu boyuttaki mekânsal veriyi akıcı şekilde işlemek, güçlü çipler gerektiriyor. O çiplerin üretimi de ayrı bir darboğaz sinyali veriyor."
     },
     {
       "speaker": "Necdet",
-      "text": "İşte meselenin bam teli burası. Veri merkezi inşa etmek, binlerce hızlandırıcı kartı yan yana dizmek korkunç bir sermaye istiyor. Birçok girişim bu yatırımları ucuz borçlanmayla finanse ediyordu. Faizler yüksek kalmaya devam ederse ya da yeni artışlar gelirse, o devasa veri merkezlerinin maliyet hesapları baştan yazılır."
+      "text": "ASML tam da bunu işaret etti. Yapay zekâ kaynaklı yoğun talebin 2027 ve 2028 yıllarında mevcut kapasitelerini aşabileceğini belirtip üretim hacmini artırmayı gündeme aldılar."
     },
     {
       "speaker": "Yaşar",
-      "text": "Kesinlikle. Hesaplama gücü pahalılaşırken bir de bunu araştırma dünyasına ulaştırma derdi var. Google bu noktada Avrupa'ya yönelik bir adım attı. Google DeepMind ve Google Cloud, Avrupa'daki 200'e kadar araştırmacıya ileri düzey modellerini ve toplamda 3 milyon dolarlık hesaplama kredisini açıyor."
+      "text": "Çip litografisinde kritik bir noktadalar. Üç yıl sonrasının talebine bugünden hazırlanmazlarsa donanım tedariki doğrudan tıkanır."
     },
     {
       "speaker": "Necdet",
-      "text": "Avrupa'daki akademik ekipler için iyi bir nefes borusu. Fakat 200 araştırmacıya 3 milyon dolar bölündüğünde kişi başı ortalama 15 bin dolar civarı bir kredi düşüyor. Büyük ölçekli model eğitmek için mütevazı bir rakam ama derinlemesine analiz ve inceleme yapmak için kesinlikle değerli bir kaynak."
+      "text": "Mesele sadece makineyi üretmek de değil. Bu devasa yatırımları finanse etmek giderek zorlaşıyor."
     },
     {
       "speaker": "Yaşar",
-      "text": "Bu araştırmacıların odaklanacağı konulardan biri de muhtemelen güvenlik olacaktır. Nitekim DeepMind'ın başındaki Demis Hassabis tam da bu günlerde önemli bir uyarıda bulundu. Hassabis, yapay zekâ ajanlarının karıştığı mevcut güvenlik olaylarının aslında daha ciddi risklere işaret eden birer erken uyarı olduğunu söyledi ve uluslararası standartlar geliştirilmesi çağrısı yaptı."
+      "text": "Piyasa da dün bunu hissetti. Borçlanarak büyüyen yapay zekâ altyapı şirketlerinin hisseleri, ABD'de faiz artışı beklentilerinin güçlenmesiyle 14 Ekim'de geriledi."
     },
     {
       "speaker": "Necdet",
-      "text": "Ajanlar sadece ekranda metin üretirken risk görece sınırlıydı. Ancak sistemlere yetki verilip araç kullanmaya başladıklarında, yazılımdaki küçük bir kontrol açığı doğrudan operasyonel hataya dönüşebiliyor. Hassabis'in uluslararası standart vurgusu, regülasyonların olaylar kontrolden çıkmadan devreye girmesi gerektiğini hatırlatıyor."
+      "text": "Altyapı yatırımları devasa sermaye istiyor. Borçlanma maliyeti arttığında şirketlerin kârlılık takvimi doğrudan ileriye öteleniyor."
     },
     {
       "speaker": "Yaşar",
-      "text": "Ajanlar sadece dijital dünyada da kalmıyor üstelik, yavaş yavaş fiziksel gövdelere kavuşuyorlar. Çinli Hesai de tam bu alana yönelik Kosmo adlı 3B algılama kamerasını tanıttı. Lidar ile klasik kamerayı tek sistemde birleştirip insansı robotların gerçek dünyayı daha hassas mekânsal verilerle algılamasını hedefliyorlar."
+      "text": "Sermaye sıkışırken Google ise araştırma tarafında elini açıyor. Google DeepMind ve Google Cloud, Avrupa'daki 200'e kadar araştırmacıya ileri modellerine erişim ve toplam 3 milyon dolarlık hesaplama kredisi sunacak."
     },
     {
       "speaker": "Necdet",
-      "text": "Hesai'nin lidar uzmanlığını robotik alana taşıması mantıklı bir hamle. İnsansı robotların en büyük derdi derinlik algısı ve milimetrik konumlandırma. Sadece kamerayla bunu çözmeye çalışanlar var ama lidar ve optik sensörün hibrit çalışması, robotun çevresini hatasız tanıması için çok daha güvenilir bir veri tabanı sunabilir."
+      "text": "Avrupa'daki araştırmacıların en büyük sıkıntısı hesaplama gücüydü. Dağıtılacak bu kredi, bağımsız laboratuvarlar için somut bir alan açabilir."
     },
     {
       "speaker": "Yaşar",
-      "text": "Yani çipin üretiminden finansmanına, yazılımın güvenliğinden robotun gözüne kadar yapay zekânın her katmanı birbirine zincirleme bağlı. Donanım sıkışırsa modeller gecikiyor, finansman zorlaşırsa altyapı yavaşlıyor, güvenlik ihmal edilirse de tüm bu fiziksel adımlar riskli hale geliyor."
+      "text": "DeepMind cephesinden bir de güvenlik uyarısı geldi. Demis Hassabis, yapay zekâ ajanlarının karıştığı güvenlik olaylarının gelecekteki daha büyük riskler için erken uyarı olduğunu söyledi ve uluslararası standart çağrısı yaptı."
     },
     {
       "speaker": "Necdet",
-      "text": "Çok doğru özetledin. Teknoloji hızla ilerliyor ama sahadaki fiziksel ve ekonomik kurallar sınırları çizmeye devam ediyor."
+      "text": "Ajanlar sistemler üzerinde doğrudan eylem aldıkça ufak bir açık bile zincirleme etki yaratabiliyor. Hassabis'in standart vurgusu tam da bu otonom adımlara yönelik olsa gerek."
     },
     {
       "speaker": "Yaşar",
-      "text": "Bugünlük Yeni Sekme'yi burada kapatıyoruz. Bahsettiğimiz tüm gelişmelerin detaylarına ve kaynaklarına PULSE bülteninden ulaşabilirsiniz. Bir sonraki yayında görüşmek üzere, hoşça kalın."
+      "text": "Algoritmaların yetkisi arttıkça denetim ihtiyacı da büyüyor. Bugün konuştuğumuz tüm başlıkların detaylarına bültendeki kaynaklardan ulaşabilirsiniz. Yeni Sekme'yi dinlediğiniz için teşekkürler."
     },
     {
       "speaker": "Necdet",
-      "text": "Kendinize iyi bakın, teknolojiyle kalın."
+      "text": "Yarın yeniden görüşmek üzere, hoşça kalın."
     }
   ],
   "voices": {
