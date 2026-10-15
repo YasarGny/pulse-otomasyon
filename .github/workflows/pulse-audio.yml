@@ -2,12 +2,7 @@ name: PULSE Daily Audio
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 6 * * *"
-  push:
-    branches: [main]
-    paths:
-      - pulse_audio.py
-      - .github/workflows/pulse-audio.yml
+    - cron: "40 6 * * *"
 permissions:
   contents: write
 concurrency:
@@ -26,10 +21,12 @@ jobs:
           python-version: "3.12"
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: pip install edge-tts requests
+      - run: pip install requests
       - name: Generate real daily narration
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SUMMARY_VOICE_ID: ${{ vars.PULSE_SUMMARY_VOICE_ID }}
         run: python pulse_audio.py
       - name: Publish audio to GitHub Pages
         run: |
