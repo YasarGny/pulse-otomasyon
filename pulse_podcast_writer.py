@@ -21,8 +21,8 @@ Gerçek sohbet hissi için kısa ve uzun konuşma sıraları, yerinde mizah, do�
 Rol yaparak yaşanmış kişisel anı veya sahte deneyim anlatma. Gerçek kişilerden ses taklidi yapma.
 Abartılı heyecan, gereksiz çatışma, yapay kahkaha, aşırı argo ve sunucu etiketlerini konuşma metnine katma.
 Her konuşma satırı yaklaşık 1-4 cümle olsun. Bir konuşmacı en fazla 100 kelime aralıksız konuşsun.
-Haberlerin önemine göre konuşma süresini kendiliğinden belirle. Süre hedefi, minimum kelime sayısı veya dakika doldurma zorunluluğu yok. Önemli haberleri yeterince değerlendir, kısa haberleri kısa geç; konu bitince doğal biçimde kapanış yap.
-Açılış mutlaka PULSE sunar: Yeni Sekme program adıyla başlasın; Yaşar ve Necdet isimlerini doğal biçimde söylesin. Yayın tarihini doğru ve Türkçe biçimde bir kez belirt. Ardından bugünün en dikkat çekici konularından kısa bir merak uyandırıcı giriş yap. Kapanışta günün önemli çıkarımını kısaca bağla, PULSE bültenindeki kaynaklara yönlendir ve samimi bir vedayla bitir. Her gün aynı giriş-kapanış cümlelerini ezberden tekrarlama.\nKonuşma metnini sesli okunabilir yaz: uzun virgül zincirleri ve kısaltmalar yerine kısa nefeslik cümleler, anlamlı noktalama ve doğal duraklar kullan. Yapay kahkaha, [duraklama] gibi sahne yönergeleri ve gereksiz ünlemler ekleme.
+Sadece haber özeti üretme: her önemli haber için somut neden-sonuç ve yorum, belirsizlik veya pratik etki hakkında konuşma fırsatı oluştur. Bir konuşmacı haberin bilgisini verdiyse öteki aynı haberi devam ettirmek yerine önce onun söylediğine karşılık versin. Haberlerin önemine göre konuşma süresini kendiliğinden belirle. Süre hedefi, minimum kelime sayısı veya dakika doldurma zorunluluğu yok. Önemli haberleri yeterince değerlendir, kısa haberleri kısa geç; konu bitince doğal biçimde kapanış yap.
+Açılış ilk cümlede program adını tekrar etmeden sıcak bir selamlaşmayla başlasın; Yaşar ve Necdet kendilerini doğal biçimde tanıtsın. Programın sabit ses logosu ses montajında ayrıca eklenecek, diyalogda PULSE sunar ifadesini TEKRARLAMA. Yayın tarihini doğru ve Türkçe biçimde bir kez belirt. Ardından bugünün en dikkat çekici konularından kısa bir merak uyandırıcı giriş yap. Kapanışta günün önemli çıkarımını kısaca bağla, PULSE bültenindeki kaynaklara yönlendir ve samimi bir vedayla bitir. Her gün aynı giriş-kapanış cümlelerini ezberden tekrarlama.\nKonuşma metnini sesli okunabilir yaz: uzun virgül zincirleri ve kısaltmalar yerine kısa nefeslik cümleler, anlamlı noktalama ve doğal duraklar kullan. Yapay kahkaha, [duraklama] gibi sahne yönergeleri ve gereksiz ünlemler ekleme.
 YALNIZCA geçerli JSON döndür: {"turns":[{"speaker":"Yaşar","text":"..."},{"speaker":"Necdet","text":"..."}]}.
 Başka anahtar veya markdown döndürme."""
 
@@ -31,7 +31,7 @@ En önemli sorun: sunucuların tek bir makalenin cümlelerini sırayla okumalar�
 Doğrulanmış haber notları dışına olgusal iddia, rakam, kaynak veya sahte kişisel deneyim EKLEME.
 Doğrulanmış gerçeklerde zoraki fikir ayrılığı YAPMA. Aynı fikirde olmak doğal; boş "aynen", "kesinlikle" tekrarlarını azalt.
 Düşünceyi nefes alınabilir kısa cümlelerle ifade et. Süreyi doldurmak için uzatma.
-PULSE sunar: Yeni Sekme açılışı, Türkçe yayın tarihi, Yaşar ve Necdet tanıtımı, doğal kapanış ve kaynak yönlendirmesi korunsun.
+Doğal selamlaşma, Türkçe yayın tarihi, Yaşar ve Necdet tanıtımı, doğal kapanış ve kaynak yönlendirmesi korunsun. PULSE sunar ifadesini konuşma metnine EKLEME; ses logosu ayrı hazırlanacak.\nTaslağı kısaltmayı amaçlama: anlamlı yorumları, gerekçeleri, soruları ve haberlerin arka planını KORU. Sadece tekrarı ve yapay cümleleri temizle. Bir haber 1-2 cümlede geçiştirildiyse ve kaynak notlarında konuşulacak malzeme varsa gerçekçi bir yorum ekle.
 Çıktı sadece JSON: {"turns":[{"speaker":"Yaşar","text":"..."},...]}."""
 
 def _request(payload):
@@ -50,7 +50,7 @@ def _request(payload):
 
 def _validate(result):
     turns = result.get("turns", [])
-    if not 14 <= len(turns) <= 150:
+    if not 10 <= len(turns) <= 180:
         raise RuntimeError("Invalid number of dialogue turns")
     if any(t.get("speaker") not in ("Yaşar", "Necdet") or not isinstance(t.get("text"), str) or not t["text"].strip() or len(t["text"]) > 1000 for t in turns):
         raise RuntimeError("Invalid dialogue speaker or text")
