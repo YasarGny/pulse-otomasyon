@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Create six persistent voices and download previews
+      - name: Create three alternative Necdet voices
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -24,18 +24,18 @@ jobs:
           from pathlib import Path
           from google import genai
 
+          # Yaşar 3 is already selected as the reference candidate.
+          # Do not create it again or spend credits on duplicate voices.
+          yasar_reference = {"name": "Yaşar 3", "id": "voice_p94xlklc2103", "file": "previous-selection"}
           profiles = [
-              ("yasar-1", "Yaşar 1", "A 30-year-old Turkish man from western Türkiye, naturally warm and conversational, medium pitch, clear modern Istanbul Turkish, lively but not theatrical. Sounds like a curious tech podcast host chatting with a friend, not reading news."),
-              ("yasar-2", "Yaşar 2", "A 31-year-old Turkish man with bright friendly mid-range voice, subtle smile in the voice, lightly energetic, spontaneous natural pacing, authentic Türkiye Turkish accent, never a radio announcer."),
-              ("yasar-3", "Yaşar 3", "A 30-year-old Turkish male speaker with relaxed resonant mid-low voice, approachable and thoughtful, casual everyday Turkish pronunciation, expressive but restrained, sounds like a real podcast conversation."),
-              ("necdet-1", "Necdet 1", "A 31-year-old Turkish man with calm warm slightly deeper voice, clear contemporary Turkish, analytical and thoughtful yet friendly, relaxed natural speech with subtle humor, never old-sounding."),
-              ("necdet-2", "Necdet 2", "A 30-year-old Turkish male speaker with a gently textured baritone, friendly playful undertone, easy conversational rhythm, authentic Turkish accent, distinct from a bright mid-pitched co-host."),
-              ("necdet-3", "Necdet 3", "A 31-year-old Turkish man with smooth steady medium-low voice, curious and witty, understated warmth, naturally paced everyday Istanbul Turkish, no commercial narration or robotic cadence."),
+              ("necdet-4", "Necdet 4", "Yalnızca Türkçe konuşan 30 yaşında bir erkek. İstanbul Türkçesiyle konuşur. Ses rengi Yaşar'ın rahat ve hafif tok sesinden belirgin şekilde farklıdır: daha aydınlık, orta perdeli, canlı ve zeki. Doğal sohbet, samimi küçük espriler, yapay sunucu tonlaması yok. Türkçe örnek konuşma üret."),
+              ("necdet-5", "Necdet 5", "Yalnızca Türkçe konuşan 31 yaşında bir erkek. İnce olmayan ama açık ve net, hafif pürüzlü orta perde, neşeli ve hızlı olmayan akıcı konuşma. Yaşar'ın tok sesine karşı daha çevik ve farklı tınıda, analitik ve samimi. Radyo spikeri gibi değil, yakın arkadaşıyla teknoloji konuşuyor. Türkçe örnek konuşma üret."),
+              ("necdet-6", "Necdet 6", "Yalnızca Türkçe konuşan 30 yaşında bir erkek. Yumuşak ama parlak, orta yükseklikte, hafif gülümseyen ses; belirgin artikülasyon, doğal duraksamalar, sıcak ve düşünceli konuşma. Yaşar'ın hafif tok ve ağırbaşlı tınısından kolayca ayırt edilir. Abartılı oyunculuk yok. Türkçe örnek konuşma üret."),
           ]
           out = Path("voice-selection")
           out.mkdir(exist_ok=True)
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          records = []
+          records = [yasar_reference]
           for slug, name, description in profiles:
               print("Creating", name, flush=True)
               created = client.voices.create(
@@ -64,13 +64,13 @@ jobs:
               (out / "voice-ids.json").write_text(
                   json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
               )
-          print("Six previews and reusable voice IDs generated.")
+          print("Three new Necdet previews generated; Yaşar 3 ID retained.")
           PY
       - name: Downloadable previews (7 days)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pulse-gemini-voice-selection
+          name: pulse-necdet-alternatives
           path: voice-selection/
           if-no-files-found: warn
           retention-days: 7
