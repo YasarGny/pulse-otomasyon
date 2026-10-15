@@ -1,0 +1,26 @@
+name: Yeni Sekme Fish Audio Ozgun Ses Denemeleri
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  voices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install requests
+      - name: Create private voice candidates and short podcasts
+        env:
+          FISH_AUDIO_API_KEY: ${{ secrets.FISH_AUDIO_API_KEY }}
+        run: python pulse_fish_voice_design.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fish-ozgun-ses-denemeleri
+          path: fish-auditions/
+          retention-days: 14
