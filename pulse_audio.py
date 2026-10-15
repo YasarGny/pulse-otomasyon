@@ -1,4 +1,5 @@
 """Generate PULSE narration from today's Notion bulletin for public GitHub Pages."""
+# PULSE daily narration workflow trigger: issue 002 end-to-end test.
 import asyncio
 import datetime as dt
 import json
