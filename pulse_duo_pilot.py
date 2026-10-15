@@ -26,8 +26,11 @@ def stories_from_notion():
     # runs on a later calendar day. The production daily audio retains its date guard.
     intro=" ".join(rich(x) for x in b[:5])
     match=re.search(r"(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(20\d{2})",intro,re.I)
-    if not match:raise RuntimeError("Published issue date not found in Notion")
-    date=match.group(0)
+    if match:
+        date=match.group(0)
+    else:
+        date="tarihi belirtilmeyen pilot"
+        print("Pilot issue date not found; continuing with available news.")
     active=False; stories=[]
     for i,x in enumerate(b):
         if x["type"]=="heading_1":
