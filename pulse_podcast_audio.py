@@ -9,8 +9,8 @@ import time
 import requests
 
 MODEL = os.getenv("PULSE_TTS_MODEL", "gemini-3.8-flash-tts")
-VOICES = {"Yaşar": "Puck", "Necdet": "Algenib"}
-API = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent"
+VOICES = {"Yaşar": os.getenv("PULSE_YASAR_VOICE_ID", "Puck"), "Necdet": os.getenv("PULSE_NECDET_VOICE_ID", "Algenib")}
+API = "https://generativelanguage.googleapis.com/v1beta/interactions"
 
 def run(*args):
     return subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
@@ -36,40 +36,84 @@ def make_parts(turns):
     parts = []
     for turn in turns:
         speaker = turn["speaker"]
-        style = ("Turkish male podcast presenter. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak naturally at a measured pace; vary emphasis without changing voice."
-                 if speaker == "Yaşar" else
-                 "Turkish male podcast co-host. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak calmly and naturally.")
-        parts.append({"text": turn["text"], "speechMetadata": {"speaker": speaker, "style": style}})
+        if speaker not in VOICES:
+            raise ValueError("Unknown podcast speaker: " + str(speaker))
+        style = (
+            "Natural conversational Turkish, warm and curious, moderate pace. "
+            "Avoid announcer delivery; retain the speaker's established vocal identity."
+            if speaker == "Yaşar" else
+            "Natural conversational Turkish, calm and thoughtful, moderate pace. "
+            "Avoid announcer delivery; retain the speaker's established vocal identity."
+        )
+        parts.append({
+            "type": "text",
+            "text": turn["text"],
+            "annotations": [{"type": "speech_metadata", "speaker": speaker, "style": style}],
+        })
     return parts
 
+
 def synthesize(group, destination, number):
+    # Gemini 3.8 uses the Interactions API, not legacy generateContent.
+    # Existing prebuilt voices remain defaults until persistent voice IDs are chosen.
     payload = {
-        "contents": [{"role": "user", "parts": make_parts(group)}],
-        "generationConfig": {
-            "responseModalities": ["AUDIO"],
-            "speechConfig": {"multiSpeakerVoiceConfig": {
-                "speakerVoiceConfigs": [
-                    {"speaker": name, "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}
-                    for name, voice in VOICES.items()
-                ]
-            }}
-        }
+        "model": MODEL,
+        "input": [{"type": "user_input", "content": make_parts(group)}],
+        "response_format": {"type": "audio", "mime_type": "audio/wav"},
+        "generation_config": {
+            "speech_config": {
+                "mode": "conversational",
+                "speakers": [
+                    {"speaker": speaker, "voice": voice}
+                    for speaker, voice in VOICES.items()
+                ],
+            }
+        },
     }
     for attempt in range(3):
         try:
-            result = requests.post(API, headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"],
-                                    "Content-Type": "application/json"}, json=payload, timeout=300)
-            if result.status_code == 429:
-                raise RuntimeError("Gemini TTS quota exceeded (429). Stopping immediately; check billing and limits before rerunning. " + result.text[:300])
+            result = requests.post(
+                API,
+                headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"],
+                         "Content-Type": "application/json"},
+                json=payload, timeout=300,
+            )
+            if result.status_code in (400, 401, 402, 403, 429):
+                raise RuntimeError(
+                    "Gemini TTS non-retryable HTTP " + str(result.status_code)
+                    + ": " + result.text[:350]
+                )
             if not result.ok:
-                raise RuntimeError("TTS segment " + str(number) + " HTTP " +
-                                   str(result.status_code) + ": " + result.text[:350])
-            parts = result.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
-            audio = next((p["inlineData"] for p in parts if p.get("inlineData", {}).get("data")), None)
-            if not audio:
+                raise RuntimeError(
+                    "TTS segment " + str(number) + " HTTP "
+                    + str(result.status_code) + ": " + result.text[:350]
+                )
+            response = result.json()
+            # Interactions REST returns base64 audio in steps[].content[].data.
+            encoded = None
+            for step in response.get("steps", []):
+                for content in step.get("content", []):
+                    if content.get("data") and (
+                        content.get("type") in ("audio", "output_audio")
+                        or content.get("mime_type", "").startswith("audio/")
+                    ):
+                        encoded = content["data"]
+                        break
+                if encoded:
+                    break
+            if not encoded:
+                # Some responses omit the content type on audio blocks.
+                for step in response.get("steps", []):
+                    for content in step.get("content", []):
+                        if content.get("data"):
+                            encoded = content["data"]
+                            break
+                    if encoded:
+                        break
+            if not encoded:
                 raise RuntimeError("No audio returned for segment " + str(number))
             raw = destination.with_suffix(".raw")
-            raw.write_bytes(base64.b64decode(audio["data"]))
+            raw.write_bytes(base64.b64decode(encoded))
             input_args = ["-i", str(raw)] if raw.read_bytes()[:4] == b"RIFF" else [
                 "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", str(raw)]
             run("ffmpeg", "-v", "error", "-y", *input_args, "-ar", "44100",
@@ -79,9 +123,10 @@ def synthesize(group, destination, number):
             raw.unlink(missing_ok=True)
             return
         except (requests.RequestException, RuntimeError, subprocess.CalledProcessError) as exc:
-            if "quota exceeded (429)" in str(exc) or attempt == 2:
+            if "non-retryable HTTP" in str(exc) or attempt == 2:
                 raise
             time.sleep(2 ** attempt * 2)
+
 
 def render(turns, target):
     # Show ident is kept in the same synthesis call to minimize voice drift and quota usage.
