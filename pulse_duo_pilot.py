@@ -18,8 +18,12 @@ def blocks():
 def stories_from_notion():
     b=blocks();today=dt.datetime.now(dt.timezone(dt.timedelta(hours=3)))
     date=f"{today.day} "+("Ocak Şubat Mart Nisan Mayıs Haziran Temmuz Ağustos Eylül Ekim Kasım Aralık".split()[today.month-1])+f" {today.year}"
-    if date.casefold() not in " ".join(rich(x) for x in b[:5]).casefold():
-        raise RuntimeError("Today's Notion bulletin not ready")
+    # Pilot intentionally reads the currently published issue, even if the workflow
+    # runs on a later calendar day. The production daily audio retains its date guard.
+    intro=" ".join(rich(x) for x in b[:5])
+    match=re.search(r"(\\d{1,2})\\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\\s+(20\\d{2})",intro,re.I)
+    if not match:raise RuntimeError("Published issue date not found in Notion")
+    date=match.group(0)
     active=False; stories=[]
     for i,x in enumerate(b):
         if x["type"]=="heading_1":
