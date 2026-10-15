@@ -4,7 +4,7 @@ import os
 import re
 import requests
 
-MODEL = os.getenv("PULSE_SCRIPT_MODEL", "gemini-2.5-flash")
+MODEL = os.getenv("PULSE_SCRIPT_MODEL", "gemini-3.8-flash")
 
 SYSTEM = """Sen Yeni Sekme adlı Türkçe teknoloji podcast'inin deneyimli editörü ve senaristisin.
 Hedef: Haber okumayan, haberleri anlayıp değerlendiren iki samimi teknoloji meraklısının gerçekçi sohbeti.
