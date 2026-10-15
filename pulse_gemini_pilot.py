@@ -53,8 +53,25 @@ def main():
     dialogue, turns = generate(read_news())
     OUT.mkdir(exist_ok=True)
     (OUT / 'pilot-duo-gemini-script.json').write_text(json.dumps({'turns': turns, 'voices': VOICES}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    # Gemini 3.8 requires each utterance as a separate part with speaker metadata.
+    speech_parts = []
+    for turn in turns:
+        speaker = turn["speaker"]
+        speech_parts.append({
+            "text": turn["text"],
+            "speechMetadata": {
+                "speaker": speaker,
+                "style": (
+                    "Warm, engaging Turkish conversation, natural unhurried pace, "
+                    "gentle emphasis and occasional thoughtful pauses."
+                    if speaker == "Yaşar" else
+                    "Relaxed, grounded Turkish conversation, slightly deeper and "
+                    "calmer delivery, moderate pace, subtle dry humor."
+                ),
+            },
+        })
     payload = {
-        "contents": [{"parts": [{"text": "İki farklı erkek sunucunun samimi Türkçe teknoloji podcast sohbeti. Yaşar genç, sıcak, canlı; Necdet daha tok, olgun, sakin ve hafif esprili. Sesler belirgin şekilde ayrı duyulsun. İkisi de acele etmeden, orta-yavaş doğal konuşma temposuyla, cümle aralarında nefes alıp kısa duraklamalar yaparak konuşsun. Haber spikeri gibi okuma; arkadaş sohbeti gibi sıcak, yer yer gülümseyerek konuş. Konuşma etiketlerini seslendirme. Metne yeni olgusal iddia ekleme. Doğal orta tempoda, acele etmeden konuş; aşırı yavaşlatma.\n\n" + dialogue}]}],
+        "contents": [{"role": "user", "parts": speech_parts}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
@@ -64,8 +81,8 @@ def main():
                         for name, voice in VOICES.items()
                     ]
                 }
-            }
-        }
+            },
+        },
     }
     result = requests.post(
         "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent",
