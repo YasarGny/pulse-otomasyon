@@ -1,13 +1,6 @@
 name: Yeni Sekme Gemini Pilot
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - pulse_gemini_pilot.py
-      - pulse_podcast_writer.py
-      - pulse_podcast_audio.py
-      - .github/workflows/pulse-gemini-pilot.yml
 permissions:
   contents: write
 concurrency:
