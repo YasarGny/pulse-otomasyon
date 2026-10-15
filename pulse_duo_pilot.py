@@ -39,7 +39,7 @@ def clean(s):
     s=re.sub(r"\bAI\b","yapay zekâ",s,flags=re.I)
     return re.sub(r"\s+"," ",s).strip()
 def conversation(date,stories):
-    d=[("Yaşar",f"Merhaba, Yeni Sekme'e hoş geldiniz. Ben Yaşar. Bugün {date}. Necdet'le günün ilginç teknoloji haberlerini konuşacağız."),
+    d=[("Yaşar",f"Merhaba, Yeni Sekme'ye hoş geldiniz. Ben Yaşar. Bugün {date}. Necdet'le günün ilginç teknoloji haberlerini konuşacağız."),
        ("Necdet","Selam Yaşar. Ben de birkaç gelişme seçtim. Haberleri sadece okumayalım, ne anlama geldiklerini de tartışalım.")]
     questions=["Peki bu gelişmenin günlük hayattaki karşılığı ne olabilir?","Burada sence en önemli ayrıntı ne?","Güzel ama bunun önünde ne gibi engeller var?","Bu haberin teknoloji dünyası açısından anlamı ne?","Bu gelişmeye biraz temkinli yaklaşmak gerekir mi?"]
     for i,(title,summary) in enumerate(stories):
@@ -56,7 +56,7 @@ def conversation(date,stories):
         ][i%5]))
         d.append((other,"Yani heyecan verici tarafı var ama sonucu görmek için biraz beklemek gerekiyor. Bir sonraki gelişmeye geçelim." if i<len(stories)-1 else "Bugünkü haberlerin ortak noktası da bu: teknolojinin gerçek dünyadaki etkisi."))
     d.extend([("Yaşar","Bugünlük bu kadar. Ayrıntılı haberleri ve kaynakları PULSE bülteninde bulabilirsiniz."),
-              ("Necdet","Yeni Sekme'te görüşmek üzere!")])
+              ("Necdet","Yeni Sekme'de görüşmek üzere!")])
     return d
 async def main():
     date,stories=stories_from_notion()
