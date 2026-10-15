@@ -19,7 +19,7 @@ def duration(path):
     return float(run("ffprobe", "-v", "error", "-show_entries", "format=duration",
                      "-of", "default=noprint_wrappers=1:nokey=1", str(path)).strip())
 
-def chunks(turns, max_chars=1250, max_turns=8):
+def chunks(turns, max_chars=3500, max_turns=24):
     groups, current, chars = [], [], 0
     for turn in turns:
         size = len(turn["text"])
@@ -61,6 +61,8 @@ def synthesize(group, destination, number):
         try:
             result = requests.post(API, headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"],
                                     "Content-Type": "application/json"}, json=payload, timeout=300)
+            if result.status_code == 429:
+                raise RuntimeError("Gemini TTS quota exceeded (429). Stopping immediately; check billing and limits before rerunning. " + result.text[:300])
             if not result.ok:
                 raise RuntimeError("TTS segment " + str(number) + " HTTP " +
                                    str(result.status_code) + ": " + result.text[:350])
@@ -78,15 +80,15 @@ def synthesize(group, destination, number):
                 raise RuntimeError("Suspiciously short TTS segment " + str(number))
             raw.unlink(missing_ok=True)
             return
-        except (requests.RequestException, RuntimeError, subprocess.CalledProcessError):
-            if attempt == 2:
+        except (requests.RequestException, RuntimeError, subprocess.CalledProcessError) as exc:
+            if "quota exceeded (429)" in str(exc) or attempt == 2:
                 raise
             time.sleep(2 ** attempt * 2)
 
 def render(turns, target):
     # Fixed show ident, recorded with the same Yaşar voice. No third-party music.
     ident = [{"speaker": "Yaşar", "text": "PULSE sunar. Yeni Sekme."}]
-    groups = [ident] + chunks(turns)
+    groups = chunks(ident + turns)
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder)
         paths = []
