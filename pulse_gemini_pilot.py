@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 import requests
 from pulse_podcast_writer import generate
+from pulse_podcast_audio import render
 
 NOTION_PAGE = "3f922115ab848156bb1fc0649973c0b5"
 VOICES = {"Yaşar": "Puck", "Necdet": "Algenib"}
@@ -50,65 +51,20 @@ def read_news():
 
 
 def main():
-    dialogue, turns = generate(read_news())
+    stories = read_news()
+    dialogue, turns = generate(stories)
     OUT.mkdir(exist_ok=True)
-    (OUT / 'pilot-duo-gemini-script.json').write_text(json.dumps({'turns': turns, 'voices': VOICES}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    # Gemini 3.8 requires each utterance as a separate part with speaker metadata.
-    speech_parts = []
-    for turn in turns:
-        speaker = turn["speaker"]
-        speech_parts.append({
-            "text": turn["text"],
-            "speechMetadata": {
-                "speaker": speaker,
-                "style": (
-                    "Natural Turkish podcast host, relaxed conversational pacing, "
-                    "slightly slower than everyday speech, varied intonation, "
-                    "audible sentence-final pauses, never rush or sound like a newsreader."
-                    if speaker == "Yaşar" else
-                    "Natural Turkish podcast co-host, steady lower-register voice, "
-                    "slightly slower than everyday speech, thoughtful phrasing, "
-                    "audible pauses after complete thoughts, no rushed robotic delivery."
-                ),
-            },
-        })
-    payload = {
-        "contents": [{"role": "user", "parts": speech_parts}],
-        "generationConfig": {
-            "responseModalities": ["AUDIO"],
-            "speechConfig": {
-                "multiSpeakerVoiceConfig": {
-                    "speakerVoiceConfigs": [
-                        {"speaker": name, "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}
-                        for name, voice in VOICES.items()
-                    ]
-                }
-            },
-        },
-    }
-    result = requests.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent",
-        headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"], "Content-Type": "application/json"},
-        json=payload, timeout=300
-    )
-    if not result.ok:
-        raise RuntimeError("Gemini TTS returned HTTP " + str(result.status_code) + ": " + result.text[:400])
-    parts = result.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
-    audio = next((part["inlineData"] for part in parts if part.get("inlineData", {}).get("data")), None)
-    if audio is None:
-        raise RuntimeError("Gemini returned no audio data")
-    OUT.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory() as folder:
-        raw = Path(folder) / "audio.raw"
-        raw.write_bytes(base64.b64decode(audio["data"]))
-        target = OUT / "pilot-duo-gemini.mp3"
-        args = ["-i", str(raw)] if raw.read_bytes()[:4] == b"RIFF" else ["-f", "s16le", "-ar", "24000", "-ac", "1", "-i", str(raw)]
-        subprocess.run(["ffmpeg", "-v", "error", "-y", *args, "-ac", "1", "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "96k", str(target)], check=True)
-        duration = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(target)], text=True))
-        if duration < 30:
-            raise RuntimeError("Audio duration too short")
-        (OUT / "pilot-duo-gemini.json").write_text(json.dumps({"duration": round(duration), "voices": VOICES, "model": MODEL, "version": hashlib.sha256(target.read_bytes()).hexdigest()[:16]}, ensure_ascii=False, indent=2) + "\n")
-        print("Gemini Yeni Sekme pilot:", round(duration), "seconds")
+    (OUT / "pilot-duo-gemini-script.json").write_text(
+        json.dumps({"turns": turns, "voices": VOICES, "stories": [
+            {"title": title, "summary": summary} for title, summary in stories
+        ]}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    target = OUT / "pilot-duo-gemini.mp3"
+    metadata = render(turns, target)
+    metadata["version"] = hashlib.sha256(target.read_bytes()).hexdigest()[:16]
+    (OUT / "pilot-duo-gemini.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("Yeni Sekme pilot:", metadata["duration"], "seconds,",
+          metadata["segments"], "segments")
 
 if __name__ == "__main__":
     main()
