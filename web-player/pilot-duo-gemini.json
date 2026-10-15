@@ -1,9 +1,9 @@
 {
-  "duration": 234,
+  "duration": 316,
   "voices": {
     "Yaşar": "Puck",
     "Necdet": "Algenib"
   },
-  "model": "gemini-2.5-flash-preview-tts",
-  "version": "9aa0c0f26f192bce"
+  "model": "gemini-3.8-flash-tts",
+  "version": "c661f9579e78383f"
 }
