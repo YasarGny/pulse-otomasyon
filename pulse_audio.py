@@ -8,7 +8,8 @@ import subprocess
 import unicodedata
 from pathlib import Path
 
-import base64
+import asyncio
+import edge_tts
 import requests
 
 API = "https://api.notion.com/v1"
@@ -107,47 +108,14 @@ def main():
     if not 450 <= len(script) <= 11000:
         raise RuntimeError("Narration script failed length validation")
 
-    # Gemini 3.8 TTS REST Interactions API: default complete RIFF/WAV output.
-    tts = requests.post(
-        "https://generativelanguage.googleapis.com/v1beta/interactions",
-        headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
-        json={
-            "model": os.getenv("PULSE_SUMMARY_TTS_MODEL", "gemini-3.8-flash-tts"),
-            "input": [{"type": "user_input", "content": [{
-                "type": "text", "text": script,
-                "annotations": [{"type": "speech_metadata",
-                                 "style": "Natural Turkish technology news briefing. Warm, calm, clear, not an advertisement."}],
-            }]}],
-            "response_format": {"type": "audio", "mime_type": "audio/wav"},
-            "generation_config": {"speech_config": [{
-                "voice": (os.getenv("PULSE_SUMMARY_VOICE_ID") or "Algenib")
-            }]},
-        },
-        timeout=300,
-    )
-    tts.raise_for_status()
-    encoded = next(
-        (c["data"] for step in tts.json().get("steps", [])
-         if step.get("type") == "model_output"
-         for c in step.get("content", [])
-         if c.get("type") == "audio" and c.get("data")), None
-    )
-    if not encoded:
-        raise RuntimeError("Gemini returned no audio for the daily summary")
+    # Use the established Turkish Edge TTS narrator for the daily audio brief.
+    # Gemini is only used to edit the script, not to synthesize this audio.
     OUT.mkdir(exist_ok=True)
-    source_wav = OUT / "_summary_source.wav"
-    source_wav.write_bytes(base64.b64decode(encoded))
-    try:
-        if source_wav.read_bytes()[:4] != b"RIFF":
-            raise RuntimeError("Gemini returned unexpected non-WAV audio")
-        subprocess.run([
-            "ffmpeg", "-v", "error", "-y", "-i", str(source_wav),
-            "-af", "loudnorm=I=-18:TP=-2:LRA=11", "-ac", "1",
-            "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "96k",
-            str(OUT / "latest.mp3"),
-        ], check=True)
-    finally:
-        source_wav.unlink(missing_ok=True)
+    asyncio.run(edge_tts.Communicate(
+        text=voice(script),
+        voice="tr-TR-EmelNeural",
+        rate="+0%",
+    ).save(str(OUT / "latest.mp3")))
     duration = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(OUT / "latest.mp3")], text=True).strip())
     if duration < 20 or (OUT / "latest.mp3").stat().st_size < 15000:
         raise RuntimeError("Generated audio failed validation")
