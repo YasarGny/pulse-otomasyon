@@ -2,6 +2,7 @@
 # PULSE daily narration workflow trigger: issue 002 end-to-end test.
 import asyncio
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -89,7 +90,7 @@ async def main():
     duration = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(OUT / "latest.mp3")], text=True).strip())
     if duration < 20 or (OUT / "latest.mp3").stat().st_size < 15000:
         raise RuntimeError("Generated audio failed validation")
-    (OUT / "latest.json").write_text(json.dumps({"date": date, "audio": "latest.mp3", "title": "Günün Sesli Özeti", "duration": round(duration)}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (OUT / "latest.json").write_text(json.dumps({"date": date, "audio": "latest.mp3", "version": hashlib.sha256((OUT / "latest.mp3").read_bytes()).hexdigest()[:16], "title": "Günün Sesli Özeti", "duration": round(duration)}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("PULSE ready:", date, "stories:", len(stories[:5]), "duration:", round(duration), "seconds")
 
 
