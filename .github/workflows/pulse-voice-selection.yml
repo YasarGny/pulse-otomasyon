@@ -1,10 +1,10 @@
-name: PULSE Necdet Thin Voice Audition (Temporary)
+name: PULSE Two-Host Podcast Pilot (Temporary)
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  audition:
+  pilot:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -12,66 +12,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Create two distinct Necdet voices and speak Turkish
+      - name: Render Yaşar 3 and Necdet 7 conversation
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_YASAR_VOICE_ID: voice_p94xlklc2103
+          PULSE_NECDET_VOICE_ID: voice_013isn56gi20
         run: |
-          python -m pip install 'google-genai>=2.25.0,<3'
+          python -m pip install requests
           python - <<'PY'
-          import base64, json, os
+          import json
           from pathlib import Path
-          from google import genai
+          from pulse_podcast_audio import render
 
-          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          out = Path("necdet-new")
-          out.mkdir(exist_ok=True)
-          profiles = [
-              ("necdet-7", "Necdet 7", "Türkçe konuşan 30 yaşında erkek. Yaşar'ın orta-alt perdeli tok sesinden belirgin şekilde farklı: doğal olarak daha ince, aydınlık, genç yetişkin tenor tınısı. İstanbul Türkçesi, arkadaşça spontane konuşma, canlı ve hafif esprili. Çocuk sesi, falsetto, radyo spikeri ve yapay oyunculuk değil. Önizlemede yalnızca Türkçe konuş."),
-              ("necdet-8", "Necdet 8", "Türkçe konuşan 31 yaşında erkek. Yaşar'ın tok ve rahat sesinden kolayca ayırt edilen daha yüksek orta perde, net ve parlak tını, hafif burun rezonansı, çevik ve akıllı sohbet tarzı. Doğal Türkiye Türkçesi, ölçülü espri, günlük konuşma ritmi. Çocuk sesi veya abartılı ince ses değil. Önizlemede yalnızca Türkçe konuş."),
+          turns = [
+              {"speaker":"Yaşar","text":"Selam Necdet! Bugün telefonlardaki yapay zekâyı konuşalım. Her yeni model daha akıllı diyorlar ama ben hâlâ şarj aletimi yanımda taşıyorum. Bir gariplik yok mu?"},
+              {"speaker":"Necdet","text":"Var tabii! Telefon düşünmeyi öğreniyor ama günün sonunda yine priz arıyoruz. Şaka bir yana, asıl mesele yapay zekânın telefonda mı, bulutta mı çalıştığı."},
+              {"speaker":"Yaşar","text":"Tam da onu soracaktım. Mesela internetsizken fotoğraf düzenleyebilsem, konuşmalarımı çevirebilsem... Hem daha hızlı olmaz mı?"},
+              {"speaker":"Necdet","text":"Çoğu durumda evet. Üstelik verilerin cihazdan çıkmaması mahremiyet açısından da avantaj. Ama güçlü modeller işlemciyi yoruyor. İşte o noktada pil, ısınma ve performans arasında denge gerekiyor."},
+              {"speaker":"Yaşar","text":"Yani telefon üreticilerinin bize daha fazla özellik göstermesi yetmiyor. O özellikleri gün boyunca rahatça kullanabilmemiz gerekiyor."},
+              {"speaker":"Necdet","text":"Kesinlikle. Bir de şu var: Her iş için devasa bir model şart değil. Küçük, iyi optimize edilmiş modeller bazen günlük kullanımda daha mantıklı. Mesela bildirimleri özetlemek için veri merkezine koşmaya gerek yok."},
+              {"speaker":"Yaşar","text":"Güzel örnek. Benim istediğim de bu zaten: Yapay zekâ beni daha fazla ayar yapmaya zorlamasın, arka planda gerçekten işimi kolaylaştırsın."},
+              {"speaker":"Necdet","text":"Aynen. İyi teknoloji kendini sürekli hatırlatmaz. Sen işini yaparsın, o yardımcı olur. Hatta bazen kullandığını bile fark etmezsin."},
+              {"speaker":"Yaşar","text":"Peki senin için iyi bir telefon yapay zekâsının ilk şartı ne? Hız mı, gizlilik mi, pil ömrü mü?"},
+              {"speaker":"Necdet","text":"Önce güvenilirlik derim. Yanlış bilgi verip çok hızlı cevaplamasının kimseye faydası yok. Sonra gizlilik ve pil. Hız zaten bunların yanında gelmeli."},
+              {"speaker":"Yaşar","text":"Güzel. Demek ki daha akıllı telefon demek sadece daha büyük model demek değil. Kullanıcıya daha az zahmet, daha fazla fayda demek."},
+              {"speaker":"Necdet","text":"Tam olarak öyle. Yeni Sekme'nin bu kısa denemesinde bunu konuşmuş olduk. Bir sonraki bölümde gerçek haberlerle devam ederiz."},
+              {"speaker":"Yaşar","text":"Dinlediğiniz için teşekkürler. Görüşmek üzere!"},
           ]
-          text = ("Yaşar, bence yapay zekâda asıl mesele hız değil. "
-                  "Her yeni model daha güçlü oluyor ama günlük hayatımızı gerçekten kolaylaştırıyor mu? "
-                  "Örneğin telefondaki yapay zekâ internetsiz çalışsa hem daha hızlı hem de daha özel olur. "
-                  "Ben biraz da buna bakıyorum.")
-          records = [{"name": "Yaşar 3", "id": "voice_p94xlklc2103", "file": "previous-selection"}]
-          for slug, label, prompt in profiles:
-              print("Creating:", label, flush=True)
-              created = client.voices.create(store=True, voice={
-                  "model": "gemini-3.8-flash-tts", "type": "prompted",
-                  "display_name": "PULSE " + label, "gender": "male",
-                  "language_code": "tr-TR", "prompted": {"input": prompt},
-              })
-              if not created.id:
-                  raise RuntimeError("Missing voice ID for " + label)
-              records.append({"name": label, "id": created.id, "file": slug + ".wav"})
-              (out / "voice-ids.json").write_text(
-                  json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
-              print("Saved voice ID:", label, created.id, flush=True)
-              response = client.interactions.create(
-                  model="gemini-3.8-flash-tts",
-                  input=[{"type": "user_input", "content": [{
-                      "type": "text", "text": text,
-                      "annotations": [{"type": "speech_metadata",
-                          "style": "Yalnızca Türkçe, İstanbul Türkçesi. Samimi, doğal ve hafif esprili podcast sohbeti; İngilizceye geçme."}]
-                  }]}],
-                  response_format={"type": "audio"},
-                  generation_config={"speech_config": [{"voice": created.id}]},
-              )
-              audio = response.output_audio
-              if not audio or not audio.data:
-                  raise RuntimeError("No Turkish sample for " + label)
-              data = base64.b64decode(audio.data) if isinstance(audio.data, str) else bytes(audio.data)
-              if data[:4] != b"RIFF" or len(data) < 5000:
-                  raise RuntimeError("Invalid WAV for " + label)
-              (out / (slug + ".wav")).write_bytes(data)
-              print("Saved Turkish text sample:", label, flush=True)
-          print("Two distinct voice IDs and Turkish-script samples saved.")
+          Path("pilot-output").mkdir(exist_ok=True)
+          info = render(turns, Path("pilot-output/yeni-sekme-yasar3-necdet7.mp3"))
+          Path("pilot-output/metadata.json").write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(json.dumps(info, ensure_ascii=False))
           PY
-      - name: Upload previews
-        if: always()
+      - name: Upload pilot without publishing
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: pulse-necdet-7-8-turkish
-          path: necdet-new/
-          if-no-files-found: warn
+          name: yeni-sekme-yasar3-necdet7-pilot
+          path: pilot-output/
           retention-days: 7
