@@ -36,11 +36,7 @@ def make_parts(turns):
     parts = []
     for turn in turns:
         speaker = turn["speaker"]
-        style = ("Warm, clear Turkish podcast host; thoughtful, natural conversational pace, "
-                 "no rushing, meaningful pauses, not a commercial announcer."
-                 if speaker == "Yaşar" else
-                 "Calm, warm Turkish co-host; relaxed thoughtful rhythm, subtly lower register, "
-                 "meaningful pauses, never robotic or rushed.")
+        style = ("Turkish male podcast presenter. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak naturally at a measured pace; vary emphasis without changing voice."\n                 if speaker == "Yaşar" else\n                 "Turkish male podcast co-host. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak calmly and naturally.")
         parts.append({"text": turn["text"], "speechMetadata": {"speaker": speaker, "style": style}})
     return parts
 
@@ -86,9 +82,9 @@ def synthesize(group, destination, number):
             time.sleep(2 ** attempt * 2)
 
 def render(turns, target):
-    # Fixed show ident, recorded with the same Yaşar voice. No third-party music.
+    # Show ident is kept in the same synthesis call to minimize voice drift and quota usage.
     ident = [{"speaker": "Yaşar", "text": "PULSE sunar. Yeni Sekme."}]
-    groups = chunks(ident + turns)
+    # One synthesis request keeps voice identity within a single generation.\n    # Never silently split the dialogue: that can change the perceived speaker.\n    groups = [ident + turns]
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder)
         paths = []
