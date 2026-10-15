@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 import requests
+from pulse_podcast_writer import generate
 
 NOTION_PAGE = "3f922115ab848156bb1fc0649973c0b5"
 VOICES = {"Yaşar": "Puck", "Necdet": "Algenib"}
@@ -47,41 +48,13 @@ def read_news():
         raise RuntimeError("Notion'da en az üç güncel haber bulunamadı.")
     return stories[:5]
 
-def script(stories):
-    """Short, distinct conversational turns instead of repetitive Q&A."""
-    lines = [
-        ("Yaşar", "PULSE sunar: Yeni Sekme. Selam! Ben Yaşar."),
-        ("Necdet", "Ben de Necdet. Bugün yine teknoloji gündemi dolu. Kahveler hazırsa başlayalım."),
-        ("Yaşar", "Hazır. Ama bugün başlıkları okuyup kaçmak yok; ne işe yarıyor, onu da konuşacağız."),
-    ]
-    reactions = [
-        ("Necdet", "İlginç. Ama duyurulan şeyle gerçek hayatta çalışması aynı şey değil, değil mi?"),
-        ("Yaşar", "Aynen öyle. İşin güzel tarafı var; bir de henüz cevaplanmamış sorular var."),
-        ("Yaşar", "Dur, burada asıl dikkatimi çeken şey şu: Bu gelişme sadece şirketleri değil, kullanıcıları da etkileyebilir."),
-        ("Necdet", "Kesinlikle. Ama etkisinin ne kadar büyük olacağını görmek için biraz zaman lazım."),
-        ("Necdet", "Peki bu gelişme gerçekten oyunu değiştirir mi, yoksa şimdilik beklenti mi?"),
-        ("Yaşar", "Bence hemen kesin konuşmayalım. Önce uygulamada ne olduğuna bakmak lazım."),
-        ("Yaşar", "Bir saniye, burada güvenlik ve kontrol meselesini atlamayalım."),
-        ("Necdet", "Haklısın. Teknoloji ne kadar güçlü olursa olsun, denetim kısmı da önemli."),
-        ("Necdet", "Şimdi bunun bir de maliyet tarafı var. Heyecan tamam ama faturayı kim ödeyecek?"),
-        ("Yaşar", "İşte o soru önemli. Teknoloji kadar sürdürülebilir olması da gerekiyor."),
-    ]
-    for i, (title, summary) in enumerate(stories):
-        lead = "Yaşar" if i % 2 == 0 else "Necdet"
-        lines.append((lead, ("Şöyle bir gelişme var: " if i else "İlk konu dikkat çekici: ") + title + ". " + summary))
-        lines.extend(reactions[i * 2:i * 2 + 2])
-        if i < len(stories) - 1:
-            lines.append(("Necdet" if lead == "Yaşar" else "Yaşar", ["Neyse, bir diğer habere bakalım.", "Peki, şimdi başka bir konuya geçelim.", "Güzel, sırada ne var?", "Tamam, bir de şuna bakalım."][i]))
-    lines.extend([
-        ("Yaşar", "Bugünlük bizden bu kadar. Haberlerin kaynakları PULSE bülteninde."),
-        ("Necdet", "Bir sonraki Yeni Sekme'de görüşürüz. Kendinize iyi bakın."),
-    ])
-    return "\\n".join(name + ": " + text for name, text in lines)
 
 def main():
-    dialogue = script(read_news())
+    dialogue, turns = generate(read_news())
+    OUT.mkdir(exist_ok=True)
+    (OUT / 'pilot-duo-gemini-script.json').write_text(json.dumps({'turns': turns, 'voices': VOICES}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     payload = {
-        "contents": [{"parts": [{"text": "İki farklı erkek sunucunun samimi Türkçe teknoloji podcast sohbeti. Yaşar genç, sıcak, canlı; Necdet daha tok, olgun, sakin ve hafif esprili. Sesler belirgin şekilde ayrı duyulsun. İkisi de acele etmeden, orta-yavaş doğal konuşma temposuyla, cümle aralarında nefes alıp kısa duraklamalar yaparak konuşsun. Haber spikeri gibi okuma; arkadaş sohbeti gibi sıcak, yer yer gülümseyerek konuş. Konuşma etiketlerini seslendirme. Metne yeni olgusal iddia ekleme.\n\n" + dialogue}]}],
+        "contents": [{"parts": [{"text": "İki farklı erkek sunucunun samimi Türkçe teknoloji podcast sohbeti. Yaşar genç, sıcak, canlı; Necdet daha tok, olgun, sakin ve hafif esprili. Sesler belirgin şekilde ayrı duyulsun. İkisi de acele etmeden, orta-yavaş doğal konuşma temposuyla, cümle aralarında nefes alıp kısa duraklamalar yaparak konuşsun. Haber spikeri gibi okuma; arkadaş sohbeti gibi sıcak, yer yer gülümseyerek konuş. Konuşma etiketlerini seslendirme. Metne yeni olgusal iddia ekleme. Doğal orta tempoda, acele etmeden konuş; aşırı yavaşlatma.\n\n" + dialogue}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
