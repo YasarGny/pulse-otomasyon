@@ -70,6 +70,7 @@ def synthesize(group, destination, number):
             }
         },
     }
+    # Retry network/server failures only. Never re-bill TTS because ffmpeg fails.
     for attempt in range(3):
         try:
             result = requests.post(
@@ -78,54 +79,56 @@ def synthesize(group, destination, number):
                          "Content-Type": "application/json"},
                 json=payload, timeout=300,
             )
-            if result.status_code in (400, 401, 402, 403, 429):
-                raise RuntimeError(
-                    "Gemini TTS non-retryable HTTP " + str(result.status_code)
-                    + ": " + result.text[:350]
-                )
-            if not result.ok:
+        except requests.RequestException:
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt * 2)
+            continue
+        if result.status_code in (400, 401, 402, 403, 429):
+            raise RuntimeError(
+                "Gemini TTS HTTP " + str(result.status_code)
+                + ": " + result.text[:350]
+            )
+        if not result.ok:
+            if attempt == 2:
                 raise RuntimeError(
                     "TTS segment " + str(number) + " HTTP "
                     + str(result.status_code) + ": " + result.text[:350]
                 )
-            response = result.json()
-            # Interactions REST returns base64 audio in steps[].content[].data.
-            encoded = None
-            for step in response.get("steps", []):
-                for content in step.get("content", []):
-                    if content.get("data") and (
-                        content.get("type") in ("audio", "output_audio")
-                        or content.get("mime_type", "").startswith("audio/")
-                    ):
-                        encoded = content["data"]
-                        break
-                if encoded:
-                    break
-            if not encoded:
-                # Some responses omit the content type on audio blocks.
-                for step in response.get("steps", []):
-                    for content in step.get("content", []):
-                        if content.get("data"):
-                            encoded = content["data"]
-                            break
-                    if encoded:
-                        break
-            if not encoded:
-                raise RuntimeError("No audio returned for segment " + str(number))
-            raw = destination.with_suffix(".raw")
-            raw.write_bytes(base64.b64decode(encoded))
-            input_args = ["-i", str(raw)] if raw.read_bytes()[:4] == b"RIFF" else [
-                "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", str(raw)]
-            run("ffmpeg", "-v", "error", "-y", *input_args, "-ar", "44100",
-                "-ac", "1", "-c:a", "pcm_s16le", str(destination))
-            if duration(destination) < 2:
-                raise RuntimeError("Suspiciously short TTS segment " + str(number))
-            raw.unlink(missing_ok=True)
-            return
-        except (requests.RequestException, RuntimeError, subprocess.CalledProcessError) as exc:
-            if "non-retryable HTTP" in str(exc) or attempt == 2:
-                raise
             time.sleep(2 ** attempt * 2)
+            continue
+        break
+    response = result.json()
+    encoded = None
+    for step in response.get("steps", []):
+        for content in step.get("content", []):
+            if content.get("data") and (
+                content.get("type") in ("audio", "output_audio")
+                or content.get("mime_type", "").startswith("audio/")
+            ):
+                encoded = content["data"]
+                break
+        if encoded:
+            break
+    if not encoded:
+        for step in response.get("steps", []):
+            for content in step.get("content", []):
+                if content.get("data"):
+                    encoded = content["data"]
+                    break
+            if encoded:
+                break
+    if not encoded:
+        raise RuntimeError("No audio returned for segment " + str(number))
+    raw = destination.with_suffix(".raw")
+    raw.write_bytes(base64.b64decode(encoded))
+    input_args = ["-i", str(raw)] if raw.read_bytes()[:4] == b"RIFF" else [
+        "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", str(raw)]
+    run("ffmpeg", "-v", "error", "-y", *input_args, "-ar", "44100",
+        "-ac", "1", "-c:a", "pcm_s16le", str(destination))
+    if duration(destination) < 2:
+        raise RuntimeError("Suspiciously short TTS segment " + str(number))
+    raw.unlink(missing_ok=True)
 
 
 def render(turns, target):
