@@ -62,11 +62,13 @@ def main():
             "speechMetadata": {
                 "speaker": speaker,
                 "style": (
-                    "Warm, engaging Turkish conversation, natural unhurried pace, "
-                    "gentle emphasis and occasional thoughtful pauses."
+                    "Natural Turkish podcast host, relaxed conversational pacing, "
+                    "slightly slower than everyday speech, varied intonation, "
+                    "audible sentence-final pauses, never rush or sound like a newsreader."
                     if speaker == "Yaşar" else
-                    "Relaxed, grounded Turkish conversation, slightly deeper and "
-                    "calmer delivery, moderate pace, subtle dry humor."
+                    "Natural Turkish podcast co-host, steady lower-register voice, "
+                    "slightly slower than everyday speech, thoughtful phrasing, "
+                    "audible pauses after complete thoughts, no rushed robotic delivery."
                 ),
             },
         })
