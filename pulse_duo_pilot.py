@@ -6,7 +6,11 @@ import edge_tts, requests
 PAGE="3f922115ab848156bb1fc0649973c0b5"
 HEAD={"Authorization":"Bearer "+os.environ["NOTION_TOKEN"],"Notion-Version":"2022-06-28"}
 OUT=Path("web-player")
-def rich(b): return "".join(x.get("plain_text","") for x in b.get(b.get("type"),{}).get("rich_text",[]))
+def rich(b):
+    data=b.get(b.get("type"),{})
+    if b.get("type")=="callout":
+        return " ".join(x.get("plain_text","") for x in data.get("rich_text",[]))
+    return "".join(x.get("plain_text","") for x in data.get("rich_text",[]))
 def blocks():
     all_blocks=[]; cursor=None
     while True:
