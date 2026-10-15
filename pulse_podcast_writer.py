@@ -70,7 +70,7 @@ def generate(stories):
     _validate(draft)
     edit_payload = {
         "system_instruction": {"parts": [{"text": EDITOR}]},
-        "contents": [{"role": "user", "parts": [{"text": "Kaynak haber notları: " + json.dumps(source, ensure_ascii=False) + "\\nYayın tarihi: " + today + "\\nDüzenlenecek diyalog: " + json.dumps(draft, ensure_ascii=False)}]}],
+        "contents": [{"role": "user", "parts": [{"text": "Kaynak haber notları: " + json.dumps(source, ensure_ascii=False) + "\nYayın tarihi: " + today + "\nDüzenlenecek diyalog: " + json.dumps(draft, ensure_ascii=False)}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.45, "maxOutputTokens": 8192},
     }
     try:
