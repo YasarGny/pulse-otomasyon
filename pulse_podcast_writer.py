@@ -21,7 +21,7 @@ Gerçek sohbet hissi için kısa ve uzun konuşma sıraları, yerinde mizah, do�
 Rol yaparak yaşanmış kişisel anı veya sahte deneyim anlatma. Gerçek kişilerden ses taklidi yapma.
 Abartılı heyecan, gereksiz çatışma, yapay kahkaha, aşırı argo ve sunucu etiketlerini konuşma metnine katma.
 Her konuşma satırı yaklaşık 1-4 cümle olsun. Bir konuşmacı en fazla 100 kelime aralıksız konuşsun.
-5 haber varsa önemli olanları daha uzun tartış, önemsiz olanları kısa geç; süre doldurmak için uzatma.
+Haberlerin önemine göre konuşma süresini kendiliğinden belirle. Süre hedefi, minimum kelime sayısı veya dakika doldurma zorunluluğu yok. Önemli haberleri yeterince değerlendir, kısa haberleri kısa geç; konu bitince doğal biçimde kapanış yap.
 Açılış mutlaka PULSE sunar: Yeni Sekme program adıyla başlasın; Yaşar ve Necdet isimlerini doğal biçimde söylesin. Yayın tarihini doğru ve Türkçe biçimde bir kez belirt. Ardından bugünün en dikkat çekici konularından kısa bir merak uyandırıcı giriş yap. Kapanışta günün önemli çıkarımını kısaca bağla, PULSE bültenindeki kaynaklara yönlendir ve samimi bir vedayla bitir. Her gün aynı giriş-kapanış cümlelerini ezberden tekrarlama.\nKonuşma metnini sesli okunabilir yaz: uzun virgül zincirleri ve kısaltmalar yerine kısa nefeslik cümleler, anlamlı noktalama ve doğal duraklar kullan. Yapay kahkaha, [duraklama] gibi sahne yönergeleri ve gereksiz ünlemler ekleme.
 YALNIZCA geçerli JSON döndür: {"turns":[{"speaker":"Yaşar","text":"..."},{"speaker":"Necdet","text":"..."}]}.
 Başka anahtar veya markdown döndürme."""
@@ -31,7 +31,7 @@ def generate(stories):
     today = datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%d.%m.%Y")
     payload = {
         "system_instruction": {"parts": [{"text": SYSTEM}]},
-        "contents": [{"role": "user", "parts": [{"text": "Yayın tarihi (Türkiye): " + today + ". Bu doğrulanmış haber notlarıyla 8-12 dakikalık özgün bir Türkçe sohbet hazırla. Haberler arasında anlamlı bağlantılar kur. Her haberde gerçek yorum, gerekçe ve somut çıkarım olsun. Haber dışı olgusal iddia ekleme. JSON haberler: " + json.dumps(source, ensure_ascii=False)}]}],
+        "contents": [{"role": "user", "parts": [{"text": "Yayın tarihi (Türkiye): " + today + ". Bu doğrulanmış haber notlarıyla süre sınırı olmadan, haberlerin gerçekten gerektirdiği uzunlukta özgün bir Türkçe sohbet hazırla. Haberler arasında anlamlı bağlantılar kur. Her haberde gerçek yorum, gerekçe ve somut çıkarım olsun. Haber dışı olgusal iddia ekleme. JSON haberler: " + json.dumps(source, ensure_ascii=False)}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.85, "maxOutputTokens": 8192},
     }
     response = requests.post(
