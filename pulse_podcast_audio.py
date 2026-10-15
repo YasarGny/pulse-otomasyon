@@ -36,7 +36,9 @@ def make_parts(turns):
     parts = []
     for turn in turns:
         speaker = turn["speaker"]
-        style = ("Turkish male podcast presenter. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak naturally at a measured pace; vary emphasis without changing voice."\n                 if speaker == "Yaşar" else\n                 "Turkish male podcast co-host. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak calmly and naturally.")
+        style = ("Turkish male podcast presenter. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak naturally at a measured pace; vary emphasis without changing voice."
+                 if speaker == "Yaşar" else
+                 "Turkish male podcast co-host. Keep exactly the same vocal identity, timbre, accent, and pitch throughout. Speak calmly and naturally.")
         parts.append({"text": turn["text"], "speechMetadata": {"speaker": speaker, "style": style}})
     return parts
 
