@@ -1,4 +1,7 @@
-"""Publish PULSE daily brief and Yeni Sekme from the same verified Notion issue."""
+"""Publish PULSE daily brief and Yeni Sekme from the same verified Notion issue.
+
+Both tracks are staged and validated before the workflow commits them together.
+"""
 import datetime as dt
 import json
 import os
