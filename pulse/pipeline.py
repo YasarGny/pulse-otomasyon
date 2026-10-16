@@ -230,6 +230,16 @@ def refresh_audio_release(work, date, game_start, previous):
     return finish(seal_release(root, date, game_start))
 
 
+
+def verified_checkpoint(root):
+    """Full MP3s are the durable checkpoint after both editions are sealed."""
+    root = Path(root)
+    manifest = verify_manifest(root, read_json(root / 'release.json'))
+    for section in SECTIONS:
+        shutil.rmtree(root / section / 'tts-parts', ignore_errors=True)
+    return manifest
+
+
 def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=False, expanded_issue=False):
     if refresh_audio:
         return refresh_audio_release(work, date, game_start, previous)
@@ -243,9 +253,9 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
         raise ValueError("Cannot renumber an existing daily workspace")
     write_json(settings, expected)
     if (root / "release.json").exists():
-        return verify_manifest(root, read_json(root / "release.json"))
+        return verified_checkpoint(root)
     if not expanded_issue and restore_published(root, previous, date, game_start):
-        return verify_manifest(root, read_json(root / "release.json"))
+        return verified_checkpoint(root)
     if scheduled:
         wait_for(date, "06:15")
     sources = root / "research.json"
@@ -278,7 +288,8 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
         write_json(path, generate_audio(root, data))
     if scheduled:
         wait_for(date, "07:15")
-    manifest = seal_release(root, date, game_start)
+    seal_release(root, date, game_start)
+    manifest = verified_checkpoint(root)
     if expanded_issue:
         for name in ('release.json', 'teknoloji.json', 'oyun.json', 'research.json'):
             if (root / name).exists():
@@ -309,6 +320,14 @@ def main():
     args = parser.parse_args()
     result = run(args.work, args.date, args.game_start, args.scheduled, args.previous, args.refresh_audio, args.expanded)
     print("Both editions validated:", result["release_id"])
+    root = Path(args.work) / args.date
+    if args.expanded:
+        root = root / 'expanded-v1'
+    elif args.refresh_audio:
+        root = root / ('audio-v' + str(AUDIO_REVISION))
+    for section in SECTIONS:
+        data = read_json(root / (section + '.json'))
+        print(f"::notice title=PULSE verified {section}::{len(data['stories'])} news; summary {data['summary']['duration']:.1f}s; podcast {data['podcast']['duration']:.1f}s; date {data['publish_date']}", flush=True)
 
 
 if __name__ == "__main__":

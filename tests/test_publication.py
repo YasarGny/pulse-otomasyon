@@ -263,6 +263,9 @@ class ReleaseTests(unittest.TestCase):
     def test_pipeline_rerun_reuses_sealed_issue_without_api_calls(self):
         work = self.root / "work"
         shutil.copytree(self.release, work / DATE)
+        parts=work/DATE/'teknoloji'/'tts-parts'/'finished'
+        parts.mkdir(parents=True)
+        (parts/'part_000.wav').write_bytes(b'finished intermediate')
         with (
             patch(
                 "pulse.pipeline.research",
@@ -276,6 +279,20 @@ class ReleaseTests(unittest.TestCase):
             one = run(work, DATE, DATE)
             two = run(work, DATE, DATE)
         self.assertEqual(one, two)
+        self.assertFalse(parts.parent.exists())
+        verify_manifest(work/DATE, one)
+
+    def test_unverified_release_keeps_all_render_parts_for_recovery(self):
+        from pulse.pipeline import verified_checkpoint
+        root=self.root/'invalid-checkpoint'
+        shutil.copytree(self.release,root)
+        parts=root/'teknoloji'/'tts-parts'
+        parts.mkdir()
+        (parts/'part_000.wav').write_bytes(b'recoverable partial stage')
+        (root/'teknoloji'/'podcast.mp3').write_bytes(b'broken')
+        with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+            verified_checkpoint(root)
+        self.assertTrue((parts/'part_000.wav').exists())
 
     def test_audio_revision_preserves_news_numbering_and_cannot_be_rolled_back_by_rerun(self):
         published = self.root / "published-for-refresh"
