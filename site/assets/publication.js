@@ -103,7 +103,7 @@
         (d.publication_profile === "expanded-v1"
           ? section === "teknoloji"
             ? 12
-            : 8
+            : 10
           : 3) ||
       d.stories.length > 24
     )

@@ -92,6 +92,6 @@ test("expanded issues accept broad selections and require a real long podcast", 
     };
     assert(r.editionValid(d,section,m));
     assert(!r.editionValid({...d,podcast:{...d.podcast,duration:120}},section,m));
-    assert(!r.editionValid({...d,stories:d.stories.slice(0,3)},section,m));
+    assert(!r.editionValid({...d,stories:d.stories.slice(0,section === "teknoloji" ? 11 : 9)},section,m));
   }
 });
