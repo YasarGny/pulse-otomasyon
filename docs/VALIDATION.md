@@ -1,7 +1,7 @@
 # Doğrulama kaydı — 16 Ekim 2026
 
-Bu kayıt yerel bulut makinesindeki doğrulamadır; canlıya geçiş, GitHub Actions
-çalışması veya Pages dağıtımı yapıldığı iddiası değildir.
+Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
+çalışmalarını kapsar. Canlıya geçiş veya Pages dağıtımı yapıldığı iddiası değildir.
 
 | Kontrol | Sonuç |
 |---|---|
@@ -16,6 +16,7 @@ Bu kayıt yerel bulut makinesindeki doğrulamadır; canlıya geçiş, GitHub Act
 | Tekrar çalıştırma | Aynı günlük sürüm/numara, model ve ses çağrılarını tekrarlamadan kullanılabiliyor. |
 | İlk oyun sayısı | Başarısız ilk gün sayıyı tüketmiyor; ilk başarılı gün 001; başlangıç hazırlık manifestinde korunuyor. |
 | İki depo arasındaki aktarım | Yerel Git deposunda atomik commit, aynı çıktıyla temiz ikinci eşitleme, bare remote'a push ve yeniden clone sonrası sürüm doğrulaması başarılı. |
+| GitHub Actions kalite koşuları | PR ve push koşuları başarılı: [PR CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897975490), [push CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897933764). |
 | Actions YAML | Yeni iki workflow actionlint v1.7.7 ile başarılı; dağıtım composite ve bütün shell blokları ayrıca sözdizimi kontrolünden geçti. |
 | Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; ses dışı yanıt reddedildi. Gerçek API çağrısı yapılmadı. |
 | Eski akış uyumluluğu | Senaryo üreticisinin eski çağrı biçimi ve varsayılan Yeni Sekme prompt'u test edildi. Eski giriş noktaları, Notion workflow'ları, oynatıcılar ve yayımlanmış sesler korunuyor. |
@@ -30,16 +31,20 @@ haber yayını değildir.
 
 - Bulut makinesinde `GEMINI_API_KEY` bağlı değil. Bu nedenle güncel Gemini model ve
   özel ses erişimi ile iki podcast üretimi canlı olarak doğrulanamadı.
-- GitHub API ve NASA RSS denemeleri proxy'nin `CONNECT ... 403` cevabıyla
-  durdu. GitHub Git HTTPS üzerinden iki depo okunabildi. Gerekli ağ alanları
-  ortam taslağına, mevcut izinler korunarak kaydedildi; taslağın kaydı çalışan
-  makineye uygulandığı anlamına gelmez.
-- GitHub Secrets/Variables, GitHub App kurulumu, PR ve Pages API ayarları bu
-  API engeli nedeniyle bu aşamada doğrulanamıyor.
-- Gerçek RSS araştırması, ilk anahtarlı `dry_run`, yayın deposundaki Pages workflow
+- GitHub Git/PR/Actions okuma erişimi çalışıyor; [PR #1](https://github.com/YasarGny/pulse-otomasyon/pull/1) oluşturuldu ve gerçek CI geçti. Yedi RSS kaynağı uygun User-Agent ile HTTP 200 döndürdü ve her kaynaktan taze haber ayrıştırıldı.
+- GitHub Secrets/Variables listeleme ve `pulse-production` environment oluşturma
+  çağrıları `Resource not accessible by integration` (HTTP 403) döndü. Mevcut
+  erişim bu yönetim işlemlerini yapamıyor; kullanıcı hesabından gerekli kurulum
+  tamamlanmalı. Gereksiz yeni token veya anahtar oluşturulduğu varsayılmıyor.
+- Hedef deponun Pages ayarı okundu: ana adres mevcut ve `build_type=legacy`.
+  Canlı ayarı değiştirilmedi. GitHub Actions kaynaklı dağıtıma geçiş ancak son
+  onaydan sonra yapılmalı.
+- İlk anahtarlı `dry_run`, yayın deposundaki Pages workflow
   sonucu, ana alan adı HTTP/ses kontrolleri ve bir sonraki gerçek sabah döngüsü
   tamamlanmadan sistem "tamamen canlı ve doğrulandı" sayılmaz.
-- Yeni cron varsayılan olarak kapalı; canlı geçiş ve Notion kapatma onayı
+- Yeni cron varsayılan olarak kapalı; ayrıca `pulse/deployment.json` içindeki
+  `live_enabled=false` kod kapısı eski hesap değişkenlerinden bağımsız koruma
+  sağlıyor. Canlı geçiş ve Notion kapatma onayı
   verilmediği için eski üretim korunuyor.
 
 Hesapta yapılması gereken işlemler ve son onay sırası

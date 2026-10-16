@@ -46,11 +46,12 @@ jobs:
           import datetime as dt, os
           from zoneinfo import ZoneInfo
           date=dt.datetime.now(ZoneInfo('Europe/Istanbul')).date()
-          from pulse.publication import game_start_from_site
+          from pulse.publication import game_start_from_site, read_json
           start=game_start_from_site('.published',date.isoformat())
-          live=os.environ['LIVE_APPROVED']=='true' and os.environ['REQUEST_LIVE']=='true'
+          armed=read_json('pulse/deployment.json').get('live_enabled') is True
+          live=armed and os.environ['LIVE_APPROVED']=='true' and os.environ['REQUEST_LIVE']=='true'
           if os.environ['REQUEST_LIVE']=='true' and not live:
-              raise SystemExit('Live publication needs final approval: PULSE_LIVE_APPROVED=true. Use dry_run first.')
+              raise SystemExit('Live publication needs final approval, live_enabled=true and PULSE_LIVE_APPROVED=true. Use dry_run first.')
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:
               f.write(f'date={date.isoformat()}\nlive={str(live).lower()}\ngame_start={start}\n')
           PY

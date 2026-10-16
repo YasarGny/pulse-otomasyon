@@ -38,6 +38,6 @@ Tarayıcı testleri yalnız sentetik içerik kullanır; `test-results/` altında
 masaüstü/mobil görseller üretir. Gerçek Gemini ve Edge TTS entegrasyonları için
 ayrı, anahtarlı deneme gerekir. Anahtarsız testler API başarısını kanıtlamaz.
 
-**Yeni canlı otomasyon varsayılan olarak kapalıdır.** Eski Notion iş akışları ve
+**Yeni canlı otomasyon varsayılan olarak kapalıdır** (`pulse/deployment.json`: `live_enabled=false`). Eski Notion iş akışları ve
 oynatıcı dosyaları korunur. GitHub App, Secrets, deneme, son onay, geçiş ve geri
 alma adımları: **[İşletim rehberi](docs/OPERATIONS.md)**.

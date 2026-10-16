@@ -2,7 +2,9 @@
 
 Bu değişiklik **kendiliğinden canlıya geçmez**. Eski Notion iş akışları, kök
 `index.html`, `web-player/` ve mevcut MP3'ler korunur. Yeni otomasyonun varsayılan
-manuel çalışması yalnızca denemedir. Canlıya geçiş ve eski sistemin kapatılması
+manuel çalışması yalnızca denemedir. Ayrıca `pulse/deployment.json` içindeki
+`live_enabled: false` kod kapısı, mevcut hesap değişkenleri ne olursa olsun canlı
+dağıtımı engeller. Bu kapı ancak son onaydan sonra ayrı commit ile açılır. Canlıya geçiş ve eski sistemin kapatılması
 ayrı son kullanıcı onayı gerektirir.
 
 ## Tek kaynak, iki depo
@@ -193,7 +195,9 @@ sağlanmalıdır; genel korumaları kaldırmayın.
    → `New environment` → `pulse-production` oluşturun.
 2. Mümkünse başlangıçta `Required reviewers` olarak kendi hesabınızı ekleyin;
    planınız bunu desteklemiyorsa canlı değişkeni kapalı tutmak son onay kapısıdır.
-3. [Yayın deposu Pages ayarları](https://github.com/YasarGny/YasarGny.github.io/settings/pages)
+3. Mevcut hedef ayarı `legacy` olarak okundu; aşağıdaki Source değişikliği canlı
+   dağıtım ayarıdır ve **son onaydan sonra** uygulanır.
+   [Yayın deposu Pages ayarları](https://github.com/YasarGny/YasarGny.github.io/settings/pages)
    → Build and deployment → Source: **GitHub Actions** seçin. Hedef depoda mevcut
    `Publish PULSE website` workflow'u korunur. Bu değişiklik tek başına yeni site
    dosyalarını göndermemelidir; bu görevde canlı dağıtım tetiklenmemiştir.
@@ -220,7 +224,9 @@ sağlanmalıdır; genel korumaları kaldırmayın.
 Bu bölüm **kullanıcı son onayı olmadan uygulanmaz**.
 
 1. Kullanıcının canlıya geçiş onayını alın; eski sistem hâlâ çalışır.
-2. Actions Variables → `PULSE_LIVE_APPROVED` = `true` ekleyin.
+2. Son onaydan sonra asistan `pulse/deployment.json` içindeki `live_enabled`
+   değerini ayrı, incelenebilir bir commit ile `true` yapar. Ardından Actions
+   Variables → `PULSE_LIVE_APPROVED` = `true` eklenir.
 3. Manuel workflow'da `dry_run` işaretini kaldırıp çalıştırın; production environment
    bekliyorsa `Review deployments` → `Approve and deploy` seçin.
 4. [Ana site](https://yasargny.github.io/) ve `/teknoloji/`, `/oyun/` üzerinde
@@ -232,7 +238,8 @@ Bu bölüm **kullanıcı son onayı olmadan uygulanmaz**.
 6. Sonraki gün 06.00 kapanışı ve yeni iki yayının birlikte açılışını da izleyin.
 
 `PULSE_AUTOMATION_ENABLED` eksik/false ise yeni cron hiçbir şey yapmaz.
-`PULSE_LIVE_APPROVED` eksik/false ise yeni workflow hiçbir canlı dosyayı değiştirmez.
+`PULSE_LIVE_APPROVED` eksik/false veya kodda `live_enabled` false ise yeni
+workflow hiçbir canlı dosyayı değiştirmez.
 Günlük üretim yine ücretli API kullanabilir: yalnız denemeye hazırken manuel başlatın.
 
 ### 6. Eski sistemi kapatma ve yönlendirme (ayrı onay)
