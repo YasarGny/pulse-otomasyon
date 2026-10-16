@@ -1,8 +1,8 @@
-name: PULSE Daily Audio
+name: PULSE Daily Publication
 on:
   workflow_dispatch:
   schedule:
-    - cron: "10 4 * * *"
+    - cron: "12 4 * * *"
 permissions:
   contents: write
 concurrency:
@@ -11,7 +11,7 @@ concurrency:
 jobs:
   audio:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 28
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,16 +22,18 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install requests edge-tts
-      - name: Generate real daily narration
+      - name: Generate daily narration and Yeni Sekme podcast
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python pulse_audio.py
+          PULSE_YASAR_VOICE_ID: voice_glt4mz1jtaeh
+          PULSE_NECDET_VOICE_ID: voice_8nqcoox86z5q
+        run: python pulse_publish.py
       - name: Publish audio to GitHub Pages
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web-player/latest.mp3 web-player/latest.json
+          git add web-player/latest.mp3 web-player/latest.json web-player/podcast-latest.mp3 web-player/podcast-latest.json
           if git diff --cached --quiet; then
             echo "No audio changes."
           else
