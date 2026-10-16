@@ -1,0 +1,177 @@
+name: PULSE GitHub daily publication
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate and save artifacts without changing the live site
+        type: boolean
+        default: true
+  schedule:
+    # UTC: Istanbul is UTC+3 year-round. Extra runs recover delayed/failed starts.
+    - cron: "0 3 * * *"
+    - cron: "20 3 * * *"
+    - cron: "30 4 * * *"
+    - cron: "0 5 * * *"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: pulse-github-daily
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED == 'true')
+    runs-on: ubuntu-24.04
+    outputs:
+      date: ${{ steps.plan.outputs.date }}
+      live: ${{ steps.plan.outputs.live }}
+      game_start: ${{ steps.plan.outputs.game_start }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
+      - id: plan
+        env:
+          LIVE_APPROVED: ${{ vars.PULSE_LIVE_APPROVED }}
+          REQUEST_LIVE: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+        run: |
+          python - <<'PY'
+          import datetime as dt, os
+          from zoneinfo import ZoneInfo
+          date=dt.datetime.now(ZoneInfo('Europe/Istanbul')).date()
+          from pulse.publication import game_start_from_site, read_json
+          start=game_start_from_site('.published',date.isoformat())
+          armed=read_json('pulse/deployment.json').get('live_enabled') is True
+          live=armed and os.environ['LIVE_APPROVED']=='true' and os.environ['REQUEST_LIVE']=='true'
+          if os.environ['REQUEST_LIVE']=='true' and not live:
+              raise SystemExit('Live publication needs final approval, live_enabled=true and PULSE_LIVE_APPROVED=true. Use dry_run first.')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write(f'date={date.isoformat()}\nlive={str(live).lower()}\ngame_start={start}\n')
+          PY
+      - run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m unittest discover -s tests -p 'test_*.py' -v
+  gate:
+    needs: plan
+    if: needs.plan.outputs.live == 'true'
+    runs-on: ubuntu-24.04
+    environment: pulse-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Do not close the previous issue before 06:00
+        env:
+          PULSE_DATE: ${{ needs.plan.outputs.date }}
+        run: python -c "import os; from pulse.pipeline import wait_for; wait_for(os.environ['PULSE_DATE'], '06:00')"
+      - uses: ./.github/actions/deploy-site
+        with:
+          mode: prepare
+          date: ${{ needs.plan.outputs.date }}
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+  generate:
+    needs: [plan, gate]
+    if: always() && needs.plan.result == 'success' && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 170
+    outputs:
+      date: ${{ needs.plan.outputs.date }}
+    env:
+      PULSE_DATE: ${{ needs.plan.outputs.date }}
+      PULSE_GAME_START_DATE: ${{ needs.plan.outputs.game_start }}
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
+      - name: Restore today's checkpoint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/state.py --repo "$GITHUB_REPOSITORY" --date "$PULSE_DATE"
+      - name: Research, edit, synthesize and validate both publications
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+          PULSE_TTS_MODEL: ${{ vars.PULSE_TTS_MODEL || 'gemini-3.8-flash-tts' }}
+          PULSE_YASAR_VOICE_ID: voice_glt4mz1jtaeh
+          PULSE_NECDET_VOICE_ID: voice_8nqcoox86z5q
+        run: python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --scheduled --previous .published
+      - name: Wait until 07:30 and build one complete release
+        run: python -m pulse.build --release ".pulse-work/$PULSE_DATE" --wait
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pulse-site-${{ github.run_id }}
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Save successful intermediate stages, also after failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-state-${{ env.PULSE_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .pulse-work/
+          if-no-files-found: warn
+          retention-days: 30
+  publish:
+    needs: [plan, generate]
+    if: needs.plan.outputs.live == 'true'
+    runs-on: ubuntu-24.04
+    environment: pulse-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - uses: actions/download-artifact@v4
+        with:
+          name: pulse-site-${{ github.run_id }}
+          path: dist
+      - name: Refuse a queued release after its date expires
+        env:
+          PULSE_DATE: ${{ needs.plan.outputs.date }}
+        run: |
+          python - <<'PY'
+          import os
+          from pulse.publication import now, not_before
+          date=os.environ['PULSE_DATE']
+          if now().date().isoformat()!=date or now()<not_before(date):
+              raise SystemExit('Publication is stale or too early')
+          PY
+      - uses: ./.github/actions/deploy-site
+        with:
+          mode: release
+          date: ${{ needs.plan.outputs.date }}
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}

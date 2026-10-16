@@ -1,0 +1,41 @@
+{
+  "teknoloji": [
+    {
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "hosts": ["arstechnica.com"]
+    },
+    {
+      "name": "NASA",
+      "url": "https://www.nasa.gov/feed/",
+      "hosts": ["www.nasa.gov", "science.nasa.gov"]
+    },
+    {
+      "name": "The Verge",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "hosts": ["www.theverge.com", "theverge.com"]
+    },
+    {
+      "name": "BleepingComputer",
+      "url": "https://www.bleepingcomputer.com/feed/",
+      "hosts": ["www.bleepingcomputer.com"]
+    }
+  ],
+  "oyun": [
+    {
+      "name": "PC Gamer",
+      "url": "https://www.pcgamer.com/rss/",
+      "hosts": ["www.pcgamer.com"]
+    },
+    {
+      "name": "IGN",
+      "url": "https://feeds.feedburner.com/ign/all",
+      "hosts": ["www.ign.com", "ign.com"]
+    },
+    {
+      "name": "GameSpot",
+      "url": "https://www.gamespot.com/feeds/mashup/",
+      "hosts": ["www.gamespot.com"]
+    }
+  ]
+}

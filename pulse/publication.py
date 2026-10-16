@@ -1,0 +1,269 @@
+"""Fail-closed release contract shared by generation, validation and deployment."""
+
+from __future__ import annotations
+
+import datetime as dt
+import hashlib
+import json
+import math
+import subprocess
+from pathlib import Path
+from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo("Europe/Istanbul")
+SECTIONS = ("teknoloji", "oyun")
+MONTHS = (
+    "Ocak Şubat Mart Nisan Mayıs Haziran Temmuz Ağustos Eylül Ekim Kasım Aralık".split()
+)
+TECH_START = dt.date(2026, 10, 16)
+
+
+def now():
+    return dt.datetime.now(TZ)
+
+
+def issue_number(date: str, section: str, game_start: str) -> int:
+    if section not in SECTIONS:
+        raise ValueError("Unknown section")
+    start = TECH_START if section == "teknoloji" else dt.date.fromisoformat(game_start)
+    number = (dt.date.fromisoformat(date) - start).days + 1
+    if number < 1:
+        raise ValueError("Publication predates first issue")
+    return number
+
+
+def turkish_date(date):
+    d = dt.date.fromisoformat(date)
+    return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+
+
+def expected_date(at: dt.datetime) -> str:
+    at = at.astimezone(TZ)
+    return (at.date() - dt.timedelta(days=at.hour < 6)).isoformat()
+
+
+def not_before(date):
+    return dt.datetime.combine(dt.date.fromisoformat(date), dt.time(7, 30), TZ)
+
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def write_json(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(
+        json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    temp.replace(path)
+
+
+def read_json(path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def https_url(value):
+    if not isinstance(value, str):
+        return False
+    p = urlparse(value)
+    return (
+        p.scheme == "https"
+        and bool(p.hostname)
+        and not p.username
+        and not p.password
+        and not any(c.isspace() for c in value)
+    )
+
+
+def validate_content(data, section, date, game_start):
+    if data.get("section") != section or data.get("publish_date") != date:
+        raise ValueError("Edition identity/date mismatch")
+    if type(data.get("issue")) is not int or data["issue"] != issue_number(
+        date, section, game_start
+    ):
+        raise ValueError("Incorrect issue number")
+    if data.get("date") != turkish_date(date):
+        raise ValueError("Incorrect Turkish date")
+    stories = data.get("stories")
+    if not isinstance(stories, list) or not 3 <= len(stories) <= 12:
+        raise ValueError("Each edition needs 3–12 sourced stories")
+    ids, urls = set(), set()
+    for story in stories:
+        for field in ("id", "category", "title", "summary", "why", "source_name"):
+            if (
+                not isinstance(story.get(field), str)
+                or not story[field].strip()
+                or len(story[field]) > 4000
+            ):
+                raise ValueError("Missing/invalid story field: " + field)
+        if story["id"] in ids or story.get("source_url") in urls:
+            raise ValueError("Duplicate story/source")
+        if not https_url(story.get("source_url")):
+            raise ValueError("A verifiable HTTPS source is required")
+        if story.get("image_url") and not https_url(story["image_url"]):
+            raise ValueError("Unsafe image URL")
+        published = dt.datetime.fromisoformat(story["source_published_at"])
+        if not published.tzinfo:
+            raise ValueError("Source needs timezone")
+        age = not_before(date) - published.astimezone(TZ)
+        if not dt.timedelta(hours=-2) <= age <= dt.timedelta(hours=40):
+            raise ValueError("Stale/future source")
+        ids.add(story["id"])
+        urls.add(story["source_url"])
+    return data
+
+
+def safe_file(root, relative):
+    if not isinstance(relative, str) or not relative or "\\" in relative:
+        raise ValueError("Invalid local asset")
+    path = Path(relative)
+    if path.is_absolute() or any(p in (".", "..") for p in path.parts):
+        raise ValueError("Asset must be release-relative")
+    result = (Path(root) / path).resolve()
+    if not result.is_relative_to(Path(root).resolve()) or not result.is_file():
+        raise ValueError("Missing/escaping release asset")
+    return result
+
+
+def audio_info(path, minimum):
+    path = Path(path)
+    if path.stat().st_size < 25000:
+        raise ValueError("Audio too small")
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration,format_name",
+            "-of",
+            "json",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    info = json.loads(result.stdout)["format"]
+    seconds = float(info["duration"])
+    if (
+        "mp3" not in info.get("format_name", "").split(",")
+        or not math.isfinite(seconds)
+        or seconds < minimum
+    ):
+        raise ValueError("Invalid/short MP3")
+    # Probe alone accepts truncated streams. Decode the entire file with errors fatal.
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-nostdin",
+            "-v",
+            "error",
+            "-xerror",
+            "-i",
+            str(path),
+            "-f",
+            "null",
+            "-",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return {
+        "duration": round(seconds, 1),
+        "bytes": path.stat().st_size,
+        "sha256": digest(path),
+    }
+
+
+def validate_release(root, date, game_start):
+    root = Path(root)
+    entries = {}
+    for section in SECTIONS:
+        path = root / (section + ".json")
+        data = validate_content(read_json(path), section, date, game_start)
+        if data.get("ready") is not True:
+            raise ValueError("Edition not ready")
+        for kind, minimum in [("summary", 20), ("podcast", 40)]:
+            asset = data.get(kind, {})
+            if asset.get("file") != section + "/" + kind + ".mp3":
+                raise ValueError("Unexpected audio path")
+            actual = audio_info(safe_file(root, asset["file"]), minimum)
+            if any(asset.get(k) != v for k, v in actual.items()):
+                raise ValueError("Audio hash/size/duration mismatch")
+            if asset.get("episode") != data["issue"] or not isinstance(
+                asset.get("title"), str
+            ):
+                raise ValueError("Invalid episode metadata")
+            if kind == "podcast" and (
+                asset["title"]
+                != ("Yeni Sekme" if section == "teknoloji" else "Moradon FM")
+                or asset.get("hosts") != ["Yaşar", "Necdet"]
+            ):
+                raise ValueError("Invalid podcast identity")
+        entries[section] = {
+            "file": path.name,
+            "sha256": digest(path),
+            "issue": data["issue"],
+        }
+    return entries
+
+
+def seal_release(root, date, game_start):
+    entries = validate_release(root, date, game_start)
+    fingerprint = hashlib.sha256(
+        json.dumps(entries, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    manifest = {
+        "schema_version": 1,
+        "status": "ready",
+        "publish_date": date,
+        "release_id": date + "-" + fingerprint,
+        "not_before": not_before(date).isoformat(),
+        "validated_at": now().isoformat(),
+        "game_start": game_start,
+        "validation": "full-mp3-decode+sha256+content-v1",
+        "editions": entries,
+    }
+    write_json(Path(root) / "release.json", manifest)
+    return manifest
+
+
+def verify_manifest(root, manifest):
+    date = manifest["publish_date"]
+    # Never accept an arbitrary status flag as a release attestation.
+    if (
+        manifest.get("schema_version") != 1
+        or manifest.get("status") != "ready"
+        or manifest.get("validation") != "full-mp3-decode+sha256+content-v1"
+    ):
+        raise ValueError("Unverified manifest")
+    entries = validate_release(root, date, manifest["game_start"])
+    fingerprint = hashlib.sha256(
+        json.dumps(entries, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    if (
+        entries != manifest["editions"]
+        or manifest["release_id"] != date + "-" + fingerprint
+        or manifest["not_before"] != not_before(date).isoformat()
+    ):
+        raise ValueError("Manifest does not match release")
+    return manifest
+
+
+def game_start_from_site(root, date):
+    """Latch the game epoch only after its first successful publication."""
+    root = Path(root)
+    path = root / "data/publication.json"
+    manifest = read_json(path) if path.exists() else {}
+    start = manifest.get("game_start")
+    if start:
+        if dt.date.fromisoformat(start) > dt.date.fromisoformat(date):
+            raise ValueError("Game launch is after the requested issue")
+        return start
+    if (root / "releases").exists() and any((root / "releases").glob("*/release.json")):
+        raise ValueError("Published history exists but its numbering epoch is missing")
+    return date
