@@ -143,6 +143,27 @@ async function run(name, fn) {
         await page.setViewportSize({ width: 1440, height: 1000 });
       },
     );
+    await run("whole mobile news cards open details while source links stay separate", async () => {
+      await page.setViewportSize({width:390,height:844});
+      for (const selector of [".story-image", "p"]) {
+        await open("/expanded/teknoloji/");
+        const source=page.locator(".story:visible > .source-link").first();
+        await source.evaluate(a=>a.addEventListener("click",e=>{e.preventDefault();window.__sourceTapped=true;}));
+        await source.click();
+        assert.equal(await page.evaluate(()=>window.__sourceTapped),true);
+        const target=page.locator(".story:visible").locator(selector).first();
+        await target.scrollIntoViewIfNeeded();
+        if(selector === ".story-image") assert.equal(await target.evaluate(e=>getComputedStyle(e).objectFit),"contain");
+        const box=await target.boundingBox();
+        await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+        await page.waitForURL("**/haber/**");
+        await page.waitForFunction(()=>!!window.PULSE_RELEASE);
+        assert.equal(await page.locator(".article-text p").count(),2);
+        assert.equal(await page.locator(".source-link").count(),1);
+        await noOverflow();
+      }
+      await page.setViewportSize({width:1440,height:1000});
+    });
     await run("keyboard skip link reaches main content", async () => {
       await page.goto(base);
       await page.waitForFunction(() => window.PULSE_RELEASE);
