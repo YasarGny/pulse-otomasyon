@@ -41,7 +41,7 @@ def _request(payload):
         json=payload, timeout=180,
     )
     if not response.ok:
-        raise RuntimeError("Podcast script generation failed HTTP " + str(response.status_code) + ": " + response.text[:300])
+        raise RuntimeError("Podcast script generation failed HTTP " + str(response.status_code))
     candidates = response.json().get("candidates") or []
     if not candidates:
         raise RuntimeError("No script candidates returned")
@@ -58,18 +58,27 @@ def _validate(result):
         raise RuntimeError("Both presenters must participate")
     return turns
 
-def generate(stories):
+def generate(stories, *, section="teknoloji", date=None, issue=None):
     source = [{"id": i + 1, "headline": title, "verified_summary": summary} for i, (title, summary) in enumerate(stories)]
-    today = datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%d.%m.%Y")
+    today = date or datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%d.%m.%Y")
+    if section not in ("teknoloji", "oyun"):
+        raise ValueError("Unknown podcast section")
+    system, editor = SYSTEM, EDITOR
+    if section == "oyun":
+        system = SYSTEM.replace("Yeni Sekme", "Moradon FM").replace("teknoloji podcast", "oyun podcast")
+        system += "\nBu bölüm yalnızca oyun gündemidir. PC, konsol, duyurular ve oyun kültürüne odaklan. Knight Online'a hafif bir gönderme olabilir, programın tamamını ona bağlama. İki erkek sunucu Yaşar ve Necdet; açılışı Yaşar yapar."
+        editor = EDITOR.replace("Yeni Sekme", "Moradon FM")
+    if issue is not None:
+        system += f"\nYayın sayısı: {issue:03d}. Tarihle birlikte doğal biçimde belirt."
     payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM}]},
+        "system_instruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": "Yayın tarihi (Türkiye): " + today + ". Bu doğrulanmış haber notlarıyla süre sınırı olmadan, haberlerin gerçekten gerektirdiği uzunlukta özgün bir Türkçe sohbet hazırla. Haberler arasında anlamlı bağlantılar kur. Her haberde gerçek yorum, gerekçe ve somut çıkarım olsun. Haber dışı olgusal iddia ekleme. JSON haberler: " + json.dumps(source, ensure_ascii=False)}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.85, "maxOutputTokens": 8192},
     }
     draft = _request(payload)
     _validate(draft)
     edit_payload = {
-        "system_instruction": {"parts": [{"text": EDITOR}]},
+        "system_instruction": {"parts": [{"text": editor}]},
         "contents": [{"role": "user", "parts": [{"text": "Kaynak haber notları: " + json.dumps(source, ensure_ascii=False) + "\nYayın tarihi: " + today + "\nDüzenlenecek diyalog: " + json.dumps(draft, ensure_ascii=False)}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.45, "maxOutputTokens": 8192},
     }

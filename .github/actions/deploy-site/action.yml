@@ -1,0 +1,60 @@
+name: Deploy reviewed public files
+description: Publish only a validated public tree using a repository-scoped GitHub App
+inputs:
+  app-id:
+    required: true
+    description: GitHub App ID
+  private-key:
+    required: true
+    description: GitHub App private key (secret)
+  mode:
+    required: true
+    description: prepare or release
+  date:
+    required: true
+    description: Istanbul publication date
+runs:
+  using: composite
+  steps:
+    - uses: actions/create-github-app-token@v2
+      id: app
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: YasarGny
+        repositories: YasarGny.github.io
+        permission-contents: write
+    - uses: actions/checkout@v4
+      with:
+        repository: YasarGny/YasarGny.github.io
+        ref: main
+        path: .published
+        token: ${{ steps.app.outputs.token }}
+        fetch-depth: 1
+    - name: Build preparation status without closing an already-ready issue
+      if: inputs.mode == 'prepare'
+      shell: bash
+      env:
+        PULSE_DATE: ${{ inputs.date }}
+      run: python -m pulse.build --preparing "$PULSE_DATE" --previous .published
+    - name: Validate and synchronize public files
+      shell: bash
+      run: python scripts/sync_site.py dist .published
+    - name: Commit public files atomically
+      shell: bash
+      env:
+        PULSE_DATE: ${{ inputs.date }}
+        PULSE_MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        cd .published
+        git config user.name 'pulse-publisher[bot]'
+        git config user.email 'pulse-publisher[bot]@users.noreply.github.com'
+        for path in index.html 404.html robots.txt sitemap.xml .nojekyll assets teknoloji oyun data releases; do
+          if [ -e "$path" ]; then git add -- "$path"; fi
+        done
+        if ! git diff --cached --quiet; then
+          git commit -m "PULSE $PULSE_DATE: $PULSE_MODE verified website"
+          python -c "import os; from datetime import datetime; from zoneinfo import ZoneInfo; assert datetime.now(ZoneInfo('Europe/Istanbul')).date().isoformat() == os.environ['PULSE_DATE'], 'Issue expired before push'"
+          git push origin HEAD:main
+        fi

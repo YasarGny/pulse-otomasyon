@@ -80,13 +80,12 @@ def synthesize(group, destination, number):
         if result.status_code in (400, 401, 402, 403, 429):
             raise RuntimeError(
                 "Gemini TTS HTTP " + str(result.status_code)
-                + ": " + result.text[:350]
             )
         if not result.ok:
             if attempt == 2:
                 raise RuntimeError(
                     "TTS segment " + str(number) + " HTTP "
-                    + str(result.status_code) + ": " + result.text[:350]
+                    + str(result.status_code)
                 )
             time.sleep(2 ** attempt * 2)
             continue
@@ -103,14 +102,6 @@ def synthesize(group, destination, number):
                 break
         if encoded:
             break
-    if not encoded:
-        for step in response.get("steps", []):
-            for content in step.get("content", []):
-                if content.get("data"):
-                    encoded = content["data"]
-                    break
-            if encoded:
-                break
     if not encoded:
         raise RuntimeError("No audio returned for segment " + str(number))
     raw = destination.with_suffix(".raw")
