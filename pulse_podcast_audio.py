@@ -134,8 +134,9 @@ def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
     persistent = Path(checkpoint_dir) / identity if checkpoint_dir else None
     if persistent:
         persistent.mkdir(parents=True, exist_ok=True)
-    with (nullcontext(str(persistent)) if persistent else tempfile.TemporaryDirectory()) as folder:
-        root = Path(folder)
+    with (nullcontext(str(persistent)) if persistent else tempfile.TemporaryDirectory()) as folder, tempfile.TemporaryDirectory() as assembly_folder:
+        root = Path(folder).resolve()
+        assembly = Path(assembly_folder)
         paths = []
         for index, group in enumerate(groups):
             path = root / ("part_%03d.wav" % index)
@@ -154,18 +155,18 @@ def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
                 partial.replace(path)
             paths.append(path)
         # Short intentional pause after ident; small section gaps avoid rushed edits.
-        manifest = root / "concat.txt"
+        manifest = assembly / "concat.txt"
         with manifest.open("w", encoding="utf-8") as file:
             for index, path in enumerate(paths):
                 file.write("file '" + str(path) + "'\n")
                 if index < len(paths) - 1:
                     gap = 0.75 if index == 0 else 0.25
-                    silence = root / ("silence_%03d.wav" % index)
+                    silence = assembly / ("silence_%03d.wav" % index)
                     run("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i",
                         "anullsrc=r=44100:cl=mono", "-t", str(gap),
                         "-c:a", "pcm_s16le", str(silence))
                     file.write("file '" + str(silence) + "'\n")
-        merged = root / "merged.wav"
+        merged = assembly / "merged.wav"
         run("ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0",
             "-i", str(manifest), "-c:a", "pcm_s16le", str(merged))
         # Loudness consistency without altering pitch or speed.

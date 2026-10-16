@@ -84,11 +84,12 @@ class TTSCheckpointTests(unittest.TestCase):
             subprocess.run(['ffmpeg','-v','error','-y','-i',str(mp3),str(wav)],check=True)
             turns=[{'speaker':'Yaşar','text':'Kaynağa göre açıklanan gelişmeyi birlikte konuşalım.'}, {'speaker':'Necdet','text':'Belirsiz kalan noktaları da ayrı değerlendirelim.'}]
             def synth(group,destination,number,**kwargs):shutil.copyfile(wav,destination)
+            relative_cache=Path(__import__('os').path.relpath(root/'cache',Path.cwd()))
             with patch.object(audio,'synthesize',side_effect=synth) as call:
-                audio.render(turns,root/'first.mp3',strict_audio=True,checkpoint_dir=root/'cache')
-                audio.render(turns,root/'second.mp3',strict_audio=True,checkpoint_dir=root/'cache')
+                audio.render(turns,root/'first.mp3',strict_audio=True,checkpoint_dir=relative_cache)
+                audio.render(turns,root/'second.mp3',strict_audio=True,checkpoint_dir=relative_cache)
                 self.assertEqual(call.call_count,1)
                 changed=copy.deepcopy(turns);changed[1]['text']+=' Bir sorumuz daha var.'
-                audio.render(changed,root/'third.mp3',strict_audio=True,checkpoint_dir=root/'cache')
+                audio.render(changed,root/'third.mp3',strict_audio=True,checkpoint_dir=relative_cache)
                 self.assertEqual(call.call_count,2)
             self.assertFalse(list((root/'cache').rglob('merged.wav')))

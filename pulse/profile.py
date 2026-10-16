@@ -2,7 +2,7 @@
 PROFILE = 'expanded-v1'
 TARGETS = {'teknoloji': (15, 20), 'oyun': (12, 18)}
 MIN_STORIES = {'teknoloji': 12, 'oyun': 10}
-WORDS = {'teknoloji': (2100, 2900), 'oyun': (1700, 2500)}
+WORDS = {'teknoloji': (2500, 3100), 'oyun': (2000, 2700)}
 PODCAST_SECONDS = {'teknoloji': (900, 1500), 'oyun': (720, 1320)}
 
 
