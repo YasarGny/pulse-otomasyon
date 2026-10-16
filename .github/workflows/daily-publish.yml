@@ -105,6 +105,12 @@ jobs:
           python -m pip install -r requirements.txt
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
       - name: Restore today's checkpoint
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -116,7 +122,7 @@ jobs:
           PULSE_TTS_MODEL: ${{ vars.PULSE_TTS_MODEL || 'gemini-3.8-flash-tts' }}
           PULSE_YASAR_VOICE_ID: voice_glt4mz1jtaeh
           PULSE_NECDET_VOICE_ID: voice_8nqcoox86z5q
-        run: python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --scheduled
+        run: python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --scheduled --previous .published
       - name: Wait until 07:30 and build one complete release
         run: python -m pulse.build --release ".pulse-work/$PULSE_DATE" --wait
       - uses: actions/upload-artifact@v4

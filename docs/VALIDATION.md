@@ -6,7 +6,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | Kontrol | Sonuç |
 |---|---|
 | Python 3.12 / FFmpeg / ffprobe / bağımlılıklar | Hazır; pip check başarılı. |
-| Python unittest | **42 geçti**, başarısız/atlanan test yok. |
+| Python unittest | **45 geçti**, başarısız/atlanan test yok. |
 | Node yayın kapısı testleri | **14 geçti**, başarısız/atlanan test yok. |
 | Chromium işlevsel tarayıcı senaryoları | **19 geçti**. |
 | axe erişilebilirlik | Ana sayfa, teknoloji (1440/820/390/320 px), oyun ve matbaa üzerinde ihlal yok. |
@@ -14,7 +14,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | Gerçek MP3 oynatma (sentetik test sesi) | Oynatma süresi ilerledi, süre metadatası okundu. |
 | JSON + dört MP3 bütünlüğü | Dosya/hash/süre/tam çözümleme; eksik, kısa, değişmiş ve yanlış bölüm engellendi. |
 | Saat ve sayı | 07.30 öncesi kapalı; tamamlanınca otomatik açık; ertesi 06.00 açık sekme kapanır; yerel saat atlatmaz. |
-| Tekrar çalıştırma | Aynı günlük sürüm/numara, model ve ses çağrılarını tekrarlamadan kullanılabiliyor. |
+| Tekrar çalıştırma | Aynı günlük sürüm/numara, model ve ses çağrılarını tekrarlamadan kullanılabiliyor; artifact silinirse yayın deposundan geri alınır. Önceki gün yayımlanmış kaynak URL’leri tekrar seçilmez. |
 | İlk oyun sayısı | Başarısız ilk gün sayıyı tüketmiyor; ilk başarılı gün 001; başlangıç hazırlık manifestinde korunuyor. |
 | İki depo arasındaki aktarım | Yerel Git deposunda atomik commit, aynı çıktıyla temiz ikinci eşitleme, bare remote'a push ve yeniden clone sonrası sürüm doğrulaması başarılı. |
 | GitHub Actions kalite koşuları | PR ve push koşuları başarılı: [PR CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897975490), [push CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897933764). |

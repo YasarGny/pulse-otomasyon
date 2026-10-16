@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from pulse.editorial import create_edition, research, summary_script
+from pulse.history import exclude_published, restore_published
 from pulse.publication import (
     SECTIONS,
     TZ,
@@ -150,7 +151,7 @@ def valid_audio(path, minimum):
         return False
 
 
-def run(work, date, game_start, scheduled=False):
+def run(work, date, game_start, scheduled=False, previous=None):
     work = Path(work)
     root = work / date
     root.mkdir(parents=True, exist_ok=True)
@@ -161,12 +162,14 @@ def run(work, date, game_start, scheduled=False):
     write_json(settings, expected)
     if (root / "release.json").exists():
         return verify_manifest(root, read_json(root / "release.json"))
+    if restore_published(root, previous, date, game_start):
+        return verify_manifest(root, read_json(root / "release.json"))
     if scheduled:
         wait_for(date, "06:15")
     sources = root / "research.json"
     if not sources.exists():
         research(date, sources)
-    research_data = read_json(sources)
+    research_data = exclude_published(read_json(sources), previous, date)
     if scheduled:
         wait_for(date, "06:30")
     for section in SECTIONS:
@@ -203,8 +206,12 @@ def main():
         "--game-start", required=True, help="Immutable date of first game issue"
     )
     parser.add_argument("--scheduled", action="store_true")
+    parser.add_argument(
+        "--previous",
+        help="Published site checkout for deduplication and durable recovery",
+    )
     args = parser.parse_args()
-    result = run(args.work, args.date, args.game_start, args.scheduled)
+    result = run(args.work, args.date, args.game_start, args.scheduled, args.previous)
     print("Both editions validated:", result["release_id"])
 
 

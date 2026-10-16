@@ -16,6 +16,7 @@ from fixtures import DATE, edition, ready_release, tone
 
 from pulse.build import assert_public_tree, build
 from pulse.editorial import create_edition, parse_feed, summary_script
+from pulse.history import exclude_published
 from pulse.pipeline import generate_audio, run
 from pulse.publication import (
     expected_date,
@@ -490,6 +491,55 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("Moradon FM", system)
         self.assertNotIn("Yeni Sekme", system)
         self.assertIn("001", system)
+
+    def test_published_site_restores_day_after_artifact_deletion(self):
+        site = self.root / "published"
+        build(ROOT / "site", site, release=self.release, at=not_before(DATE))
+        with (
+            patch(
+                "pulse.pipeline.research",
+                side_effect=AssertionError("Already published"),
+            ),
+            patch(
+                "pulse.pipeline.generate_audio",
+                side_effect=AssertionError("Already published"),
+            ),
+        ):
+            m = run(self.root / "fresh-work", DATE, DATE, previous=site)
+        self.assertEqual(m["release_id"], self.manifest["release_id"])
+        verify_manifest(self.root / "fresh-work" / DATE, m)
+
+    def test_prior_day_source_urls_are_not_republished(self):
+        site = self.root / "published"
+        build(ROOT / "site", site, release=self.release, at=not_before(DATE))
+        raw = {
+            "sections": {
+                s: [{"source_url": f"https://example.com/{s}/0"}]
+                + [{"source_url": f"https://example.com/{s}/new-{i}"} for i in range(3)]
+                for s in ("teknoloji", "oyun")
+            }
+        }
+        filtered = exclude_published(raw, site, "2026-10-17")
+        self.assertTrue(all(len(items) == 3 for items in filtered["sections"].values()))
+        self.assertTrue(
+            all(
+                "/new-" in s["source_url"]
+                for items in filtered["sections"].values()
+                for s in items
+            )
+        )
+
+    def test_insufficient_new_stories_blocks_instead_of_reusing_old_news(self):
+        site = self.root / "published"
+        build(ROOT / "site", site, release=self.release, at=not_before(DATE))
+        raw = {
+            "sections": {
+                s: [{"source_url": f"https://example.com/{s}/{i}"} for i in range(3)]
+                for s in ("teknoloji", "oyun")
+            }
+        }
+        with self.assertRaisesRegex(ValueError, "Insufficient fresh"):
+            exclude_published(raw, site, "2026-10-17")
 
     def test_zip_traversal_rejected(self):
         raw = io.BytesIO()

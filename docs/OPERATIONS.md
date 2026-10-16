@@ -77,12 +77,17 @@ sayısını yeni günün yayını olarak yayımlayamaz. API başarısızlıklar�
 olur, matbaa açık kalır. Actions bildirimlerini açın: GitHub bildirim ayarları →
 Actions → başarısız iş akışları.
 
+Yayın deposundaki tarihli JSON geçmişi, önceki gün yayımlanmış kaynak URL'lerini
+yeni seçkiden çıkarır. Yeterli yeni haber kalmazsa eski haber yeniden yayımlanmaz.
+Aynı günün sürümü yayın deposunda zaten mevcutsa, Actions artifact'ları silinmiş
+olsa bile doğrulanmış sürüm oradan geri alınır; yeniden API ücreti oluşturulmaz.
+
 İşin başarılı ara çıktıları, başarısız sonucun ardından da 30 günlük Actions
 artifact'ına yazılır. Yalnız bu depodaki bu iş akışının `main` üzerindeki güvenilir
 `schedule`/`workflow_dispatch` çalışmaları geri yüklenir; PR çıktıları kullanılmaz.
 Yeniden çalıştırma aynı günlük JSON'u, konuşma metnini ve geçerli sesleri kullanır.
 Tamamlanmış bir sürüm yeniden numaralandırılmaz veya tekrar seslendirilmez.
-Artifact silinirse tamamlanmamış günün bazı ücretli üretimleri yeniden gerekebilir;
+Artifact silinirse henüz yayımlanmamış, tamamlanmamış günün bazı ücretli üretimleri yeniden gerekebilir;
 30 günlük artifact geçmişi uzun vadeli arşiv değildir. Yayımlanmış sürümler yayın
 deposunda kalır. Araştırma başarısız olursa diğer günün haberleriyle doldurulmaz.
 
