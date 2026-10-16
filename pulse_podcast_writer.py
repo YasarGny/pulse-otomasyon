@@ -142,10 +142,11 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
             length_ok = low <= count <= high
             if not length_ok:
                 review = {**review, 'approved': False, 'concerns': [*review.get('concerns', []), f'Bölüm {count} kelime; gerekli aralık {low}–{high}. Kaynaklara dayanarak derinleştir, tekrar yapma.']}
+        if audit_path:
+            Path(audit_path).write_text(json.dumps({"section": section, "date": today, "turns_sha256": dialogue_digest(turns), "review": review}, ensure_ascii=False, indent=2), encoding="utf-8")
         if _approved(review) and length_ok:
-            if audit_path:
-                Path(audit_path).write_text(json.dumps({"section": section, "date": today, "turns_sha256": dialogue_digest(turns), "review": review}, ensure_ascii=False, indent=2), encoding="utf-8")
             return "\n".join(t["speaker"] + ": " + re.sub(r"\s+", " ", t["text"]).strip() for t in turns), turns
         if attempt == 0:
             turns = _validate(_request(_payload(editor, notes + "\nBu diyalog onaylanmadı. Kaynaksız iddiaları çıkar; sorunları gider:\n" + json.dumps(review, ensure_ascii=False) + "\nDiyalog: " + json.dumps({"turns": turns}, ensure_ascii=False), .25)))
-    raise RuntimeError("Podcast rejected by independent evidence/conversation review")
+    reasons = [str(reason) for key in ("unsupported_claims", "misleading_opinions", "concerns") for reason in (review or {}).get(key, [])]
+    raise RuntimeError("Podcast rejected by independent evidence/conversation review: " + "; ".join(reasons)[:600])
