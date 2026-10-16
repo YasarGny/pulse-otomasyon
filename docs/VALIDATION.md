@@ -99,3 +99,29 @@ yapıldı. Site çıktısına anahtar veya ham senaryo aktarılmadı.
 Bu kayıt otomatik doğruluk denetiminin hatasız olduğunu veya seslerin insan
 tarafından dinlenip öznel olarak onaylandığını iddia etmez. Denetim kaynak
 notlarına ve mevcutsa ham RSS kanıtına dayanır; onaysız senaryo seslendirilmez.
+
+### Yeni sürümün gerçek canlı doğrulaması
+
+[Canlı dağıtım](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38926680182)
+plan, gate, generate ve publish işlerinin tamamında başarılı. Aktif sürüm
+`2026-10-16-4b2087cf3d367151`; teknoloji 3, oyun 6 haber, ikisi de Sayı 001 ve
+`audio_revision=3`. Dört MP3 gerçek Pages yanıtından boyut/SHA-256 ile doğrulandı.
+
+- Teknoloji özeti 35,5 sn; Yeni Sekme 136,8 sn.
+- Oyun özeti 75,7 sn; Moradon FM 123,0 sn.
+- Gerçek HTTPS sitede 390 px / 2× piksel yoğunluğunda üç sayfada sıfır matbaa
+  parlaması ve yatay taşma; GitHub dış bağlantısı yok.
+- Dört oynatıcı da gerçek MP3'le oynatma, arama, hız, ses, sessize alma ve
+  duraklatma kontrollerini geçti. JavaScript çalışma hatası yok.
+- Canlı ekran görüntüleri `test-results/final-live-*-mobile.png` altında.
+- Ek olarak kaynak depodaki 30 kullanılmayan eski Pages artifact'ı silindi.
+  Toplam 56 eski çıktı kaldırıldı; ölçülen geçici depolama 416 MB'den 156 MB'ye
+  indi. Hedef deponun çalışan Pages artifact/iş akışına dokunulmadı.
+- Kaynak private, yayın deposu public; eski proje URL'si HTTP 404. GitHub'ın
+  yönetilen eski Pages kaydı API yetkisi nedeniyle kapatılamadı (403/422);
+  kaynak Settings → Pages'de bir site hâlâ görünüyorsa hesap sahibi Unpublish
+  site seçebilir. Bu platform kaydı site kaynaklarında bir workflow dosyası değildir.
+
+Gerçek ertesi sabah döngüsü bu turda yaşanmadı; saat/kilit davranışı otomatik
+kontrollerde sınandı. Yeni seslerin öznel doğallığı için insan dinleme onayı
+iddia edilmez; kaynak/editör kapısı ve gerçek teknik oynatma doğrulanmıştır.
