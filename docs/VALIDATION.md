@@ -19,38 +19,58 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | İki depo arasındaki aktarım | Yerel Git deposunda atomik commit, aynı çıktıyla temiz ikinci eşitleme, bare remote'a push ve yeniden clone sonrası sürüm doğrulaması başarılı. |
 | GitHub Actions kalite koşuları | PR ve push koşuları başarılı: [PR CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897975490), [push CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897933764). |
 | Runner kararlılığı | Yeni akışlar Ubuntu 24.04 üzerinde sabitlenir; duyurulan ubuntu-latest → 26 geçişine bağımlı değildir. |
-| Pages HTTP doğrulayıcısı | Hazır ve hazırlık durumları test edildi; eski HTML veya değiştirilmiş MP3 baytları reddediliyor. Gerçek canlı dağıtım son onaydan sonra sınanacak. |
+| Pages HTTP doğrulayıcısı | Hazır ve hazırlık durumları test edildi; eski HTML veya değiştirilmiş MP3 baytları reddediliyor. Gerçek canlı dağıtım 38907695793 koşusunda başarıyla doğrulandı. |
 | Actions YAML | Yeni iki workflow actionlint v1.7.7 ile başarılı; dağıtım composite ve bütün shell blokları ayrıca sözdizimi kontrolünden geçti. |
 | Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; yeni strict modda ses dışı yanıt reddedildi. Eski üreticinin tip bilgisi olmayan WAV yanıtıyla uyumluluğu ayrıca korundu ve sınandı. Bunlara ek olarak gerçek GitHub dry-run iki podcast sentezini başarıyla tamamladı. |
-| Eski akış uyumluluğu | Senaryo üreticisinin eski çağrı biçimi ve varsayılan Yeni Sekme prompt'u test edildi. Eski giriş noktaları, Notion workflow'ları, oynatıcılar ve yayımlanmış sesler korunuyor. |
+| Eski akış uyumluluğu | Senaryo üreticisinin eski çağrı biçimi ve varsayılan Yeni Sekme prompt'u test edildi. Onaylı geçişten sonra Notion workflow/betikleri kaldırıldı; eski HTML girişleri yönlendirildi, doğrudan ses URL'leri korundu. |
 | Public artifact / sırlar | Build yalnız web varlıklarını kopyalıyor; ham araştırma/senaryo/kaynak Python'ları dışarıda. Anahtar desenleri ve mevcut secret değerleri için engelleme test edildi. |
 | Build tekrarı | Hazırlık build'i aynı komutla iki kez başarıyla çalıştı. |
 
 Tarayıcı ekran görüntüleri `test-results/` altındadır; CI bu klasörü artifact
-olarak yükler. Bunlar sentetik haber içeren tasarım/işlev testleridir, gerçek
-haber yayını değildir.
+olarak yükler. Standart testler sentetiktir. `live-*-mobile.png` görüntüleri ise 16 Ekim
+2026 gerçek Pages yayını üzerinden alınmıştır.
 
-## Gerçek entegrasyonlarda kalan doğrulamalar
+## Gerçek canlı geçiş — 16 Ekim 2026
 
-- Bulut makinesine yeni bir Gemini anahtarı kopyalanmadı. GitHub Secrets içindeki
-  mevcut bağ kullanılarak [gerçek dry-run](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38900381869) **başarıyla tamamlandı**: iki haber yayını, iki Edge TTS özeti, iki Gemini podcast ve public build doğrulandı. `gate` ve `publish` işleri atlandı; canlı site değişmedi.
-- GitHub Git/PR/Actions okuma erişimi çalışıyor; [PR #1](https://github.com/YasarGny/pulse-otomasyon/pull/1) oluşturuldu ve gerçek CI geçti. Yedi RSS kaynağı uygun User-Agent ile HTTP 200 döndürdü ve her kaynaktan taze haber ayrıştırıldı.
-- GitHub Secrets/Variables listeleme ve `pulse-production` environment oluşturma
-  çağrıları `Resource not accessible by integration` (HTTP 403) döndü. Mevcut
-  erişim bu yönetim işlemlerini yapamıyor; kullanıcı hesabından gerekli kurulum
-  tamamlanmalı. Gereksiz yeni token veya anahtar oluşturulduğu varsayılmıyor.
-- Hedef deponun Pages ayarı okundu: ana adres mevcut ve `build_type=legacy`.
-  Canlı ayarı değiştirilmedi. GitHub Actions kaynaklı dağıtıma geçiş ancak son
-  onaydan sonra yapılmalı.
-- Canlı RSS toplama 40 teknoloji ve 24 oyun adayıyla tamamlandı. Bir RSS
-  kaynağı geçici hata verdi; diğer kaynaklarla iki bölüm de yeterli haberi buldu.
-- Yayın deposundaki yeni sürümün gerçek Pages dağıtımı, ana alan adı HTTP/ses
-  kontrolleri ve bir sonraki gerçek sabah döngüsü
-  tamamlanmadan sistem "tamamen canlı ve doğrulandı" sayılmaz.
-- Yeni cron varsayılan olarak kapalı; ayrıca `pulse/deployment.json` içindeki
-  `live_enabled=false` kod kapısı eski hesap değişkenlerinden bağımsız koruma
-  sağlıyor. Canlı geçiş ve Notion kapatma onayı
-  verilmediği için eski üretim korunuyor.
+- Kullanıcı canlı geçişi ve ardından Notion temizliğini açıkça onayladı. Kod kapısı
+  PR #4 ile açıldı; kullanıcı `PULSE_LIVE_APPROVED=true` ve hedef Pages
+  Source=GitHub Actions ayarlarını tamamladı. App özel anahtarı yalnız Secrets'ta.
+- [App erişim testi](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38907291864)
+  token oluşturmayı, hedef depo okumasını ve Contents yazma yetkisini doğruladı.
+- [İlk canlı yayın](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38907695793)
+  plan, gate, generate ve publish işlerinin tamamında başarılı. Gerçek Pages
+  HTML, manifest, iki JSON ve dört MP3 baytları/hash'leri doğrulandı.
+- Sürüm: `2026-10-16-75d6476f03155fb9`. İki bölüm de Sayı 001. Teknoloji 5,
+  oyun 6 haber. Mobil 390 px gerçek yayında taşma ve JavaScript hatası yok;
+  ana sayfada yalnız iki yayın kartı, haber veya oynatıcı yok.
+- Dört gerçek ses tarayıcıda oynatıldı; oynatma zamanı ilerledi. Süreler:
+  teknoloji özeti 178,920 sn / Yeni Sekme 230,230 sn; oyun özeti 240,024 sn /
+  Moradon FM 247,590 sn. Yerel Chromium'un bulut proxy CA deposu farkı test
+  bağlamında ele alındı; üretim TLS doğrulaması ve gerçek Pages kontrolü açıktır.
+- PR #5 ile eski Notion workflow/betikleri ve kaynaksız pilot JSON kaldırıldı,
+  eski HTML adresleri yeni köke/teknolojiye yönlendirildi. Eski MP3 doğrudan
+  bağlantıları korunur. Günlük cron artık varsayılan açık;
+  `PULSE_AUTOMATION_ENABLED=false` ile durdurulur.
+- İlk canlı işte `.pulse-work/` gizli klasörü artifact filtresine takıldı; bu
+  ara kayıt eksikliği canlı çıktıyı etkilemedi. PR #5 `include-hidden-files:true`
+  ekler; tekrar çalışma yayımlanmış JSON/MP3 üzerinden de geri dönebilir.
 
-Hesapta yapılması gereken işlemler ve son onay sırası
-[OPERATIONS.md](OPERATIONS.md) içinde adım adım açıklanmıştır.
+- [Gerçek aynı gün tekrarı](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38908982331)
+  dört işte de başarılı. Sayı 001 ve `2026-10-16-75d6476f03155fb9` sürümü
+  korunur; yayımlanan dosyalar üzerinden geri dönüş ve tekrar doğrulama çalışır.
+  `pulse-state-2026-10-16-38908982331-1` artifact'ı gerçekten oluştu
+  (9.892.080 bayt); gizli klasör düzeltmesi hosted ortamda doğrulandı.
+- Üç eski HTML adresinin yeni köke/teknolojiye yönlenmesi gerçek tarayıcıda
+  doğrulandı; hedef `data/` altında yalnız `publication.json` kaldı.
+
+## Kalan gözlem
+
+İlk gerçek ertesi sabah 06.00 kapanışı ve 07.30/gerçek hazır olma açılışı
+henüz yaşanmadı. Bu geçişler 14 Node ve 19 tarayıcı kontrolünde sınandı;
+gelecekteki cron koşusunun zamanında başlayacağı iddia edilmez. GitHub cron
+gecikebilir; hazır ve güncel çift yayın yoksa site matbaa ekranında kalır.
+
+Bulut makinesine Gemini anahtarı kopyalanmadı; gerçek üretim mevcut GitHub
+Secret ile çalıştı. GitHub yönetim API'si Secrets/Variables/Pages ayarı
+değişikliklerine 403 verdiğinden yalnız bu hesap ayarları kullanıcı tarafından
+yapıldı. Site çıktısına anahtar veya ham senaryo aktarılmadı.
