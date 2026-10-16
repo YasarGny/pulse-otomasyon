@@ -15,9 +15,7 @@
     if (text) n.textContent = text;
     return n;
   };
-  function lock(
-    reason = "İki yayın da doğrulanınca bu sayfa kendiliğinden açılacak.",
-  ) {
+  function lock(reason = "", mode = "printing") {
     active = null;
     window.PULSE_RELEASE = null;
     shell.inert = true;
@@ -25,15 +23,22 @@
     shell.querySelectorAll("audio").forEach((a) => a.pause());
     document.documentElement.classList.add("pulse-locked");
     document.documentElement.classList.remove("pulse-loading");
+    document.getElementById("publication-loading")?.remove();
     let overlay = document.getElementById("pulse-printing");
+    if (overlay && overlay.dataset.mode !== mode) {
+      overlay.remove();
+      overlay = null;
+    }
     if (!overlay) {
       overlay = make("main", "pulse-printing");
       overlay.id = "pulse-printing";
+      overlay.dataset.mode = mode;
       const card = make("div", "pulse-print-card");
-      const art = make("div", "pulse-printer");
+      const art = make("div", "press-stage");
       art.setAttribute("aria-hidden", "true");
       art.innerHTML =
-        '<div class="pulse-paper"><b>PULSE.</b><i></i><i></i><i></i></div><div class="pulse-machine"><span class="pulse-light"></span><div class="pulse-slot"></div><div class="pulse-roller"></div></div><div class="pulse-out">GÜNLÜK GÜNDEMİMİZ</div>';
+        '<div class="press-stack"></div><div class="press-page"><div class="press-masthead">PULSE<span>.</span></div><div class="press-rule"></div><div class="press-columns"><div><i></i><i></i><i></i><em></em><i></i><i></i></div><div><em></em><i></i><i></i><i></i><i></i><i></i></div></div><div class="press-scan"></div></div><div class="press-rail"><i></i><i></i></div>';
+      if (mode === "offline") art.hidden = true;
       const status = make("p", "pulse-print-small");
       status.id = "printing-status";
       status.setAttribute("role", "status");
@@ -41,18 +46,28 @@
       retry.type = "button";
       retry.addEventListener("click", () => check());
       card.append(
-        make("div", "pulse-print-brand", "PULSE / SABAH MATBAASI"),
+        make("div", "pulse-print-brand", "PULSE"),
         art,
-        make("h1", "", "Haberler baskıya giriyor!"),
+        make(
+          "h1",
+          "",
+          mode === "printing"
+            ? "Haberler baskıya giriyor!"
+            : "Yayına ulaşamadık.",
+        ),
         make(
           "p",
           "",
-          "Teknoloji ve oyun gündemi hazırlanıyor, mikrofonlar kuruluyor.",
+          mode === "printing"
+            ? "Gündemi toparlıyor, mikrofonları hazırlıyoruz."
+            : "Bağlantıyı kontrol edip yeniden deneyebilirsiniz.",
         ),
         make(
           "div",
           "pulse-print-clock",
-          "Her sabah 07.30’da, her şey hazır olduğunda.",
+          mode === "printing"
+            ? "Yeni sayı 07.30’da, her şey hazır olduğunda."
+            : "",
         ),
         status,
         retry,
@@ -74,6 +89,7 @@
     shell.inert = false;
     shell.removeAttribute("aria-hidden");
     document.documentElement.classList.remove("pulse-locked", "pulse-loading");
+    document.getElementById("publication-loading")?.remove();
     if (hadFocus) {
       const main = document.getElementById("main");
       main.tabIndex = -1;
@@ -155,12 +171,27 @@
       lastSuccess = performance.now();
       unlock(manifest, editions, url);
     } catch (error) {
-      lock("Yayın durumu doğrulanamadı. Birazdan yeniden kontrol edeceğiz.");
+      lock(
+        "Yayın durumu doğrulanamadı. Birazdan yeniden kontrol edeceğiz.",
+        "offline",
+      );
     } finally {
       busy = false;
     }
   }
-  lock("Günlük yayın durumu kontrol ediliyor…");
+  // A ready page must never flash the print room while its manifest is fetched.
+  // Keep a neutral loading surface until server-verified preparation is known.
+  shell.inert = true;
+  shell.setAttribute("aria-hidden", "true");
+  setTimeout(() => {
+    if (!document.documentElement.classList.contains("pulse-loading")) return;
+    const loading = make("div", "publication-loading", "PULSE");
+    loading.id = "publication-loading";
+    loading.append(make("span", "", "."));
+    loading.setAttribute("role", "status");
+    loading.setAttribute("aria-label", "Yayın yükleniyor");
+    document.body.append(loading);
+  }, 180);
   check();
   setInterval(check, 60000);
   setInterval(() => {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#090f1d" />
+    <meta name="theme-color" content="#080e1a" />
     <meta
       name="description"
       content="PC, konsol, oyun duyuruları, güncellemeler ve oyun kültürü. Günlük sesli özet ve Moradon FM podcast."
@@ -24,32 +24,24 @@
     <meta property="og:url" content="https://yasargny.github.io/oyun/" />
     <meta
       property="og:image"
-      content="https://yasargny.github.io/assets/og.png"
+      content="https://yasargny.github.io/assets/og.png?v=2"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="../assets/style.css" />
+    <link rel="stylesheet" href="../assets/style.css?v=2" />
     <script src="../assets/publication.js" defer></script>
     <script src="../assets/printing.js" defer></script>
-    <script src="../assets/site.js" defer></script>
+    <script src="../assets/site.js?v=2" defer></script>
   </head>
-  <body data-page="oyun" class="gaming">
+  <body data-design="editorial-v2" data-page="oyun" class="gaming">
     <noscript
-      ><style>
-        .pulse-loading .site-shell {
-          display: none;
-        }
-        .nojs {
-          display: block;
-        }
-      </style>
-      <main class="nojs">
-        <h1>PULSE — Günlük gündemimiz</h1>
+      ><main class="nojs">
+        <h1>PULSE</h1>
         <p>
-          Günlük yayın durumunu doğrulamak ve oynatıcıları kullanmak için
-          JavaScript'i etkinleştirin.
+          Yayın durumunu doğrulamak ve oynatıcıları kullanmak için JavaScript’i
+          etkinleştirin.
         </p>
       </main></noscript
     >
@@ -57,88 +49,96 @@
       <a class="skip" href="#main">İçeriğe geç</a>
       <header class="nav">
         <a class="brand" href="../" aria-label="PULSE ana sayfa"
-          ><svg viewBox="0 0 36 30" aria-hidden="true">
-            <path d="M1 16h8l5-12 8 24 5-12h8" /></svg
           >PULSE<span class="brand-dot">.</span></a
         >
         <nav aria-label="Ana menü">
           <a href="../teknoloji/">Teknoloji</a
           ><a href="../oyun/" aria-current="page">Oyun</a>
         </nav>
-        <span class="nav-note"
-          ><span class="live-dot"></span> Her sabah, yeni bir gündem</span
-        >
       </header>
       <main id="main">
         <section class="pagehero">
-          <a class="back" href="../">← Günlük gündemimiz</a>
-          <div class="eyebrow">PULSE / OYUN</div>
-          <h1>PULSE <span>Oyun</span></h1>
-          <p>PC, konsol, oyun duyuruları, güncellemeler ve oyun kültürü.</p>
-          <div id="issue" class="issue" role="status">
-            Güncel sayı doğrulanıyor…
+          <a class="back" href="../">← Tüm yayınlar</a>
+          <div class="pagehero-layout">
+            <div>
+              <div class="eyebrow">GÜNLÜK YAYIN</div>
+              <h1>PULSE <span>Oyun</span></h1>
+              <p>PC, konsol, yeni oyunlar ve oyun kültürü.</p>
+              <div id="issue" class="issue" role="status">
+                Güncel sayı doğrulanıyor…
+              </div>
+            </div>
+            <img
+              class="pagehero-art"
+              src="../assets/covers/oyun-768.webp"
+              srcset="
+                ../assets/covers/oyun-768.webp  768w,
+                ../assets/covers/oyun.webp     1440w
+              "
+              sizes="(max-width: 760px) calc(100vw - 44px), 344px"
+              width="768"
+              height="512"
+              alt=""
+              decoding="async"
+            />
           </div>
         </section>
         <div id="notice" class="notice" role="status" hidden></div>
         <div class="content-grid">
           <section aria-labelledby="news-title">
             <div class="sectiontop news-top">
-              <h2 id="news-title">Günün notları</h2>
+              <h2 id="news-title">Günün gündemi</h2>
               <span id="story-count" class="section-note"></span>
             </div>
             <div id="stories" aria-busy="true">
-              <p class="empty">Kaynaklı haberler yükleniyor…</p>
+              <p class="empty">Haberler yükleniyor…</p>
             </div>
           </section>
-          <aside class="listening" aria-label="Dinleme köşesi">
+          <aside class="listening" aria-label="Sesli yayınlar">
             <div class="listening-heading">
-              <span class="eyebrow">OKUMAYA VAKİT YOKSA</span>
-              <h2>Kulak ver.</h2>
+              <h2>Dinlemeye geç.</h2>
             </div>
-            <section
-              class="audio-box summary-box"
-              aria-labelledby="summary-title"
-            >
-              <div class="audio-type">
-                <span class="wave" aria-hidden="true">▂▆▃▇▂</span> KISA VE ÖZ
-              </div>
-              <h3 id="summary-title">Günün sesli özeti</h3>
-              <p>Günün bütün haberleri, tek bir sesli özette.</p>
-              <div id="summary"><p>Ses yükleniyor…</p></div>
-            </section>
-            <section
-              class="audio-box podcast-box"
-              aria-labelledby="podcast-title"
-            >
-              <img
-                src="../assets/covers/oyun.svg"
-                alt="Moradon FM podcast kapağı"
-                width="1200"
-                height="680"
-              />
-              <div class="podcast-box-body">
-                <div class="audio-type">İKİ MİKROFON, BİR SOHBET</div>
-                <h3 id="podcast-title">Moradon FM</h3>
-                <p>Yaşar ve Necdet ile oyun gündeminden samimi bir muhabbet.</p>
-                <div id="podcast"><p>Podcast yükleniyor…</p></div>
-              </div>
-            </section>
-            <p class="listening-note">
-              Haberler kaynaklarıyla, yorumlar sohbetiyle.<br />Her sabah
-              yeniden buluşuruz.
-            </p>
+            <div class="listening-cards">
+              <section
+                class="audio-box summary-box"
+                aria-labelledby="summary-title"
+              >
+                <div class="audio-type">SESLİ ÖZET</div>
+                <h3 id="summary-title">Günün sesli özeti</h3>
+                <p>Bütün haberler, tek bir özette.</p>
+                <div id="summary"><p>Ses yükleniyor…</p></div>
+              </section>
+              <section
+                class="audio-box podcast-box"
+                aria-labelledby="podcast-title"
+              >
+                <img
+                  src="../assets/covers/oyun-768.webp"
+                  srcset="
+                    ../assets/covers/oyun-768.webp  768w,
+                    ../assets/covers/oyun.webp     1440w
+                  "
+                  sizes="(max-width: 760px) calc(100vw - 44px), 344px"
+                  alt=""
+                  width="768"
+                  height="512"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div class="podcast-box-body">
+                  <div class="audio-type">PODCAST</div>
+                  <h3 id="podcast-title">Moradon FM</h3>
+                  <p>Yaşar &amp; Necdet</p>
+                  <div id="podcast"><p>Podcast yükleniyor…</p></div>
+                </div>
+              </section>
+            </div>
           </aside>
         </div>
       </main>
       <footer class="foot">
-        <a class="brand" href="../">PULSE<span class="brand-dot">.</span></a>
-        <p>Meraktan doğan, keyif için hazırlanan günlük yayın.</p>
-        <span>Okuruz. Dinleriz. Üzerine konuşuruz.</span
-        ><a
-          href="https://github.com/YasarGny/pulse-otomasyon"
-          rel="noopener noreferrer"
-          target="_blank"
-          >Mutfağa göz at →</a
+        <a class="brand" href="../" aria-label="PULSE ana sayfa"
+          >PULSE<span class="brand-dot">.</span></a
         >
       </footer>
     </div>

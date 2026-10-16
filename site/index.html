@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#090f1d" />
+    <meta name="theme-color" content="#080e1a" />
     <meta
       name="description"
       content="Teknoloji ve oyun dünyasında ilgimizi çeken haberler. Her sabah 07.30’da yeni haberler, sesli özetler ve dinlemelik sohbetler."
@@ -21,31 +21,23 @@
     <meta property="og:url" content="https://yasargny.github.io/" />
     <meta
       property="og:image"
-      content="https://yasargny.github.io/assets/og.png"
+      content="https://yasargny.github.io/assets/og.png?v=2"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./assets/style.css" />
+    <link rel="stylesheet" href="./assets/style.css?v=2" />
     <script src="./assets/publication.js" defer></script>
     <script src="./assets/printing.js" defer></script>
   </head>
-  <body data-page="home">
+  <body data-design="editorial-v2" data-page="home">
     <noscript
-      ><style>
-        .pulse-loading .site-shell {
-          display: none;
-        }
-        .nojs {
-          display: block;
-        }
-      </style>
-      <main class="nojs">
-        <h1>PULSE — Günlük gündemimiz</h1>
+      ><main class="nojs">
+        <h1>PULSE</h1>
         <p>
-          Günlük yayın durumunu doğrulamak ve oynatıcıları kullanmak için
-          JavaScript'i etkinleştirin.
+          Yayın durumunu doğrulamak ve oynatıcıları kullanmak için JavaScript’i
+          etkinleştirin.
         </p>
       </main></noscript
     >
@@ -53,133 +45,99 @@
       <a class="skip" href="#main">İçeriğe geç</a>
       <header class="nav">
         <a class="brand" href="./" aria-label="PULSE ana sayfa"
-          ><svg viewBox="0 0 36 30" aria-hidden="true">
-            <path d="M1 16h8l5-12 8 24 5-12h8" /></svg
           >PULSE<span class="brand-dot">.</span></a
         >
         <nav aria-label="Ana menü">
           <a href="./teknoloji/">Teknoloji</a><a href="./oyun/">Oyun</a>
         </nav>
-        <span class="nav-note"
-          ><span class="live-dot"></span> Her sabah, yeni bir gündem</span
-        >
       </header>
       <main id="main">
         <section class="hero">
-          <div class="eyebrow">
-            <span class="tiny-line"></span> BAĞIMSIZ MERAK, GÜNLÜK YAYIN
+          <div>
+            <div class="eyebrow">
+              <span class="tiny-line"></span>TEKNOLOJİ, OYUN VE İYİ MUHABBET
+            </div>
+            <h1>PULSE —<br />Günlük <span>gündemimiz.</span></h1>
+            <p class="lead">
+              Teknoloji ve oyun dünyasında ilgimizi çeken haberleri bir araya
+              getiriyoruz.
+            </p>
           </div>
-          <h1>PULSE —<br />Günlük <span>gündemimiz.</span></h1>
-          <p class="lead">
-            Teknoloji ve oyun dünyasında ilgimizi çeken<br
-              class="desktop-break"
-            />
-            haberleri bir araya getiriyoruz.
-          </p>
           <p class="morning">
-            <span class="sun" aria-hidden="true">☀</span> Her sabah
-            <strong>07.30'da</strong> yeni haberler ve dinlemelik sohbetler.
+            Her sabah <strong>07.30</strong
+            ><span>Yeni haberler ve dinlemelik sohbetler.</span>
           </p>
-          <div class="hero-mark" aria-hidden="true">
-            <span>p.</span><i></i><i></i><i></i>
-          </div>
         </section>
         <section class="editions" aria-labelledby="editions-title">
           <div class="sectiontop">
-            <div>
-              <span class="eyebrow muted">İKİ DÜNYA, AYNI MERAK</span>
-              <h2 id="editions-title">Bugün nereye bakalım?</h2>
-            </div>
-            <span class="section-note"
-              >Okumalık haberler. Dinlemelik sohbetler.</span
-            >
+            <h2 id="editions-title">Bugün nereye bakalım?</h2>
           </div>
           <div class="edition-grid">
-            <a class="edition-card technology" href="./teknoloji/"
-              ><div class="cover">
+            <a class="edition-card technology" href="./teknoloji/">
+              <div class="cover">
                 <img
-                  src="./assets/covers/teknoloji.svg"
-                  width="1200"
-                  height="680"
-                  alt="Yeni Sekme: devre çizgileri arasında bir dizüstü bilgisayar"
+                  src="./assets/covers/teknoloji.webp"
+                  srcset="
+                    ./assets/covers/teknoloji-768.webp  768w,
+                    ./assets/covers/teknoloji.webp     1440w
+                  "
+                  sizes="(max-width: 760px) calc(100vw - 44px), 560px"
+                  width="1440"
+                  height="960"
+                  alt="Gece mavisi kıyıda teleskoplar, araştırma üssü ve ışıklı bir şehir"
+                  decoding="async"
                   fetchpriority="high"
-                /><span class="cover-badge">TEKNOLOJİ YAYINI</span>
+                />
               </div>
               <div class="edition-body">
                 <div class="edition-heading">
                   <h3>PULSE Teknoloji</h3>
-                  <span class="arrow" aria-hidden="true">→</span>
+                  <span class="arrow" aria-hidden="true"
+                    ><svg viewBox="0 0 24 24">
+                      <path d="M5 19 19 5M5 5h14v14" /></svg
+                  ></span>
                 </div>
-                <p>
-                  Yapay zekâ, bilim, uzay, yazılım, siber güvenlik ve dijital
-                  dünya.
-                </p>
-                <div class="podcast-label">
-                  <span class="wave" aria-hidden="true">▂▆▃▇▂</span
-                  ><strong>Yeni Sekme</strong><span>Yaşar &amp; Necdet</span>
-                </div>
+                <p>Yapay zekâ, bilim, uzay, yazılım ve dijital dünya.</p>
                 <div class="card-bottom">
-                  Teknoloji gündemine geç <span aria-hidden="true">→</span>
+                  <span>Yeni Sekme</span><span>Yayını aç →</span>
                 </div>
               </div></a
-            ><a class="edition-card gaming" href="./oyun/"
-              ><div class="cover">
+            ><a class="edition-card gaming" href="./oyun/">
+              <div class="cover">
                 <img
-                  src="./assets/covers/oyun.svg"
-                  width="1200"
-                  height="680"
-                  alt="Moradon FM: mor ve pembe ışıklar içinde bir oyun kumandası"
-                /><span class="cover-badge">OYUN YAYINI</span>
+                  src="./assets/covers/oyun.webp"
+                  srcset="
+                    ./assets/covers/oyun-768.webp  768w,
+                    ./assets/covers/oyun.webp     1440w
+                  "
+                  sizes="(max-width: 760px) calc(100vw - 44px), 560px"
+                  width="1440"
+                  height="960"
+                  alt="Bir fantastik MMORPG dünyasında kaleye doğru ilerleyen üç maceracı"
+                  decoding="async"
+                  loading="lazy"
+                />
               </div>
               <div class="edition-body">
                 <div class="edition-heading">
                   <h3>PULSE Oyun</h3>
-                  <span class="arrow" aria-hidden="true">→</span>
+                  <span class="arrow" aria-hidden="true"
+                    ><svg viewBox="0 0 24 24">
+                      <path d="M5 19 19 5M5 5h14v14" /></svg
+                  ></span>
                 </div>
-                <p>
-                  PC, konsol, oyun duyuruları, güncellemeler ve oyun kültürü.
-                </p>
-                <div class="podcast-label">
-                  <span class="wave" aria-hidden="true">▂▆▃▇▂</span
-                  ><strong>Moradon FM</strong><span>Yaşar &amp; Necdet</span>
-                </div>
+                <p>PC, konsol, yeni oyunlar ve oyun kültürü.</p>
                 <div class="card-bottom">
-                  Oyun gündemine geç <span aria-hidden="true">→</span>
+                  <span>Moradon FM</span><span>Yayını aç →</span>
                 </div>
               </div></a
             >
           </div>
         </section>
-        <section class="closing">
-          <span aria-hidden="true"
-            ><svg width="42" height="42" viewBox="0 0 42 42">
-              <path
-                d="M21 1v40M1 21h40M7 7l28 28M7 35 35 7"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              /></svg
-          ></span>
-          <p>
-            Biraz gündem, biraz merak.<br /><strong
-              >Bir de iyi muhabbet.</strong
-            >
-          </p>
-          <span class="closing-note"
-            >Kişisel bir yayın projesi.<br />Büyük laflar yerine, ilgimizi
-            çekenler.</span
-          >
-        </section>
       </main>
       <footer class="foot">
-        <a class="brand" href="./">PULSE<span class="brand-dot">.</span></a>
-        <p>Meraktan doğan, keyif için hazırlanan günlük yayın.</p>
-        <span>Okuruz. Dinleriz. Üzerine konuşuruz.</span
-        ><a
-          href="https://github.com/YasarGny/pulse-otomasyon"
-          rel="noopener noreferrer"
-          target="_blank"
-          >Mutfağa göz at →</a
+        <a class="brand" href="./" aria-label="PULSE ana sayfa"
+          >PULSE<span class="brand-dot">.</span></a
         >
       </footer>
     </div>

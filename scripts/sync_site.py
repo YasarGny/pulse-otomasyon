@@ -48,6 +48,12 @@ def sync(source, target, *, at=None):
         if not (source / "data" / obsolete.name).exists():
             if obsolete.is_file() or obsolete.is_symlink():
                 obsolete.unlink()
+    # These illustrations were superseded by the optimized photographic covers.
+    # Remove only known obsolete paths, after the replacement assets were copied.
+    for name in ("assets/covers/teknoloji.svg", "assets/covers/oyun.svg", "assets/og.svg"):
+        obsolete = target / name
+        if not (source / name).exists() and (obsolete.is_file() or obsolete.is_symlink()):
+            obsolete.unlink()
     # Historical releases and the target's existing Pages workflow are retained.
     # No source code or generated prompts are copied to the publication repository.
 

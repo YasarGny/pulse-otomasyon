@@ -8,8 +8,8 @@ Teknoloji ve oyun dünyasında ilgimizi çeken haberler; her sabah 07.30'da sesl
 - **PULSE Oyun:** PC, konsol, duyurular, güncellemeler ve oyun kültürü.
   Podcast: **Moradon FM**, Yaşar ve Necdet.
 
-Yayın adresi: **https://yasargny.github.io/**. Eski proje ve oynatıcı
-sayfaları yeni adrese yönlendirilir; eski ses dosyaları bağlantı uyumluluğu için tutulur.
+Yayın adresi: **https://yasargny.github.io/**. Kaynak depo private tutulabilir; yayın deposu yalnız herkese açık statik çıktıyı içerir.
+Eski proje Pages adresi kullanım dışıdır; eski oynatıcı ve ses dosyaları kaldırılmıştır.
 
 ## Yapı
 
@@ -41,3 +41,15 @@ ayrı, anahtarlı deneme gerekir. Anahtarsız testler API başarısını kanıtl
 `PULSE_AUTOMATION_ENABLED=false` zamanlamayı durdurur. Manuel çalıştırmalar
 varsayılan olarak denemedir. Notion bağlantıları ve eski üretim iş akışları kaldırılmıştır.
 GitHub App, Secrets, doğrulama ve geri alma adımları: **[İşletim rehberi](docs/OPERATIONS.md)**.
+
+## Ses ve arayüz
+
+Özet, her haberin kısa ve yorumsuz `brief` alanını Edge TTS ile seslendirir; başlığı
+ve `why` analizini okumaz. Podcast Yaşar'ın yönettiği tematik sohbet olarak üretilir,
+ayrı editör ve kaynak denetçisi onaylamadan seslendirilmez. Özel Gemini sesleri
+korunur. Manuel `refresh_audio` aynı tarih ve sayıda yeni, değişmez bir ses sürümü
+üretir; normal tekrarlar eski ses sürümüne dönmez.
+
+Mobil arayüzde kırpılmayan responsive WebP kapaklar ve hız/ses/zaman kontrolü
+olan erişilebilir özel oynatıcılar vardır. Yeni sayfa açılışında matbaa parlamaz;
+önce sunucu durumu doğrulanır. Tasarım ve sınırlar: [DESIGN.md](docs/DESIGN.md).

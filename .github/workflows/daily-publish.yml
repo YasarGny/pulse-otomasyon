@@ -6,6 +6,10 @@ on:
         description: Validate and save artifacts without changing the live site
         type: boolean
         default: true
+      refresh_audio:
+        description: Revise today's summary and podcast without changing news or issue numbers
+        type: boolean
+        default: false
   schedule:
     # Owner-approved launch: scheduled production is enabled unless explicitly paused.
     # UTC: Istanbul is UTC+3 year-round. Extra runs recover delayed/failed starts.
@@ -117,15 +121,26 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/state.py --repo "$GITHUB_REPOSITORY" --date "$PULSE_DATE"
       - name: Research, edit, synthesize and validate both publications
+        id: edition
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
           PULSE_TTS_MODEL: ${{ vars.PULSE_TTS_MODEL || 'gemini-3.8-flash-tts' }}
           PULSE_YASAR_VOICE_ID: voice_glt4mz1jtaeh
           PULSE_NECDET_VOICE_ID: voice_8nqcoox86z5q
-        run: python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --scheduled --previous .published
+          REFRESH_AUDIO: ${{ inputs.refresh_audio == true }}
+        run: |
+          if [ "$REFRESH_AUDIO" = 'true' ]; then
+            python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published --refresh-audio
+            echo "release_path=.pulse-work/$PULSE_DATE/audio-v2" >> "$GITHUB_OUTPUT"
+          else
+            python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --scheduled --previous .published
+            echo "release_path=.pulse-work/$PULSE_DATE" >> "$GITHUB_OUTPUT"
+          fi
       - name: Wait until 07:30 and build one complete release
-        run: python -m pulse.build --release ".pulse-work/$PULSE_DATE" --wait
+        env:
+          RELEASE_PATH: ${{ steps.edition.outputs.release_path }}
+        run: python -m pulse.build --release "$RELEASE_PATH" --wait
       - uses: actions/upload-artifact@v4
         with:
           name: pulse-site-${{ github.run_id }}
