@@ -12,7 +12,7 @@
   function player(target, asset, release, label) {
     const meta = el("div", "audio-meta");
     const minutes = Math.floor(asset.duration / 60),
-      seconds = Math.round(asset.duration % 60)
+      seconds = Math.floor(asset.duration % 60)
         .toString()
         .padStart(2, "0");
     meta.append(
