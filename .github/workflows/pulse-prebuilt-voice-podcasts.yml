@@ -1,0 +1,65 @@
+name: PULSE Ready-Made Voice Duo Tests (Manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auditions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg and requests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install requests
+      - name: Produce four short two-host podcasts with different built-in voice pairs
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pulse_podcast_audio as audio
+
+          pairs = [
+              ("01-puck-charon", "Puck", "Charon"),
+              ("02-enceladus-zephyr", "Enceladus", "Zephyr"),
+              ("03-fenrir-aoede", "Fenrir", "Aoede"),
+              ("04-orus-laomedeia", "Orus", "Laomedeia"),
+          ]
+          turns = [
+              {"speaker":"Yaşar","text":"Necdet, telefonlar artık yapay zekâyla dolu. Peki sence gerçekten daha akıllı oldular mı?"},
+              {"speaker":"Necdet","text":"Bence biraz. Ama en iyi özellik, internet yokken bile işe yarayan özellik. Her küçük işlem için buluta gitmek bana pek mantıklı gelmiyor."},
+              {"speaker":"Yaşar","text":"Ben de öyle düşünüyorum. Bir de pil ömrü var. Akıllı telefon akşamı çıkarmıyorsa işler karışıyor."},
+              {"speaker":"Necdet","text":"Kesinlikle! Telefon çok akıllı olabilir ama bizi gün boyu priz aratıyorsa daha öğreneceği şeyler var."},
+          ]
+          out = Path("voice-duo-tests")
+          out.mkdir(exist_ok=True)
+          manifest = []
+          for name, yasar, necdet in pairs:
+              audio.VOICES["Yaşar"] = yasar
+              audio.VOICES["Necdet"] = necdet
+              print("Testing", name, yasar, necdet, flush=True)
+              dest = out / (name + ".mp3")
+              result = audio.render(turns, dest)
+              if result["duration"] > 60:
+                  raise RuntimeError(name + " exceeds 60 seconds: " + str(result["duration"]))
+              manifest.append({"file":dest.name,"yasar":yasar,"necdet":necdet,
+                               "duration_seconds":result["duration"]})
+              (out/"manifest.json").write_text(
+                  json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
+          print("Four duo podcasts ready; no custom voice creation.")
+          PY
+      - name: Upload completed voice comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-four-voice-duo-podcasts
+          path: voice-duo-tests/
+          if-no-files-found: warn
+          retention-days: 7
