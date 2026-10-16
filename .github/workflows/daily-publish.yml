@@ -6,6 +6,10 @@ on:
         description: Validate and save artifacts without changing the live site
         type: boolean
         default: true
+      refresh_media:
+        description: Fill missing publisher images without changing news or audio
+        type: boolean
+        default: false
       refresh_audio:
         description: Revise today's summary and podcast without changing news or issue numbers
         type: boolean
@@ -84,6 +88,12 @@ jobs:
           PULSE_DATE: ${{ needs.plan.outputs.date }}
         run: python -c "import os; from pulse.pipeline import wait_for; wait_for(os.environ['PULSE_DATE'], '06:00')"
       - uses: ./.github/actions/deploy-site
+        env:
+          PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+          PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+          PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+          PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+          PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
         with:
           mode: prepare
           date: ${{ needs.plan.outputs.date }}
@@ -129,8 +139,17 @@ jobs:
           PULSE_YASAR_VOICE_ID: voice_glt4mz1jtaeh
           PULSE_NECDET_VOICE_ID: voice_8nqcoox86z5q
           REFRESH_AUDIO: ${{ inputs.refresh_audio == true }}
+          REFRESH_MEDIA: ${{ inputs.refresh_media == true }}
         run: |
-          if [ "$REFRESH_AUDIO" = 'true' ]; then
+          if [ "$REFRESH_AUDIO" = 'true' ] && [ "$REFRESH_MEDIA" = 'true' ]; then
+            echo "Choose one revision mode at a time."
+            exit 1
+          fi
+          if [ "$REFRESH_MEDIA" = 'true' ]; then
+            media_path=".pulse-media/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            python -m pulse.media_refresh --published .published --output "$media_path" --checkpoint ".pulse-work/$PULSE_DATE"
+            echo "release_path=$media_path" >> "$GITHUB_OUTPUT"
+          elif [ "$REFRESH_AUDIO" = 'true' ]; then
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published --refresh-audio
             echo "release_path=.pulse-work/$PULSE_DATE/audio-v3" >> "$GITHUB_OUTPUT"
           else
@@ -187,6 +206,12 @@ jobs:
               raise SystemExit('Publication is stale or too early')
           PY
       - uses: ./.github/actions/deploy-site
+        env:
+          PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+          PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+          PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+          PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+          PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
         with:
           mode: release
           date: ${{ needs.plan.outputs.date }}

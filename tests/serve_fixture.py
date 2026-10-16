@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fixtures import DATE, ready_release, tone
 
 from pulse.build import build
+from pulse.archive import package
+import zipfile
 from pulse.publication import not_before
 
 root = Path("test-results")
@@ -18,6 +20,10 @@ audio = tone(root / "test-tone.mp3")
 release = root / "fixture-release"
 ready_release(release, audio)
 build("site", root / "site", release=release, at=not_before(DATE))
+
+package(root / "site", root / "offline.zip", fetch=lambda url: (Path("site/assets/covers/teknoloji-768.webp").read_bytes(), "image/webp"))
+with zipfile.ZipFile(root / "offline.zip") as archive:
+    archive.extractall(root / "offline")
 
 
 class Handler(SimpleHTTPRequestHandler):

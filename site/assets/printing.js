@@ -34,10 +34,25 @@
       overlay.id = "pulse-printing";
       overlay.dataset.mode = mode;
       const card = make("div", "pulse-print-card");
-      const art = make("div", "press-stage");
+      const art = make("div", "press-scene");
       art.setAttribute("aria-hidden", "true");
-      art.innerHTML =
-        '<div class="press-stack"></div><div class="press-page"><div class="press-masthead">PULSE<span>.</span></div><div class="press-rule"></div><div class="press-columns"><div><i></i><i></i><i></i><em></em><i></i><i></i></div><div><em></em><i></i><i></i><i></i><i></i><i></i></div></div><div class="press-scan"></div></div><div class="press-rail"><i></i><i></i></div>';
+      art.innerHTML = `<svg class="press-illustration" viewBox="0 0 400 290" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="press-metal" x2="0" y2="1"><stop stop-color="#344356"/><stop offset="1" stop-color="#172234"/></linearGradient><linearGradient id="press-light"><stop stop-color="#f2a7cc" stop-opacity="0"/><stop offset=".5" stop-color="#f2a7cc"/><stop offset="1" stop-color="#f2a7cc" stop-opacity="0"/></linearGradient></defs>
+        <ellipse cx="200" cy="264" rx="148" ry="12" fill="#000" opacity=".25"/>
+        <rect x="67" y="64" width="266" height="130" rx="20" fill="url(#press-metal)" stroke="#526178"/>
+        <rect x="88" y="84" width="224" height="15" rx="7" fill="#0b111c"/>
+        <circle cx="300" cy="119" r="4" fill="#f2a7cc" class="press-led"/>
+        <path d="M92 147H308" stroke="#080e1a" stroke-width="13" stroke-linecap="round"/>
+        <g class="press-newspaper"><rect x="112" y="133" width="176" height="116" rx="3" fill="#eeeae5"/>
+        <text x="126" y="161" fill="#192232" font-size="22" font-family="Arial,sans-serif" font-weight="900" letter-spacing="-1">PULSE<tspan fill="#a34872">.</tspan></text>
+        <path d="M126 170H274" stroke="#192232"/>
+        <rect x="126" y="180" width="66" height="39" rx="2" fill="#658b94"/>
+        <path d="m128 213 19-22 14 13 10-8 19 18" stroke="#b6d3d4" stroke-width="2"/>
+        <path d="M204 182H273M204 190H273M204 198H273M204 206H255M126 230H274M126 237H252" stroke="#9a9ba0" stroke-width="3"/>
+        </g>
+        <path d="M92 147H308" stroke="url(#press-light)" stroke-width="2"/>
+        <path d="M79 183v11a12 12 0 0 0 12 12h12m218-23v11a12 12 0 0 1-12 12h-12" stroke="#526178" stroke-width="2"/>
+      </svg>`;
       if (mode === "offline") art.hidden = true;
       const status = make("p", "pulse-print-small");
       status.id = "printing-status";

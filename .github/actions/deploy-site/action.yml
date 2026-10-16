@@ -37,9 +37,17 @@ runs:
       env:
         PULSE_DATE: ${{ inputs.date }}
       run: python -m pulse.build --preparing "$PULSE_DATE" --previous .published
+    - name: Back up complete publications to private Drive before any cleanup
+      if: env.PULSE_DRIVE_ENABLED == 'true'
+      shell: bash
+      run: python -m pulse.drive_backup --source dist --published .published --receipts .drive-receipts.json
     - name: Validate and synchronize public files
       shell: bash
       run: python scripts/sync_site.py dist .published
+    - name: Retain current and previous issue dates; prune only verified backups
+      if: env.PULSE_DRIVE_ENABLED == 'true'
+      shell: bash
+      run: python scripts/prune_backed_up.py .published .drive-receipts.json
     - name: Commit public files atomically
       shell: bash
       env:

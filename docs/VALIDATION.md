@@ -125,3 +125,24 @@ plan, gate, generate ve publish işlerinin tamamında başarılı. Aktif sürüm
 Gerçek ertesi sabah döngüsü bu turda yaşanmadı; saat/kilit davranışı otomatik
 kontrollerde sınandı. Yeni seslerin öznel doğallığı için insan dinleme onayı
 iddia edilmez; kaynak/editör kapısı ve gerçek teknik oynatma doğrulanmıştır.
+
+### 16.10.2026 — kompakt oynatıcı, haber ayrıntıları ve Drive hazırlığı
+
+- Yerel doğrulama: 78 Python testi, 14 Node kontrolü, 26 Chromium kontrolü;
+  ayrıca actionlint ve git diff --check başarılı.
+- Tarayıcı turu 320–1440 px, yatay telefon, axe, sekmelerin klavye kullanımı,
+  kaynaklı ayrıntı sayfası, 10 saniye atlama ve altı hızın tam döngüsünü kapsar.
+- Çıkarılmış arşivde ağ kapalıyken ana sayfa, haberler, yerel resimler, ayrıntılar
+  ve MP3 oynatımı geçti. Bu bulut Chromium politikası file:// gezinmesini engelledi;
+  bu nedenle yerel testte dosyalar bellekten bir origin altında sunuldu. Burada
+  doğrudan file:// testinin geçtiği iddia edilmez.
+- Yedek bozulması, eksik resim, Drive geri okuma uyuşmazlığı ve eksik makbuzun
+  temizliği engellemesi sınandı. Aynı gün hazırlık yeniden çalıştırıldığında
+  ayrıntı rotaları ve mevcut sayı korunur.
+- Gerçek yayın verisiyle yerel önizleme: teknoloji 3, oyun 6 haber. Kaynaklardan
+  teknoloji için 2/3, oyun için 6/6 görsel bilgisi bulundu. Bir The Verge sayfası
+  bu ortamdan HTTP 403 döndürdü; görsel uydurulmadı. DNS ve bazı dış resim istekleri
+  de bu bulut ağında kısıtlı; gerçek Pages/CDN yayını ayrıca kontrol edilmelidir.
+- Bu revizyon canlıya gönderilmedi. Yeni tasarım ve yeni silme davranışı sahibin
+  son onayını bekler. Google hesabına gerçek Drive yüklemesi ve zamanlanmış yedek
+  OAuth kurulmadan doğrulanmış sayılmaz. Git geçmişi yeniden yazılmadı.

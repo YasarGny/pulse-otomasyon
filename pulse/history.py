@@ -1,6 +1,7 @@
 """Published JSON is the durable record even when Actions checkpoints expire."""
 
 import shutil
+import hashlib
 from pathlib import Path
 
 from pulse.publication import SECTIONS, digest, read_json, verify_manifest
@@ -9,6 +10,8 @@ from pulse.publication import SECTIONS, digest, read_json, verify_manifest
 def exclude_published(research, previous, date):
     if previous is None:
         return research
+    ledger_path = Path(previous) / "data/source-history.json"
+    ledger = read_json(ledger_path) if ledger_path.exists() else {s: [] for s in SECTIONS}
     seen = {section: set() for section in SECTIONS}
     for manifest_path in (Path(previous) / "releases").glob("*/release.json"):
         manifest = read_json(manifest_path)
@@ -33,7 +36,7 @@ def exclude_published(research, previous, date):
         clean["sections"][section] = [
             s
             for s in research["sections"][section]
-            if s["source_url"] not in seen[section]
+            if s["source_url"] not in seen[section] and hashlib.sha256(s["source_url"].encode()).hexdigest() not in ledger[section]
         ]
         if len(clean["sections"][section]) < 3:
             raise ValueError(

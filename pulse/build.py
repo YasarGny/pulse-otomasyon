@@ -47,6 +47,9 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
             shutil.copytree(origin, output / name)
         else:
             shutil.copyfile(origin, output / name)
+    # Generated routes belong to this release, never a template's previous day.
+    for section in SECTIONS:
+        shutil.rmtree(output / section / "haber", ignore_errors=True)
     if release:
         release = Path(release)
         manifest = verify_manifest(release, read_json(release / "release.json"))
@@ -90,6 +93,9 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
                 verify_manifest(folder, current)
                 manifest = current
                 shutil.copytree(folder, output / "releases" / current["release_id"])
+    if manifest.get("status") == "ready":
+        from pulse.details import build_details
+        build_details(output, output / "releases" / manifest["release_id"])
     write_json(output / "data/publication.json", manifest)
     assert_public_tree(output)
     return manifest
@@ -131,6 +137,8 @@ def assert_public_tree(root):
                 "GEMINI_API_KEY",
                 "NOTION_TOKEN",
                 "PULSE_DEPLOY_APP_PRIVATE_KEY",
+                "PULSE_DRIVE_CLIENT_SECRET",
+                "PULSE_DRIVE_REFRESH_TOKEN",
                 "GH_TOKEN",
                 "GITHUB_TOKEN",
             ):
