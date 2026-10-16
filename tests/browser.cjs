@@ -105,12 +105,34 @@ async function run(name, fn) {
         await page.unroute("**/data/publication.json*");
       },
     );
+    await run("twenty news items stay compact, filter and reveal on mobile", async () => {
+      await page.setViewportSize({width: 390, height: 844});
+      await open("/expanded/teknoloji/");
+      assert.equal(await page.locator(".story").count(), 20);
+      assert.equal(await page.locator(".story:visible").count(), 8);
+      await page.locator(".news-more").click();
+      assert.equal(await page.locator(".story:visible").count(), 16);
+      await page.locator(".news-more").click();
+      assert.equal(await page.locator(".story:visible").count(), 20);
+      assert(await page.locator(".news-more").isHidden());
+      await page.locator(".news-filter").selectOption("BİLİM");
+      assert.equal(await page.locator(".story:visible").count(), 8);
+      await page.locator(".news-more").click();
+      assert.equal(await page.locator(".story:visible").count(), 10);
+      for (const story of await page.locator(".story:visible").all()) assert.equal(await story.getAttribute("data-category"), "BİLİM");
+      await noOverflow();
+      const results = await new AxeBuilder({page}).analyze();
+      assert.deepEqual(results.violations.map(v => v.id), []);
+      await page.screenshot({path: "test-results/expanded-news-mobile.png", fullPage: true});
+      await page.setViewportSize({width:1440,height:1000});
+    });
     await run("keyboard skip link reaches main content", async () => {
       await page.goto(base);
       await page.waitForFunction(() => window.PULSE_RELEASE);
       await page.keyboard.press("Tab");
       assert.equal(await page.locator(":focus").innerText(), "İçeriğe geç");
       await page.keyboard.press("Enter");
+      await page.waitForURL("**/#main");
       assert.equal(new URL(page.url()).hash, "#main");
     });
     await run(

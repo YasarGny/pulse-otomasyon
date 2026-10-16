@@ -93,7 +93,7 @@ def _payload(system, content, temperature=.45):
     return {
         "system_instruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": content}]}],
-        "generationConfig": {"responseMimeType": "application/json", "temperature": temperature, "maxOutputTokens": 8192},
+        "generationConfig": {"responseMimeType": "application/json", "temperature": temperature, "maxOutputTokens": 32768},
     }
 
 
@@ -108,7 +108,7 @@ def dialogue_digest(turns):
     return hashlib.sha256(json.dumps(turns, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
-def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=None, audit_path=None):
+def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=None, audit_path=None, long_form=False):
     if section not in ("teknoloji", "oyun"):
         raise ValueError("Unknown podcast section")
     source = [{"id": i + 1, "headline": title, "verified_summary": summary} for i, (title, summary) in enumerate(stories)]
@@ -118,6 +118,12 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
         system = system.replace("Yeni Sekme", "Moradon FM").replace("teknoloji podcast", "oyun podcast")
         system += "\nYalnız oyun gündemi. Knight Online'a hafif bir gönderme olabilir; bütün sohbeti ona bağlama."
         editor = editor.replace("Yeni Sekme", "Moradon FM")
+    if long_form:
+        from pulse.profile import WORDS
+        low, high = WORDS[section]
+        length = f"\nBu tam uzunlukta bir bölüm: {low}–{high} Türkçe kelime hedefle. Günün 5–7 ana sorusunu derinlemesine konuş; her soruda birkaç karşılıklı takip sorusu ve gerekçeli yorum geliştir. Kaynakların dışına çıkma, tekrar yapma, süreyi boş sözlerle doldurma."
+        system = system.replace('iki-üç', 'beş-yedi') + length
+        editor = editor.replace('iki-üç', 'beş-yedi').replace('kelime\nsayısını korumak veya süre doldurmak zorunda değilsin.', 'konuşmanın derinliğini ve hedef kelime aralığını koru; tekrarları yeni olgu uydurmadan gider.') + length
     if issue is not None:
         system += f"\nYayın sayısı: {issue:03d}. Tarihle birlikte doğal biçimde bir kez belirt."
     notes = "Yayın tarihi: " + today + "\nDoğrulanmış haber notları: " + json.dumps(source, ensure_ascii=False)
@@ -130,7 +136,13 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
     review = None
     for attempt in range(2):
         review = _request(_payload(REVIEWER, notes + "\nDenetlenecek diyalog: " + json.dumps({"turns": turns}, ensure_ascii=False), .05))
-        if _approved(review):
+        length_ok = True
+        if long_form:
+            count = sum(len(t['text'].split()) for t in turns)
+            length_ok = low <= count <= high
+            if not length_ok:
+                review = {**review, 'approved': False, 'concerns': [*review.get('concerns', []), f'Bölüm {count} kelime; gerekli aralık {low}–{high}. Kaynaklara dayanarak derinleştir, tekrar yapma.']}
+        if _approved(review) and length_ok:
             if audit_path:
                 Path(audit_path).write_text(json.dumps({"section": section, "date": today, "turns_sha256": dialogue_digest(turns), "review": review}, ensure_ascii=False, indent=2), encoding="utf-8")
             return "\n".join(t["speaker"] + ": " + re.sub(r"\s+", " ", t["text"]).strip() for t in turns), turns

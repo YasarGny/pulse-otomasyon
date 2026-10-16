@@ -80,3 +80,18 @@ test("arbitrary ready flags fail attestation", () =>
     ),
     false,
   ));
+
+test("expanded issues accept broad selections and require a real long podcast", () => {
+  for (const [section, count, duration] of [["teknoloji", 20, 900], ["oyun", 18, 720]]) {
+    const d = {
+      section, publish_date: m.publish_date, ready: true, issue: 1,
+      publication_profile: "expanded-v1",
+      stories: Array.from({length: count}, (_,i) => ({id: String(i), title:"Başlık", summary:"Özet", why:"Önemi", category:"Gündem", source_name:"Kaynak", source_url:"https://example.com/"+i})),
+      summary: {file: section+"/summary.mp3", duration:30, bytes:25000,sha256:"a".repeat(64),episode:1},
+      podcast: {file: section+"/podcast.mp3",duration,bytes:25000,sha256:"b".repeat(64),episode:1}
+    };
+    assert(r.editionValid(d,section,m));
+    assert(!r.editionValid({...d,podcast:{...d.podcast,duration:120}},section,m));
+    assert(!r.editionValid({...d,stories:d.stories.slice(0,3)},section,m));
+  }
+});

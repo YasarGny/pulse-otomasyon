@@ -28,7 +28,7 @@ from pulse.publication import (
     write_json,
 )
 
-AUDIO_REVISION = 3
+AUDIO_REVISION = 4
 
 
 def configure_transport():
@@ -74,6 +74,8 @@ def generate_audio(root, data):
     import pulse_podcast_audio
     import pulse_podcast_writer
 
+    from pulse.profile import expanded, podcast_minimum, PODCAST_SECONDS
+    minimum_podcast = podcast_minimum(data)
     section = data["section"]
     folder = root / section
     folder.mkdir(exist_ok=True)
@@ -138,6 +140,7 @@ def generate_audio(root, data):
             issue=data["issue"],
             evidence=evidence,
             audit_path=review_path,
+            **({"long_form": True} if expanded(data) else {}),
         )
         write_json(turns_path, {"turns": turns})
     review = read_json(review_path)
@@ -149,20 +152,23 @@ def generate_audio(root, data):
     if turns[0]["speaker"] != "Yaşar":
         raise ValueError("The main host must open the episode")
     podcast = folder / "podcast.mp3"
-    if not valid_audio(podcast, 40):
+    if not valid_audio(podcast, minimum_podcast):
         temp = folder / "podcast.partial.mp3"
         pulse_podcast_audio.render(
-            turns, temp, strict_audio=True
+            turns, temp, strict_audio=True,
+            **({"checkpoint_dir": folder / "tts-parts"} if expanded(data) else {})
         )  # Existing Gemini Interactions API and custom voices.
-        audio_info(temp, 40)
+        audio_info(temp, minimum_podcast)
         temp.replace(podcast)
     data["podcast"] = {
         "file": f"{section}/podcast.mp3",
         "title": "Yeni Sekme" if section == "teknoloji" else "Moradon FM",
         "hosts": ["Yaşar", "Necdet"],
         "episode": data["issue"],
-        **audio_info(podcast, 40),
+        **audio_info(podcast, minimum_podcast),
     }
+    if expanded(data) and data["podcast"]["duration"] > PODCAST_SECONDS[section][1]:
+        raise ValueError("Podcast exceeds expanded duration budget")
     data["ready"] = True
     data["audio_revision"] = AUDIO_REVISION
     return data
@@ -223,11 +229,12 @@ def refresh_audio_release(work, date, game_start, previous):
     return finish(seal_release(root, date, game_start))
 
 
-def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=False):
+def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=False, expanded_issue=False):
     if refresh_audio:
         return refresh_audio_release(work, date, game_start, previous)
     work = Path(work)
-    root = work / date
+    regular = work / date
+    root = regular / "expanded-v1" if expanded_issue else regular
     root.mkdir(parents=True, exist_ok=True)
     settings = root / "settings.json"
     expected = {"publish_date": date, "game_start": game_start}
@@ -236,7 +243,7 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
     write_json(settings, expected)
     if (root / "release.json").exists():
         return verify_manifest(root, read_json(root / "release.json"))
-    if restore_published(root, previous, date, game_start):
+    if not expanded_issue and restore_published(root, previous, date, game_start):
         return verify_manifest(root, read_json(root / "release.json"))
     if scheduled:
         wait_for(date, "06:15")
@@ -268,7 +275,17 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
         write_json(path, generate_audio(root, data))
     if scheduled:
         wait_for(date, "07:15")
-    return seal_release(root, date, game_start)
+    manifest = seal_release(root, date, game_start)
+    if expanded_issue:
+        for name in ('release.json', 'teknoloji.json', 'oyun.json', 'research.json'):
+            if (root / name).exists():
+                shutil.copyfile(root / name, regular / name)
+        for section in SECTIONS:
+            (regular / section).mkdir(exist_ok=True)
+            for name in ('summary.mp3', 'podcast.mp3', 'input.json', 'turns.json', 'podcast-review.json', 'summary.txt'):
+                if (root / section / name).exists():
+                    shutil.copyfile(root / section / name, regular / section / name)
+    return manifest
 
 
 def main():
@@ -280,13 +297,14 @@ def main():
         "--game-start", required=True, help="Immutable date of first game issue"
     )
     parser.add_argument("--scheduled", action="store_true")
+    parser.add_argument("--expanded", action="store_true", help="Produce a full current-day revision without restoring the short legacy issue")
     parser.add_argument("--refresh-audio", action="store_true", help="Revise only today's audio, preserving news and issue numbers")
     parser.add_argument(
         "--previous",
         help="Published site checkout for deduplication and durable recovery",
     )
     args = parser.parse_args()
-    result = run(args.work, args.date, args.game_start, args.scheduled, args.previous, args.refresh_audio)
+    result = run(args.work, args.date, args.game_start, args.scheduled, args.previous, args.refresh_audio, args.expanded)
     print("Both editions validated:", result["release_id"])
 
 

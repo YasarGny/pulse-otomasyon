@@ -56,3 +56,18 @@ Open Graph görseli aranır. Erişilemeyen görsel uydurulmaz. Mevcut sesleri ye
 
 Özel Drive arşivi ve hesap kurulumu: [DRIVE.md](DRIVE.md). Canlı Google yüklemesi
 hesap sahibinin OAuth izni olmadan yapılamaz; özellik varsayılan olarak kapalıdır.
+
+
+## Geniş günlük seçki
+
+Teknoloji 15–20, oyun 12–18 haber hedefler. Yeni `expanded-v1` yayınları en az
+10 teknoloji / 8 oyun haberini ve ayrı olay kimliklerini doğrular; yetersiz
+kaynakla sayı doldurulmaz. İlk beş haber büyük kart, kalanı kompakt karttır.
+Sekizer haber gösterilir, kategori filtresi ve Daha fazla göster düğmesi vardır.
+
+Yeni Sekme 15–20, Moradon FM 12–18 dakika hedefler. Senaryo 5–7 konu etrafında
+kurulur; yazım, editörlük ve bağımsız kaynak denetimi sürer. Yeni format için
+minimum gerçek ses süreleri 900 / 720 saniyedir. Gemini ses yöntemi ve iki özel
+ses kimliği değişmez; tamamlanan WAV parçaları senaryo/model/ses kimliğine
+bağlı SHA-256 anahtarıyla yeniden kullanılır. Eski mühürlü kısa yayınlar kendi
+sözleşmeleriyle doğrulanabilir.

@@ -210,8 +210,48 @@
       `${formatted} · Sayı ${String(data.issue).padStart(3, "0")}`;
     $("story-count").textContent = `${data.stories.length} haber`;
     $("stories").replaceChildren();
+    document.querySelector(".news-tools")?.remove();
+    document.querySelector(".news-more")?.remove();
+    const tools = el("div", "news-tools");
+    const filter = el("select", "news-filter");
+    filter.setAttribute("aria-label", "Haber kategorisi");
+    const all = el("option", "", "Tüm kategoriler");
+    all.value = "";
+    filter.append(all);
+    for (const category of [...new Set(data.stories.map((s) => s.category))]) {
+      const option = el("option", "", category);
+      option.value = category;
+      filter.append(option);
+    }
+    const more = el("button", "news-more", "Daha fazla göster");
+    more.type = "button";
+    let visibleCount = 8;
+    const updateNews = () => {
+      let seen = 0;
+      for (const article of $("stories").children) {
+        const matches =
+          !filter.value || article.dataset.category === filter.value;
+        article.hidden = !matches || seen++ >= visibleCount;
+      }
+      more.hidden = seen <= visibleCount;
+      const shown = Math.min(seen, visibleCount);
+      $("story-count").textContent = `${shown} / ${seen} haber`;
+    };
+    filter.onchange = () => {
+      visibleCount = 8;
+      updateNews();
+    };
+    more.onclick = () => {
+      visibleCount += 8;
+      updateNews();
+    };
+    tools.append(filter);
+    $("stories").before(tools);
+    $("stories").after(more);
     data.stories.forEach((s, index) => {
       const article = el("article", "story");
+      article.dataset.category = s.category;
+      if (index >= 5) article.classList.add("story-compact");
       const category = el("div", "category");
       category.append(
         el("span", "story-index", String(index + 1).padStart(2, "0")),
@@ -263,6 +303,7 @@
       );
       $("stories").append(article);
     });
+    updateNews();
     $("stories").setAttribute("aria-busy", "false");
     $("notice").hidden = true;
     player($("summary"), data.summary, release, "Günün sesli özeti");
