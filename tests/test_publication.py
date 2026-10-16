@@ -113,7 +113,7 @@ class ContentTests(unittest.TestCase):
         d = edition("teknoloji")
         script = summary_script(d)
         self.assertTrue(
-            all(s["title"] in script and s["why"] in script for s in d["stories"])
+            all(s["summary"].split(". ")[0] in script and s["why"] not in script for s in d["stories"])
         )
 
     def test_model_cannot_invent_source(self):
@@ -254,6 +254,40 @@ class ReleaseTests(unittest.TestCase):
             two = run(work, DATE, DATE)
         self.assertEqual(one, two)
 
+    def test_audio_revision_preserves_news_numbering_and_cannot_be_rolled_back_by_rerun(self):
+        published = self.root / "published-for-refresh"
+        build(ROOT / "site", published, release=self.release, at=not_before(DATE))
+        original = read_json(published / "data/publication.json")
+        work = self.root / "revision-work"
+
+        def generate(root, data):
+            source = read_json(self.release / (data["section"] + ".json"))
+            for kind in ("summary", "podcast"):
+                dest = root / source[kind]["file"]
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(self.release / source[kind]["file"], dest)
+                data[kind] = source[kind]
+            data["audio_revision"] = 2
+            data["ready"] = True
+            return data
+
+        with (
+            patch("pulse.pipeline.now", return_value=not_before(DATE)),
+            patch("pulse.pipeline.generate_audio", side_effect=generate) as synth,
+        ):
+            revised = run(work, DATE, DATE, previous=published, refresh_audio=True)
+            again = run(work, DATE, DATE, previous=published, refresh_audio=True)
+            normal = run(work, DATE, DATE, previous=published)
+        self.assertEqual(synth.call_count, 2)
+        self.assertEqual(revised, again)
+        self.assertEqual(normal["release_id"], revised["release_id"])
+        self.assertNotEqual(original["release_id"], revised["release_id"])
+        self.assertEqual(read_json(published / "data/publication.json"), original)
+        for section in ("teknoloji", "oyun"):
+            result = read_json(work / DATE / (section + ".json"))
+            self.assertEqual(result["issue"], 1)
+            self.assertEqual(result["stories"], read_json(self.release / (section + ".json"))["stories"])
+
     def test_generation_resume_and_preserve_existing_voice_method(self):
         root = self.root / "audio"
         root.mkdir()
@@ -273,9 +307,13 @@ class ReleaseTests(unittest.TestCase):
         def render(dialogue, target, *, strict_audio=False):
             shutil.copyfile(self.audio, target)
 
+        def reviewed_writer(*args, **kwargs):
+            write_json(kwargs["audit_path"], {"turns_sha256": __import__("pulse_podcast_writer").dialogue_digest(turns), "review": {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}})
+            return "", turns
+
         with (
             patch("edge_tts.Communicate") as edge,
-            patch("pulse_podcast_writer.generate", return_value=("", turns)) as writer,
+            patch("pulse_podcast_writer.generate", side_effect=reviewed_writer) as writer,
             patch("pulse_podcast_audio.render", side_effect=render) as tts,
         ):
             edge.return_value.save = save
@@ -505,7 +543,7 @@ class ReleaseTests(unittest.TestCase):
             for i in range(12)
         ]
         with patch(
-            "pulse_podcast_writer._request", return_value={"turns": turns}
+            "pulse_podcast_writer._request", side_effect=[{"turns": turns}, {"turns": turns}, {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}]
         ) as request:
             writer.generate([("Fixture headline", "Fixture source facts")])
         self.assertEqual(
@@ -524,7 +562,7 @@ class ReleaseTests(unittest.TestCase):
             for i in range(12)
         ]
         with patch(
-            "pulse_podcast_writer._request", return_value={"turns": turns}
+            "pulse_podcast_writer._request", side_effect=[{"turns": turns}, {"turns": turns}, {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}]
         ) as request:
             writer.generate(
                 [("Oyun haberi", "Kaynak notları")],

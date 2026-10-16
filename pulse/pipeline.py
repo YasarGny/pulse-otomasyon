@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -25,6 +26,8 @@ from pulse.publication import (
     verify_manifest,
     write_json,
 )
+
+AUDIO_REVISION = 2
 
 
 def configure_transport():
@@ -80,6 +83,7 @@ def generate_audio(root, data):
                 "date": data["publish_date"],
                 "issue": data["issue"],
                 "stories": data["stories"],
+                "audio_revision": AUDIO_REVISION,
             },
             sort_keys=True,
             ensure_ascii=False,
@@ -111,15 +115,36 @@ def generate_audio(root, data):
         **audio_info(summary, 20),
     }
     turns_path = folder / "turns.json"
-    if not turns_path.exists():
+    review_path = folder / "podcast-review.json"
+    if not turns_path.exists() or not review_path.exists():
+        evidence = []
+        research_path = root / "research.json"
+        if not research_path.exists():
+            research_path = root.parent / "research.json"
+        raw = {}
+        if research_path.exists():
+            raw = {s["id"]: s for s in read_json(research_path)["sections"][section]}
+        for story in data["stories"]:
+            evidence.append({
+                "source_url": story["source_url"],
+                "headline": story["title"],
+                "excerpt": raw.get(story["id"], {}).get("source_excerpt", story["summary"]),
+            })
         _, turns = pulse_podcast_writer.generate(
-            [(s["title"], s["summary"] + " " + s["why"]) for s in data["stories"]],
+            [(s["title"], s["summary"]) for s in data["stories"]],
             section=section,
             date=data["date"],
             issue=data["issue"],
+            evidence=evidence,
+            audit_path=review_path,
         )
         write_json(turns_path, {"turns": turns})
+    review = read_json(review_path)
+    if not pulse_podcast_writer._approved(review.get("review", {})):
+        raise ValueError("Podcast requires an approved evidence/conversation review")
     turns = pulse_podcast_writer._validate(read_json(turns_path))
+    if review.get("turns_sha256") != pulse_podcast_writer.dialogue_digest(turns):
+        raise ValueError("Podcast dialogue differs from its approved review")
     if turns[0]["speaker"] != "Yaşar":
         raise ValueError("The main host must open the episode")
     podcast = folder / "podcast.mp3"
@@ -138,6 +163,7 @@ def generate_audio(root, data):
         **audio_info(podcast, 40),
     }
     data["ready"] = True
+    data["audio_revision"] = AUDIO_REVISION
     return data
 
 
@@ -151,7 +177,51 @@ def valid_audio(path, minimum):
         return False
 
 
-def run(work, date, game_start, scheduled=False, previous=None):
+def refresh_audio_release(work, date, game_start, previous):
+    """Revise today's audio as a new immutable release, keeping date/news/issue."""
+    if previous is None or now().date().isoformat() != date:
+        raise ValueError("Audio refresh requires today's published issue")
+    previous = Path(previous)
+    manifest = read_json(previous / "data/publication.json")
+    if manifest.get("status") != "ready" or manifest.get("publish_date") != date or manifest.get("game_start") != game_start:
+        raise ValueError("Only a complete current-day publication can be revised")
+    source = previous / "releases" / manifest["release_id"]
+    verify_manifest(source, manifest)
+    root = Path(work) / date / ("audio-v" + str(AUDIO_REVISION))
+    root.mkdir(parents=True, exist_ok=True)
+    def finish(result):
+        # A later ordinary rerun must not roll back to a pre-revision checkpoint.
+        names = ["release.json"]
+        for section in SECTIONS:
+            names.append(section + ".json")
+            names.extend(section + "/" + name for name in (
+                "summary.mp3", "podcast.mp3", "input.json", "turns.json", "podcast-review.json", "summary.txt"
+            ))
+        for name in names:
+            origin, destination = root / name, root.parent / name
+            if origin.exists():
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(origin, destination)
+        return result
+    if (root / "release.json").exists():
+        return finish(verify_manifest(root, read_json(root / "release.json")))
+    editions = {section: read_json(source / (section + ".json")) for section in SECTIONS}
+    if all(data.get("audio_revision") == AUDIO_REVISION for data in editions.values()):
+        restore_published(root, previous, date, game_start)
+        return finish(verify_manifest(root, read_json(root / "release.json")))
+    for section, data in editions.items():
+        path = root / (section + ".json")
+        if not path.exists():
+            data = {k: v for k, v in data.items() if k not in ("summary", "podcast")}
+            data["ready"] = False
+            write_json(path, data)
+        write_json(path, generate_audio(root, read_json(path)))
+    return finish(seal_release(root, date, game_start))
+
+
+def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=False):
+    if refresh_audio:
+        return refresh_audio_release(work, date, game_start, previous)
     work = Path(work)
     root = work / date
     root.mkdir(parents=True, exist_ok=True)
@@ -206,12 +276,13 @@ def main():
         "--game-start", required=True, help="Immutable date of first game issue"
     )
     parser.add_argument("--scheduled", action="store_true")
+    parser.add_argument("--refresh-audio", action="store_true", help="Revise only today's audio, preserving news and issue numbers")
     parser.add_argument(
         "--previous",
         help="Published site checkout for deduplication and durable recovery",
     )
     args = parser.parse_args()
-    result = run(args.work, args.date, args.game_start, args.scheduled, args.previous)
+    result = run(args.work, args.date, args.game_start, args.scheduled, args.previous, args.refresh_audio)
     print("Both editions validated:", result["release_id"])
 
 

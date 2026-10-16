@@ -108,15 +108,26 @@ kaynaklarıyla karşılaştırın. Gerçek RSS görselleri varsa gösterilir; y�
 haber metni ve kaynak bağlantısı kalır. Lisans/kullanım hakkı ve görsel erişimi
 kaynak yayıncıya bağlıdır; görsel uydurulmaz, zorunlu tutulmaz.
 
-Özet, **bütün** haberlerin başlık, özet ve önem açıklamasından deterministik
-hazırlanır; Gemini'nin bir haberi atlamasına bağlı değildir. Edge TTS sesi
-`tr-TR-EmelNeural` korunur. Bulut proxy ortamında CLI, `truststore` ile
-sistem/platform CA köklerini kullanır ve WSS için mevcut HTTPS proxy ayarını
-açıkça iletir. TLS doğrulaması kapatılmaz; GitHub runner üzerinde proxy yoksa
-doğrudan varsayılan yol kullanılır. Podcast ayrı sohbet üretimidir; mevcut iki geçişli
-senaryo editörü ve Gemini Interactions sentezi kullanılır. Yaşar ana sunucudur;
-Necdet ikinci sunucudur. `voice_glt4mz1jtaeh` ve `voice_8nqcoox86z5q` korunur.
-Moradon FM'e özel oyun üslubu eklenir; aynı ses üretim altyapısı kullanılır.
+Özet her haberin kısa, yorumsuz `brief` alanını okur; başlık, tam haber ve `why`
+alanını okumaz. Eski JSON'da `brief` yoksa ilk olgusal özet cümlesi kullanılır.
+Edge TTS `tr-TR-EmelNeural`, mevcut telaffuz kuralları ve doğrulanmış sentez yöntemi
+korunur. TLS doğrulaması açık kalır.
+
+Podcast bir haber listesini sırayla okumaz: Yaşar ana sunucu olarak iki-üç anlamlı
+soru etrafında Necdet'le sohbeti yürütür. Zorunlu düzenleme ve bağımsız kaynak/üslup
+denetimi vardır; olumsuz inceleme bir kez düzeltilip yeniden denetlenir, hâlâ
+onaysızsa yayın engellenir. Otomatik model denetimi hatasızlık garantisi değildir;
+kaynak dışı kesin iddia ve yanıltıcı yorumları azaltan bir yayın kapısıdır. Ham RSS
+alıntıları mevcutsa denetçiye verilir; eski yayını yenilerken doğrulanmış haber
+notları kullanılır. İnceleme kaydı ve son diyalog SHA-256 ile bağlanır; bu özel
+ara kayıtlar web sitesine kopyalanmaz. Gemini Interactions sentezi ve özel sesler
+`voice_glt4mz1jtaeh` / `voice_8nqcoox86z5q` değiştirilmez.
+
+Manuel günlük workflow'da `refresh_audio=true` yalnız bugünün tamamlanmış
+yayınının seslerini yeniler. `dry_run=true` önce deneme yapar. Tarih, sayılar ve
+haberler korunur; yeni sesler yeni bir immutable release oluşturur. Dört sesin
+tamamı hazır olmadan aktif manifest değişmez. Revize kayıt normal çalışma alanına
+da aktarılır; sonraki normal tekrar eski sese dönemez.
 
 Model varsayılanları mevcut üretimden alınmıştır: `gemini-3.8-flash` ve
 `gemini-3.8-flash-tts`. Bunların bu hesabın API erişiminde çalıştığı, anahtar
@@ -249,15 +260,25 @@ Bu bölüm **kullanıcı son onayı olmadan uygulanmaz**.
 workflow hiçbir canlı dosyayı değiştirmez.
 Günlük üretim yine ücretli API kullanabilir: yalnız denemeye hazırken manuel başlatın.
 
-### 6. Onaylı eski sistem temizliği
+### 6. Eski sistem ve depo görünürlüğü
 
-Yeni canlı yayın doğrulandıktan sonra eski Notion workflow ve betikleri kaldırılır.
-Eski kök sayfa yeni köke; `/web-player/` ve `/web-player/podcast/` teknoloji
-sayfasına canonical, görünür bağlantı ve meta refresh ile yönlendirilir.
-GitHub Pages bu yöntemle HTTP 301 döndürmez. Eski MP3 dosyaları doğrudan
-bağlantıların bozulmaması için tutulur; Notion'a erişilmez ve yeni anahtar gerekmez.
-Ana geliştirme/otomasyon deposu silinmez. Ertesi günün gerçek 06.00/07.30 döngüsü
-ayrıca izlenmelidir; ilk canlı dağıtım bu gelecek döngünün kanıtı değildir.
+Notion üreticileri, eski workflow dosyaları, kök yönlendirme, `web-player/` ve
+eski MP3/JSON dosyaları kaldırıldı. Aktif site yalnız `site/` çıktısına ve
+`releases/` arşivine bağlıdır. Eski Notion workflow'larına ait iki Actions kaydı
+da temizlendi; günlük yayın/checkpoint ve kalite kayıtları silinmez.
+
+Kaynak depo inceleme sırasında zaten private idi; hedef yayın deposu public idi.
+Eski `/pulse-otomasyon/` URL'si HTTP 404 döndü. Kaynak Pages yönetim API'si
+403, yönetilen `pages-build-deployment` workflow kapatma API'si 422 döndü. Bu
+workflow GitHub tarafından yönetilir; bir YAML dosyası değildir. Kaynak depo
+Settings → Pages ekranında hâlâ bir site görünüyorsa `Unpublish site` / `Delete
+site` ile hesap sahibi kapatabilir. Bu işlem hedef deponun Pages yayınına yapılmaz.
+
+GitHub Free private depodan Pages yayını desteklemez; uygun ücretli plan gerekir.
+Plan bilgisi mevcut bağlantıdan okunamadı. Çalışan hedef deponun görünürlüğü bu
+nedenle değiştirilmedi. Kaynak private kalabilir; Actions kotası ve artifact
+erişimi hesap planına tabidir. Private kaynak ile public hedef arasında yalnız
+public dosya allowlist'i aktarılır.
 
 ## Geri alma
 
@@ -275,7 +296,7 @@ kalması beklenen güvenli davranıştır; eski haberi bugünkü diye etiketleme
 | `pulse_podcast_audio.py` | Yeni ve eski sistemin ortak ses motoru; başarılı API/yöntem ve kimlikler korundu; hata loglarında yanıt gövdesi çıkarıldı; eski üreticinin varsayılan yanıt uyumluluğu korundu. Yeni hat `strict_audio=True` ile ses dışı API verisini reddeder; iki yol ayrı testlerle doğrulandı. |
 | `pulse_podcast_writer.py` | Eski çağrı biçimi korundu; bölüm/tarih/sayı için isteğe bağlı argümanlar eklendi. |
 | `site/data/teknoloji.json`, `site/data/oyun.json` | Doğrulanmamış pilot; kaldırıldı. |
-| `web-player/` | HTML sayfaları yeni adrese yönlendirilir; eski ses URL'leri korunur. |
+| `web-player/` | Kullanım dışı eski oynatıcı, ses ve metadatalar kaldırıldı. |
 | `site/` | Tek yeni web kaynağı; yayın deposuna elle çatallanmaz. |
 
 ## Bulut ortamının ağ erişimi

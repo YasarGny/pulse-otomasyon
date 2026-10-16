@@ -47,9 +47,9 @@ async function run(name, fn) {
       locale: "tr-TR",
       reducedMotion: "reduce",
     });
-    const image = await fs.readFile("site/assets/covers/teknoloji.svg");
+    const image = await fs.readFile("site/assets/covers/teknoloji-768.webp");
     await context.route("https://images.example.test/**", (route) =>
-      route.fulfill({ status: 200, contentType: "image/svg+xml", body: image }),
+      route.fulfill({ status: 200, contentType: "image/webp", body: image }),
     );
     const page = await context.newPage();
     const errors = [];
@@ -92,10 +92,44 @@ async function run(name, fn) {
       await page.keyboard.press("Enter");
       assert.equal(new URL(page.url()).hash, "#main");
     });
+    await run(
+      "ready navigation never flashes the print room, even on a slow manifest",
+      async () => {
+        await page.addInitScript(() => {
+          window.__printMounts = 0;
+          new MutationObserver((records) => {
+            for (const r of records)
+              for (const n of r.addedNodes)
+                if (
+                  n.nodeType === 1 &&
+                  (n.id === "pulse-printing" ||
+                    n.querySelector?.("#pulse-printing"))
+                )
+                  window.__printMounts++;
+          }).observe(document, { childList: true, subtree: true });
+        });
+        await page.route("**/data/publication.json*", async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          await route.continue();
+        });
+        await open("/");
+        assert.equal(await page.evaluate(() => window.__printMounts), 0);
+        assert.equal(await page.locator("#publication-loading").count(), 0);
+        await page.unroute("**/data/publication.json*");
+      },
+    );
     await run("mobile home layout", async () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await open("/");
       await noOverflow();
+      for (const cover of await page.locator(".cover img").all()) {
+        const box = await cover.boundingBox();
+        assert(
+          box.height < box.width,
+          "Editorial covers must stay landscape on mobile",
+        );
+      }
+      assert.equal(await page.locator('a[href*="github.com"]').count(), 0);
       await page.screenshot({
         path: "test-results/home-mobile.png",
         fullPage: true,
@@ -154,9 +188,7 @@ async function run(name, fn) {
       );
     });
     await run("real MP3 playback and metadata", async () => {
-      await page.locator("#summary audio").evaluate(async (a) => {
-        await a.play();
-      });
+      await page.locator("#summary .player-play").click();
       await page.waitForFunction(
         () => document.querySelector("#summary audio").currentTime > 0.1,
       );
@@ -166,12 +198,95 @@ async function run(name, fn) {
       );
       await page.locator("#summary audio").evaluate((a) => a.pause());
     });
+    await run(
+      "custom controls change speed, seek, volume and mute",
+      async () => {
+        await page.locator("#summary .player-speed").selectOption("1.5");
+        assert.equal(
+          await page.locator("#summary audio").evaluate((a) => a.playbackRate),
+          1.5,
+        );
+        await page.locator("#summary .player-seek").evaluate((input) => {
+          input.value = "10";
+          input.dispatchEvent(new Event("input"));
+        });
+        assert(
+          Math.abs(
+            (await page
+              .locator("#summary audio")
+              .evaluate((a) => a.currentTime)) - 10,
+          ) < 1,
+        );
+        await page.locator("#summary .player-skip").last().click();
+        assert(
+          Math.abs(
+            (await page
+              .locator("#summary audio")
+              .evaluate((a) => a.currentTime)) - 25,
+          ) < 1,
+        );
+        await page.locator("#summary .player-volume").evaluate((input) => {
+          input.value = ".3";
+          input.dispatchEvent(new Event("input"));
+        });
+        assert.equal(
+          await page.locator("#summary audio").evaluate((a) => a.volume),
+          0.3,
+        );
+        await page.locator("#summary .player-mute").click();
+        assert(await page.locator("#summary audio").evaluate((a) => a.muted));
+        await page.locator("#summary .player-mute").click();
+        assert.equal(
+          await page.locator("#summary audio").evaluate((a) => a.muted),
+          false,
+        );
+      },
+    );
+    await run("starting the podcast pauses the summary", async () => {
+      await page.locator("#summary audio").evaluate((a) => a.play());
+      await page.locator("#podcast audio").evaluate((a) => a.play());
+      assert(await page.locator("#summary audio").evaluate((a) => a.paused));
+      assert(
+        await page
+          .locator(".podcast-box")
+          .evaluate((b) => b.classList.contains("is-playing")),
+      );
+      await page.locator("#podcast audio").evaluate((a) => a.pause());
+    });
+    await run(
+      "mobile and landscape layouts preserve usable audio controls",
+      async () => {
+        for (const [width, height] of [
+          [360, 800],
+          [390, 844],
+          [430, 932],
+          [540, 720],
+          [760, 540],
+          [844, 390],
+        ]) {
+          await page.setViewportSize({ width, height });
+          for (const route of ["/", "/teknoloji/", "/oyun/"]) {
+            await open(route);
+            await noOverflow();
+            for (const audio of await page.locator(".player").all()) {
+              const box = await audio.boundingBox();
+              assert(
+                box.width >= 230 && box.height >= 44,
+                `Audio controls too small at ${width}px`,
+              );
+            }
+          }
+        }
+        await page.setViewportSize({ width: 390, height: 844 });
+        await open("/oyun/");
+      },
+    );
     await run("audio error has a usable retry action", async () => {
       await page
         .locator("#summary audio")
         .evaluate((a) => a.dispatchEvent(new Event("error")));
       assert(await page.locator("#summary .audio-error").isVisible());
-      await page.locator("#summary button").click();
+      await page.locator("#summary .retry").click();
       assert(await page.locator("#summary .audio-error").isHidden());
     });
     await run(

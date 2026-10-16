@@ -92,6 +92,11 @@ def validate_content(data, section, date, game_start):
         raise ValueError("Each edition needs 3–12 sourced stories")
     ids, urls = set(), set()
     for story in stories:
+        if "brief" in story and (
+            not isinstance(story["brief"], str)
+            or not 20 <= len(story["brief"].strip()) <= 500
+        ):
+            raise ValueError("Invalid factual audio brief")
         for field in ("id", "category", "title", "summary", "why", "source_name"):
             if (
                 not isinstance(story.get(field), str)
