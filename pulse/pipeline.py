@@ -287,4 +287,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        # Safe check annotations remain readable even if hosted log storage is down.
+        # Never include provider URLs, headers, response bodies or credential values.
+        message = re.sub(r"(?:https?|wss?)://\S+", "[service URL]", str(exc))[:300]
+        for name in ("GEMINI_API_KEY", "PULSE_DEPLOY_APP_PRIVATE_KEY", "GITHUB_TOKEN"):
+            secret = os.environ.get(name)
+            if secret:
+                message = message.replace(secret, "[redacted]")
+        message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print("::error title=PULSE production check::" + type(exc).__name__ + ": " + message, flush=True)
+        raise
