@@ -190,6 +190,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 2
   publish:
+    permissions:
+      contents: read
+      actions: write
     needs: [plan, generate]
     if: needs.plan.outputs.live == 'true'
     runs-on: ubuntu-24.04
@@ -230,3 +233,9 @@ jobs:
           date: ${{ needs.plan.outputs.date }}
           app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
           private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+      - name: Retain only useful temporary Actions artifacts after verified publication
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PULSE_DATE: ${{ needs.plan.outputs.date }}
+        run: python scripts/cleanup_artifacts.py --repo "$GITHUB_REPOSITORY" --date "$PULSE_DATE" --run-id "$GITHUB_RUN_ID"
