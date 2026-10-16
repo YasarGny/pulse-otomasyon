@@ -81,7 +81,7 @@ def parse_feed(raw, feed, date, as_of=None):
         ]
         if len(title) < 8 or len(description) < 60:
             continue
-        image = ""
+        images = []
         for child in item.iter():
             tag = child.tag.rsplit("}", 1)[-1]
             if (
@@ -90,9 +90,20 @@ def parse_feed(raw, feed, date, as_of=None):
                 and (tag != "enclosure" or child.get("type", "").startswith("image/"))
             ):
                 candidate = child.get("url")
+                media_type = child.get("type", "")
+                if child.get("medium") not in (None, "image") or (media_type and not media_type.startswith("image/")):
+                    continue
                 if https_url(candidate):
-                    image = candidate
-                    break
+                    # Prefer the largest supplied image, not the first tiny thumbnail.
+                    # Never guess a CDN rewrite or invent an original-image URL.
+                    try:
+                        width = int(child.get("width", "0"))
+                        height = int(child.get("height", "0"))
+                    except ValueError:
+                        width = height = 0
+                    rank = 2 if tag != "thumbnail" else 1
+                    images.append((width or (1200 if rank == 2 else 160), height, rank, candidate))
+        image = max(images)[-1] if images else ""
         stories.append(
             {
                 "id": hashlib.sha256(link.encode()).hexdigest()[:16],

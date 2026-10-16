@@ -220,6 +220,15 @@
         image.decoding = "async";
         image.referrerPolicy = "no-referrer";
         image.width = 800;
+        image.addEventListener(
+          "load",
+          () => {
+            image.width = image.naturalWidth;
+            image.height = image.naturalHeight;
+            image.style.maxWidth = image.naturalWidth + "px";
+          },
+          { once: true },
+        );
 
         image.addEventListener("error", () => figure.remove(), { once: true });
         figure.append(

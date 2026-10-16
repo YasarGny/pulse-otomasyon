@@ -1321,3 +1321,6 @@ select:focus-visible {
   content: ".";
   color: #f2a7cc;
 }
+.story-image {
+  margin-inline: auto;
+}
