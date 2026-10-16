@@ -147,7 +147,7 @@ jobs:
           path: dist/
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 2
       - name: Save successful intermediate stages, also after failures
         if: always()
         uses: actions/upload-artifact@v4
@@ -156,7 +156,7 @@ jobs:
           path: .pulse-work/
           include-hidden-files: true
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 2
   publish:
     needs: [plan, generate]
     if: needs.plan.outputs.live == 'true'
