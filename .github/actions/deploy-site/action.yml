@@ -58,3 +58,6 @@ runs:
           python -c "import os; from datetime import datetime; from zoneinfo import ZoneInfo; assert datetime.now(ZoneInfo('Europe/Istanbul')).date().isoformat() == os.environ['PULSE_DATE'], 'Issue expired before push'"
           git push origin HEAD:main
         fi
+    - name: Wait for Pages and verify public HTML, JSON and all MP3 hashes
+      shell: bash
+      run: python -m pulse.verify_site --expected dist/data/publication.json --timeout 900

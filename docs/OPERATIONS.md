@@ -135,6 +135,9 @@ Sunucu tarafında çalışan üretim/dağıtım işi iki yayını birlikte doğr
 ffprobe yeterli sayılmaz: FFmpeg `-xerror` ile bütün dosya çözülür; en az 20/40 sn,
 25 KB ve kaydedilen SHA-256/boyut/süre eşleşmesi gerekir. Manifest yalnız bu
 doğrulamanın ardından oluşur. Dört ses ve iki JSON aynı Git commit'inde değişir.
+Push sonrasında iş ayrıca 15 dakikaya kadar gerçek Pages HTTP yanıtını bekler;
+manifesti, üç sayfayı, iki JSON hash'ini ve dört MP3'ün indirilen gerçek baytlarının
+SHA-256'sını kontrol eder. Commit'in başarılı olması dağıtım başarısı sayılmaz.
 Pages build başarısız olursa eski dağıtım kalır; istemci yine eski tarihi yeni gün
 olarak açmaz.
 

@@ -30,6 +30,7 @@ from pulse.publication import (
     verify_manifest,
     write_json,
 )
+from pulse.verify_site import check_site
 from scripts.state import unpack
 from scripts.sync_site import sync
 
@@ -581,6 +582,61 @@ class ReleaseTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "Insufficient fresh"):
             exclude_published(raw, site, "2026-10-17")
+
+    def public_session(self, folder):
+        from urllib.parse import urlparse
+
+        import requests
+
+        def get(url, **kwargs):
+            file = folder / (urlparse(url).path.strip("/") or "index.html")
+            if file.is_dir():
+                file = file / "index.html"
+            response = requests.Response()
+            response.url = url
+            response.status_code = 200 if file.is_file() else 404
+            response._content = file.read_bytes() if file.is_file() else b"missing"
+            response._content_consumed = True
+            response.headers["Date"] = "Fri, 16 Oct 2026 05:30:00 GMT"
+            import mimetypes
+
+            response.headers["Content-Type"] = (
+                mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+            )
+            return response
+
+        return Mock(get=Mock(side_effect=get))
+
+    def test_actual_pages_ready_bytes_are_verified_not_just_the_commit(self):
+        output = self.root / "site"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
+        check_site(self.public_session(output), "https://example.test/", self.manifest)
+
+    def test_pages_mp3_corruption_is_detected_after_deployment(self):
+        output = self.root / "site"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
+        mp3 = output / "releases" / self.manifest["release_id"] / "oyun/podcast.mp3"
+        raw = bytearray(mp3.read_bytes())
+        raw[len(raw) // 2] ^= 255
+        mp3.write_bytes(raw)
+        with self.assertRaisesRegex(ValueError, "Deployed MP3"):
+            check_site(
+                self.public_session(output), "https://example.test/", self.manifest
+            )
+
+    def test_pages_old_html_cannot_count_as_a_complete_deployment(self):
+        output = self.root / "site"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
+        (output / "index.html").write_text("<h1>Old site</h1>")
+        with self.assertRaisesRegex(ValueError, "HTML has not updated"):
+            check_site(
+                self.public_session(output), "https://example.test/", self.manifest
+            )
+
+    def test_pages_preparation_mode_is_verified_without_requiring_future_audio(self):
+        output = self.root / "site"
+        manifest = build(ROOT / "site", output, preparing=DATE)
+        check_site(self.public_session(output), "https://example.test/", manifest)
 
     def test_zip_traversal_rejected(self):
         raw = io.BytesIO()

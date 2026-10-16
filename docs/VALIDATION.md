@@ -6,7 +6,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | Kontrol | Sonuç |
 |---|---|
 | Python 3.12 / FFmpeg / ffprobe / bağımlılıklar | Hazır; pip check başarılı. |
-| Python unittest | **46 geçti**, başarısız/atlanan test yok. |
+| Python unittest | **50 geçti**, başarısız/atlanan test yok. |
 | Node yayın kapısı testleri | **14 geçti**, başarısız/atlanan test yok. |
 | Chromium işlevsel tarayıcı senaryoları | **19 geçti**. |
 | axe erişilebilirlik | Ana sayfa, teknoloji (1440/820/390/320 px), oyun ve matbaa üzerinde ihlal yok. |
@@ -19,8 +19,9 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | İki depo arasındaki aktarım | Yerel Git deposunda atomik commit, aynı çıktıyla temiz ikinci eşitleme, bare remote'a push ve yeniden clone sonrası sürüm doğrulaması başarılı. |
 | GitHub Actions kalite koşuları | PR ve push koşuları başarılı: [PR CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897975490), [push CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897933764). |
 | Runner kararlılığı | Yeni akışlar Ubuntu 24.04 üzerinde sabitlenir; duyurulan ubuntu-latest → 26 geçişine bağımlı değildir. |
+| Pages HTTP doğrulayıcısı | Hazır ve hazırlık durumları test edildi; eski HTML veya değiştirilmiş MP3 baytları reddediliyor. Gerçek canlı dağıtım son onaydan sonra sınanacak. |
 | Actions YAML | Yeni iki workflow actionlint v1.7.7 ile başarılı; dağıtım composite ve bütün shell blokları ayrıca sözdizimi kontrolünden geçti. |
-| Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; yeni strict modda ses dışı yanıt reddedildi. Eski üreticinin tip bilgisi olmayan WAV yanıtıyla uyumluluğu ayrıca korundu ve sınandı. Gerçek API çağrısı yapılmadı. |
+| Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; yeni strict modda ses dışı yanıt reddedildi. Eski üreticinin tip bilgisi olmayan WAV yanıtıyla uyumluluğu ayrıca korundu ve sınandı. Bunlara ek olarak gerçek GitHub dry-run iki podcast sentezini başarıyla tamamladı. |
 | Eski akış uyumluluğu | Senaryo üreticisinin eski çağrı biçimi ve varsayılan Yeni Sekme prompt'u test edildi. Eski giriş noktaları, Notion workflow'ları, oynatıcılar ve yayımlanmış sesler korunuyor. |
 | Public artifact / sırlar | Build yalnız web varlıklarını kopyalıyor; ham araştırma/senaryo/kaynak Python'ları dışarıda. Anahtar desenleri ve mevcut secret değerleri için engelleme test edildi. |
 | Build tekrarı | Hazırlık build'i aynı komutla iki kez başarıyla çalıştı. |
@@ -31,8 +32,8 @@ haber yayını değildir.
 
 ## Gerçek entegrasyonlarda kalan doğrulamalar
 
-- Bulut makinesinde `GEMINI_API_KEY` bağlı değil. Bu nedenle güncel Gemini model ve
-  özel ses erişimi ile iki podcast üretimi canlı olarak doğrulanamadı.
+- Bulut makinesine yeni bir Gemini anahtarı kopyalanmadı. GitHub Secrets içindeki
+  mevcut bağ kullanılarak [gerçek dry-run](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38900381869) **başarıyla tamamlandı**: iki haber yayını, iki Edge TTS özeti, iki Gemini podcast ve public build doğrulandı. `gate` ve `publish` işleri atlandı; canlı site değişmedi.
 - GitHub Git/PR/Actions okuma erişimi çalışıyor; [PR #1](https://github.com/YasarGny/pulse-otomasyon/pull/1) oluşturuldu ve gerçek CI geçti. Yedi RSS kaynağı uygun User-Agent ile HTTP 200 döndürdü ve her kaynaktan taze haber ayrıştırıldı.
 - GitHub Secrets/Variables listeleme ve `pulse-production` environment oluşturma
   çağrıları `Resource not accessible by integration` (HTTP 403) döndü. Mevcut
@@ -43,8 +44,8 @@ haber yayını değildir.
   onaydan sonra yapılmalı.
 - Canlı RSS toplama 40 teknoloji ve 24 oyun adayıyla tamamlandı. Bir RSS
   kaynağı geçici hata verdi; diğer kaynaklarla iki bölüm de yeterli haberi buldu.
-- İlk anahtarlı `dry_run`, yayın deposundaki Pages workflow
-  sonucu, ana alan adı HTTP/ses kontrolleri ve bir sonraki gerçek sabah döngüsü
+- Yayın deposundaki yeni sürümün gerçek Pages dağıtımı, ana alan adı HTTP/ses
+  kontrolleri ve bir sonraki gerçek sabah döngüsü
   tamamlanmadan sistem "tamamen canlı ve doğrulandı" sayılmaz.
 - Yeni cron varsayılan olarak kapalı; ayrıca `pulse/deployment.json` içindeki
   `live_enabled=false` kod kapısı eski hesap değişkenlerinden bağımsız koruma
