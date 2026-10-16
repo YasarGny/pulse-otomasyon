@@ -1,6 +1,9 @@
 name: PULSE Daily Publication
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'pulse_publish.py'
   schedule:
     - cron: "50 6 * * *"
       timezone: "Europe/Istanbul"
