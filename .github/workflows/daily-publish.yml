@@ -21,7 +21,7 @@ concurrency:
 jobs:
   plan:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED == 'true')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       date: ${{ steps.plan.outputs.date }}
       live: ${{ steps.plan.outputs.live }}
@@ -63,7 +63,7 @@ jobs:
   gate:
     needs: plan
     if: needs.plan.outputs.live == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: pulse-production
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +87,7 @@ jobs:
   generate:
     needs: [plan, gate]
     if: always() && needs.plan.result == 'success' && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 170
     outputs:
       date: ${{ needs.plan.outputs.date }}
@@ -137,7 +137,7 @@ jobs:
   publish:
     needs: [plan, generate]
     if: needs.plan.outputs.live == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: pulse-production
     steps:
       - uses: actions/checkout@v4

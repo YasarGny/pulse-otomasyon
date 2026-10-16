@@ -17,6 +17,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | İlk oyun sayısı | Başarısız ilk gün sayıyı tüketmiyor; ilk başarılı gün 001; başlangıç hazırlık manifestinde korunuyor. |
 | İki depo arasındaki aktarım | Yerel Git deposunda atomik commit, aynı çıktıyla temiz ikinci eşitleme, bare remote'a push ve yeniden clone sonrası sürüm doğrulaması başarılı. |
 | GitHub Actions kalite koşuları | PR ve push koşuları başarılı: [PR CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897975490), [push CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897933764). |
+| Runner kararlılığı | Yeni akışlar Ubuntu 24.04 üzerinde sabitlenir; duyurulan ubuntu-latest → 26 geçişine bağımlı değildir. |
 | Actions YAML | Yeni iki workflow actionlint v1.7.7 ile başarılı; dağıtım composite ve bütün shell blokları ayrıca sözdizimi kontrolünden geçti. |
 | Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; ses dışı yanıt reddedildi. Gerçek API çağrısı yapılmadı. |
 | Eski akış uyumluluğu | Senaryo üreticisinin eski çağrı biçimi ve varsayılan Yeni Sekme prompt'u test edildi. Eski giriş noktaları, Notion workflow'ları, oynatıcılar ve yayımlanmış sesler korunuyor. |
@@ -39,6 +40,8 @@ haber yayını değildir.
 - Hedef deponun Pages ayarı okundu: ana adres mevcut ve `build_type=legacy`.
   Canlı ayarı değiştirilmedi. GitHub Actions kaynaklı dağıtıma geçiş ancak son
   onaydan sonra yapılmalı.
+- Canlı RSS toplama 40 teknoloji ve 24 oyun adayıyla tamamlandı. Bir RSS
+  kaynağı geçici hata verdi; diğer kaynaklarla iki bölüm de yeterli haberi buldu.
 - İlk anahtarlı `dry_run`, yayın deposundaki Pages workflow
   sonucu, ana alan adı HTTP/ses kontrolleri ve bir sonraki gerçek sabah döngüsü
   tamamlanmadan sistem "tamamen canlı ve doğrulandı" sayılmaz.

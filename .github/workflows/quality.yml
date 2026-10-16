@@ -2,12 +2,12 @@ name: PULSE quality
 on:
   pull_request:
   push:
-    branches: [main, "pulse/**"]
+    branches: [main]
 permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
