@@ -89,3 +89,19 @@ class AudioEditorialTests(unittest.TestCase):
         self.assertEqual(writer._validate({"turns": TURNS[:6]}), TURNS[:6])
         with self.assertRaisesRegex(RuntimeError, "number of dialogue turns"):
             writer._validate({"turns": TURNS[:2]})
+
+
+class DialogueShapeTests(unittest.TestCase):
+    def test_bad_speaker_is_repaired_then_independently_reviewed(self):
+        bad=copy.deepcopy(TURNS);bad[1]['speaker']='Host 2'
+        with patch.object(writer, '_request', side_effect=[{'turns':bad},{'turns':TURNS},{'turns':TURNS},APPROVED]) as request:
+            _, turns=writer.generate([('Haber','Kaynak notu')])
+        self.assertEqual(turns,TURNS)
+        self.assertEqual(request.call_count,4)
+
+    def test_oversize_monologue_is_not_silently_truncated_or_approved(self):
+        bad=copy.deepcopy(TURNS);bad[0]['text']='a'*1001
+        with patch.object(writer, '_request', return_value={'turns':bad}) as request:
+            with self.assertRaisesRegex(RuntimeError,'maximum is 1000'):
+                writer.generate([('Haber','Kaynak notu')])
+        self.assertEqual(request.call_count,2)
