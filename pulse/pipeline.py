@@ -5,6 +5,7 @@ import asyncio
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import subprocess
 import time
@@ -23,6 +24,19 @@ from pulse.publication import (
     verify_manifest,
     write_json,
 )
+
+
+def configure_transport():
+    """Use platform/system roots without disabling TLS or replacing the voice engine."""
+    if os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE"):
+        import truststore
+
+        truststore.inject_into_ssl()
+
+
+def tts_proxy():
+    # aiohttp's WSS lookup does not inherit HTTPS_PROXY automatically.
+    return os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
 
 
 def wait_for(date, clock):
@@ -81,7 +95,10 @@ def generate_audio(root, data):
         temp = folder / "summary.partial.mp3"
         asyncio.run(
             edge_tts.Communicate(
-                text=pronunciation(script), voice="tr-TR-EmelNeural", rate="+0%"
+                text=pronunciation(script),
+                voice="tr-TR-EmelNeural",
+                rate="+0%",
+                proxy=tts_proxy(),
             ).save(str(temp))
         )
         audio_info(temp, 20)
@@ -178,6 +195,7 @@ def run(work, date, game_start, scheduled=False):
 
 
 def main():
+    configure_transport()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work", default=".pulse-work")
     parser.add_argument("--date", default=now().date().isoformat())

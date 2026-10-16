@@ -10,6 +10,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | Node yayın kapısı testleri | **14 geçti**, başarısız/atlanan test yok. |
 | Chromium işlevsel tarayıcı senaryoları | **19 geçti**. |
 | axe erişilebilirlik | Ana sayfa, teknoloji (1440/820/390/320 px), oyun ve matbaa üzerinde ihlal yok. |
+| Canlı Edge TTS | Sistem CA güveni ve mevcut HTTPS proxy ile Türkçe Emel ses listesi ve yeni bir kısa deneme MP3'ü üretildi; TLS doğrulaması açık kaldı. |
 | Gerçek MP3 oynatma (sentetik test sesi) | Oynatma süresi ilerledi, süre metadatası okundu. |
 | JSON + dört MP3 bütünlüğü | Dosya/hash/süre/tam çözümleme; eksik, kısa, değişmiş ve yanlış bölüm engellendi. |
 | Saat ve sayı | 07.30 öncesi kapalı; tamamlanınca otomatik açık; ertesi 06.00 açık sekme kapanır; yerel saat atlatmaz. |

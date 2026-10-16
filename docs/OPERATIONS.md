@@ -109,7 +109,10 @@ kaynak yayıncıya bağlıdır; görsel uydurulmaz, zorunlu tutulmaz.
 
 Özet, **bütün** haberlerin başlık, özet ve önem açıklamasından deterministik
 hazırlanır; Gemini'nin bir haberi atlamasına bağlı değildir. Edge TTS sesi
-`tr-TR-EmelNeural` korunur. Podcast ayrı sohbet üretimidir; mevcut iki geçişli
+`tr-TR-EmelNeural` korunur. Bulut proxy ortamında CLI, `truststore` ile
+sistem/platform CA köklerini kullanır ve WSS için mevcut HTTPS proxy ayarını
+açıkça iletir. TLS doğrulaması kapatılmaz; GitHub runner üzerinde proxy yoksa
+doğrudan varsayılan yol kullanılır. Podcast ayrı sohbet üretimidir; mevcut iki geçişli
 senaryo editörü ve Gemini Interactions sentezi kullanılır. Yaşar ana sunucudur;
 Necdet ikinci sunucudur. `voice_glt4mz1jtaeh` ve `voice_8nqcoox86z5q` korunur.
 Moradon FM'e özel oyun üslubu eklenir; aynı ses üretim altyapısı kullanılır.
