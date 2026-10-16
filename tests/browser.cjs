@@ -68,6 +68,8 @@ async function run(name, fn) {
     await run("desktop home: two editions, no news or players", async () => {
       await open("/");
       assert.equal(await page.locator(".edition-card").count(), 2);
+      assert.match(await page.locator(".morning").innerText(), /07:30/);
+      assert.equal(await page.locator(".podcast-label").count(), 2);
       assert.equal(await page.locator("audio,article.story").count(), 0);
       assert.match(await page.locator("h1").innerText(), /Günlük gündemimiz/);
       await noOverflow();
@@ -105,27 +107,42 @@ async function run(name, fn) {
         await page.unroute("**/data/publication.json*");
       },
     );
-    await run("twenty news items stay compact, filter and reveal on mobile", async () => {
-      await page.setViewportSize({width: 390, height: 844});
-      await open("/expanded/teknoloji/");
-      assert.equal(await page.locator(".story").count(), 20);
-      assert.equal(await page.locator(".story:visible").count(), 8);
-      await page.locator(".news-more").click();
-      assert.equal(await page.locator(".story:visible").count(), 16);
-      await page.locator(".news-more").click();
-      assert.equal(await page.locator(".story:visible").count(), 20);
-      assert(await page.locator(".news-more").isHidden());
-      await page.locator(".news-filter").selectOption("BİLİM");
-      assert.equal(await page.locator(".story:visible").count(), 8);
-      await page.locator(".news-more").click();
-      assert.equal(await page.locator(".story:visible").count(), 10);
-      for (const story of await page.locator(".story:visible").all()) assert.equal(await story.getAttribute("data-category"), "BİLİM");
-      await noOverflow();
-      const results = await new AxeBuilder({page}).analyze();
-      assert.deepEqual(results.violations.map(v => v.id), []);
-      await page.screenshot({path: "test-results/expanded-news-mobile.png", fullPage: true});
-      await page.setViewportSize({width:1440,height:1000});
-    });
+    await run(
+      "twenty news items stay compact, filter and reveal on mobile",
+      async () => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await open("/expanded/teknoloji/");
+        assert.equal(await page.locator(".story").count(), 20);
+        assert.equal(await page.locator(".story:visible").count(), 8);
+        await page.locator(".news-more").click();
+        assert.equal(await page.locator(".story:visible").count(), 16);
+        await page.locator(".news-more").click();
+        assert.equal(await page.locator(".story:visible").count(), 20);
+        assert(await page.locator(".news-more").isHidden());
+        await page.locator(".news-filter").selectOption("BİLİM");
+        assert.equal(await page.locator(".story:visible").count(), 8);
+        await page.locator(".news-more").click();
+        assert.equal(await page.locator(".story:visible").count(), 10);
+        for (const story of await page.locator(".story:visible").all())
+          assert.equal(await story.getAttribute("data-category"), "BİLİM");
+        await noOverflow();
+        const results = await new AxeBuilder({ page }).analyze();
+        assert.deepEqual(
+          results.violations.map((v) => v.id),
+          [],
+        );
+        await page.screenshot({
+          path: "test-results/expanded-news-mobile.png",
+          fullPage: true,
+        });
+        await page.locator(".story:visible .story-detail-link").first().click();
+        await page.waitForFunction(() => !!window.PULSE_RELEASE);
+        assert.equal(await page.locator(".article-text p").count(), 2);
+        assert.equal(await page.locator(".source-link").count(), 1);
+        await noOverflow();
+        await page.setViewportSize({ width: 1440, height: 1000 });
+      },
+    );
     await run("keyboard skip link reaches main content", async () => {
       await page.goto(base);
       await page.waitForFunction(() => window.PULSE_RELEASE);
@@ -236,13 +253,14 @@ async function run(name, fn) {
     );
     await run("compact listening tabs support keyboard switching", async () => {
       await open("/teknoloji/");
-      assert(await page.locator("#summary-panel").isVisible());
-      assert(await page.locator("#podcast-panel").isHidden());
+      assert(await page.locator("#podcast-panel").isVisible());
+      assert(await page.locator("#summary-panel").isHidden());
+      await page.locator("#summary-tab").click();
       await page.locator("#summary-tab").focus();
       await page.keyboard.press("ArrowRight");
       assert(await page.locator("#podcast-panel").isVisible());
       assert(await page.locator("#summary-panel").isHidden());
-      await page.keyboard.press("Home");
+      await page.keyboard.press("End");
       assert(await page.locator("#summary-panel").isVisible());
       assert((await page.locator(".listening").boundingBox()).height < 310);
     });
@@ -269,6 +287,7 @@ async function run(name, fn) {
       );
     });
     await run("real MP3 playback and metadata", async () => {
+      await page.locator("#summary-tab").click();
       await page.locator("#summary .player-play").click();
       await page.waitForFunction(
         () => document.querySelector("#summary audio").currentTime > 0.1,
@@ -566,6 +585,7 @@ async function run(name, fn) {
             .first()
             .evaluate((i) => i.complete && i.naturalWidth > 0),
         );
+        await local.locator("#summary-tab").click();
         await local.locator("#summary .player-play").click();
         await local.waitForFunction(
           () => document.querySelector("#summary audio").currentTime > 0.1,

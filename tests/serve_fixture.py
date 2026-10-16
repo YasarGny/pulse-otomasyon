@@ -31,7 +31,7 @@ ready_release(large_release, audio)
 for section in ('teknoloji', 'oyun'):
     data = read_json(large_release / (section + '.json'))
     original = copy.deepcopy(data['stories'])
-    data['stories'] = [dict(original[i % 3], id=f'{section}{i}', source_url=f'https://example.com/{section}/{i}', category='BİLİM' if i % 2 else 'YAZILIM') for i in range(20)]
+    data['stories'] = [dict(original[i % 3], id=f'{section}{i}', source_url=f'https://example.com/{section}/{i}', body=['Bu, ayrıntı sayfasında görünen tam haber metninin ilk test paragrafıdır.', 'İkinci paragraf kaynak bağlantısının yanında ek ayrıntıları görüntüler.'], category='BİLİM' if i % 2 else 'YAZILIM') for i in range(20)]
     write_json(large_release / (section + '.json'), data)
 seal_release(large_release, DATE, DATE)
 build('site', root / 'site' / 'expanded', release=large_release, at=not_before(DATE))

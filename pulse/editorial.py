@@ -219,7 +219,7 @@ def gemini(prompt, *, system="", json_output=True):
     return json.loads(text) if json_output else text.strip()
 
 
-def create_edition(research_data, section, date, issue, game_start):
+def create_edition(research_data, section, date, issue, game_start, article_cache=None):
     if research_data["publish_date"] != date:
         raise ValueError("Research from another date")
     sources = {s["id"]: s for s in research_data["sections"][section]}
@@ -267,6 +267,8 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(list(sources.values()),
                 )
             }
         )
+    from pulse.articles import full_articles
+    stories = full_articles(stories, sources, gemini, cache_dir=article_cache)
     from pulse.source_media import article_image, trusted_hosts
     def enrich(story):
         if not story.get("image_url") and urlparse(story["source_url"]).hostname in trusted_hosts():

@@ -110,6 +110,11 @@ def validate_content(data, section, date, game_start):
             if not isinstance(event, str) or not 4 <= len(event) <= 120 or event.casefold() in events:
                 raise ValueError('Missing or duplicate event identity')
             events.add(event.casefold())
+            body = story.get('body')
+            if not isinstance(body, list) or not 2 <= len(body) <= 6 or any(not isinstance(p, str) or not 30 <= len(p) <= 4000 for p in body):
+                raise ValueError('Expanded stories require complete source-grounded articles')
+            if story.get('body_reviewed') is not True or story.get('body_sha256') != hashlib.sha256(json.dumps(body, ensure_ascii=False).encode()).hexdigest():
+                raise ValueError('Full article differs from reviewed text')
         if data.get("content_revision", 1) >= 2 and not category_allowed(section, story.get("category")):
             raise ValueError("Gaming story cannot appear in the technology edition")
         if "brief" in story and (

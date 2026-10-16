@@ -19,7 +19,7 @@ class DailyArchiveTests(unittest.TestCase):
 
     def test_late_old_job_cannot_replace_newer_drive_backup(self):
         with self.assertRaises(ValueError):
-            protect_order([{'appProperties':{'release_id':'new','release_order':'2026-10-16T12:00:00+03:00'}}], self.manifest('old'))
+            protect_order([{'name':canonical_name(DATE),'appProperties':{'release_id':'new','release_order':'2026-10-16T12:00:00+03:00'}}], self.manifest('old'))
 
     def test_failed_verification_never_promotes_or_trashes(self):
         drive=Mock()
@@ -50,6 +50,11 @@ class ExpandedEditorialTests(unittest.TestCase):
     def full(self):
         data=edition('teknoloji');data['publication_profile']='expanded-v1'
         data['stories']=[dict(copy.deepcopy(data['stories'][i%3]), id=f'id{i}', source_url=f'https://example.com/{i}', event_key=f'event-{i}') for i in range(15)]
+        import hashlib,json
+        for story in data['stories']:
+            story['body'] = ['Bu sentetik haberin ilk paragrafıdır; yalnız test amacıyla hazırlanmıştır.', 'Bu ikinci paragraf, ayrıntı sayfasının kısa karttan farklı olduğunu sınar.']
+            story['body_reviewed'] = True
+            story['body_sha256'] = hashlib.sha256(json.dumps(story['body'],ensure_ascii=False).encode()).hexdigest()
         return data
 
     def test_expanded_allows_fifteen_distinct_stories(self):

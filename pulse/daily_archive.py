@@ -44,6 +44,8 @@ def canonical_name(date):
 
 def protect_order(files, manifest):
     for file in files:
+        if file.get('name') != canonical_name(manifest['publish_date']):
+            continue  # Incomplete pending uploads cannot prevent recovery of a valid daily archive.
         properties = file.get('appProperties', {})
         if properties.get('release_id') == manifest['release_id']:
             continue

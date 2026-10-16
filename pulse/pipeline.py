@@ -131,7 +131,7 @@ def generate_audio(root, data):
             evidence.append({
                 "source_url": story["source_url"],
                 "headline": story["title"],
-                "excerpt": raw.get(story["id"], {}).get("source_excerpt", story["summary"]),
+                "excerpt": raw.get(story["id"], {}).get("source_full_text") or raw.get(story["id"], {}).get("source_excerpt", story["summary"]),
             })
         _, turns = pulse_podcast_writer.generate(
             [(s["title"], s["summary"]) for s in data["stories"]],
@@ -264,8 +264,10 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
                 date,
                 issue_number(date, section, game_start),
                 game_start,
+                article_cache=root / section / "articles",
             )
             write_json(path, data)
+            write_json(sources, research_data)
     if scheduled:
         wait_for(date, "06:45")
     for section in SECTIONS:

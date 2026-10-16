@@ -24,10 +24,11 @@ def article_body(data, story, *, back='../../', image=None):
     figure = ''
     if image:
         figure = f'<figure><img class="story-image" src="{e(image, quote=True)}" alt="{e(story["title"], quote=True)}" decoding="async"><figcaption>Görsel: {e(story["source_name"])}</figcaption></figure>'
+    paragraphs = ''.join('<p>' + e(p) + '</p>' for p in story.get('body', [story['summary']]))
     return f'''<a class="back" href="{back}">← Günün gündemi</a>
     <div class="detail-meta">{date} · Sayı {data['issue']:03d} · {e(story['category'])}</div>
     <h1>{e(story['title'])}</h1><article class="story">{figure}
-    <p>{e(story['summary'])}</p><div class="why"><strong>NEDEN ÖNEMLİ?</strong><p>{e(story['why'])}</p></div>
+    <div class="article-text">{paragraphs}</div><div class="why"><strong>NEDEN ÖNEMLİ?</strong><p>{e(story['why'])}</p></div>
     <a class="source-link" href="{e(story['source_url'], quote=True)}" target="_blank" rel="noopener noreferrer">{e(story['source_name'])} · Kaynağı oku →</a></article>'''
 
 
