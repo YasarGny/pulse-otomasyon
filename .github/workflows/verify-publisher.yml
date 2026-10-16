@@ -1,0 +1,39 @@
+name: Verify PULSE publisher access
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check required configuration without exposing values
+        env:
+          APP_ID: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_ID" ]; then
+            echo '::error::Missing repository variable PULSE_DEPLOY_APP_ID'
+            exit 1
+          fi
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo '::error::Missing repository secret PULSE_DEPLOY_APP_PRIVATE_KEY'
+            exit 1
+          fi
+      - name: Authenticate only for the publication repository
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: YasarGny
+          repositories: YasarGny.github.io
+          permission-contents: write
+      - name: Verify repository access without writing files
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          gh api repos/YasarGny/YasarGny.github.io --jq '.full_name'
+          gh api repos/YasarGny/YasarGny.github.io/contents/ --jq 'length'
+          echo 'Publisher authentication and Contents write permission verified. No live files changed.' >> "$GITHUB_STEP_SUMMARY"
