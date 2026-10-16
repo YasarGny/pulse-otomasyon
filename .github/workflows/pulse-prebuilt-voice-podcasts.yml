@@ -28,9 +28,9 @@ jobs:
 
           pairs = [
               ("01-puck-charon", "Puck", "Charon"),
-              ("02-enceladus-zephyr", "Enceladus", "Zephyr"),
-              ("03-fenrir-aoede", "Fenrir", "Aoede"),
-              ("04-orus-laomedeia", "Orus", "Laomedeia"),
+              ("02-enceladus-charon", "Enceladus", "Charon"),
+              ("03-fenrir-orus", "Fenrir", "Orus"),
+              ("04-orus-puck", "Orus", "Puck"),
           ]
           turns = [
               {"speaker":"Yaşar","text":"Necdet, telefonlar artık yapay zekâyla dolu. Peki sence gerçekten daha akıllı oldular mı?"},
