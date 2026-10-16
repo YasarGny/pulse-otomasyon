@@ -10,6 +10,7 @@ from pathlib import Path
 from pulse.pipeline import wait_for
 from pulse.publication import (
     SECTIONS,
+    expected_date,
     not_before,
     now,
     read_json,
@@ -55,9 +56,7 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
     if release:
         release = Path(release)
         manifest = verify_manifest(release, read_json(release / "release.json"))
-        if at.astimezone(
-            not_before(manifest["publish_date"]).tzinfo
-        ).date().isoformat() != manifest["publish_date"] or at < not_before(
+        if expected_date(at) != manifest["publish_date"] or at < not_before(
             manifest["publish_date"]
         ):
             raise ValueError("Release is stale or before 07:30 Istanbul")

@@ -16,6 +16,7 @@ from pulse.editorial import create_edition, research, summary_script
 from pulse.history import exclude_published, restore_published
 from pulse.publication import (
     SECTIONS,
+    expected_date,
     TZ,
     audio_info,
     category_allowed,
@@ -48,7 +49,7 @@ def wait_for(date, clock):
     target = dt.datetime.fromisoformat(date + "T" + clock).replace(tzinfo=TZ)
     while (delay := (target - now()).total_seconds()) > 0:
         time.sleep(min(delay, 30))
-    if now().date().isoformat() != date:
+    if expected_date(now()) != date:
         raise RuntimeError(
             "Publication date expired; refusing to publish yesterday as today"
         )
@@ -186,7 +187,7 @@ def valid_audio(path, minimum):
 
 def refresh_audio_release(work, date, game_start, previous):
     """Revise today's audio as a new immutable release, keeping date/news/issue."""
-    if previous is None or now().date().isoformat() != date:
+    if previous is None or expected_date(now()) != date:
         raise ValueError("Audio refresh requires today's published issue")
     previous = Path(previous)
     manifest = read_json(previous / "data/publication.json")
@@ -294,7 +295,7 @@ def main():
     configure_transport()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work", default=".pulse-work")
-    parser.add_argument("--date", default=now().date().isoformat())
+    parser.add_argument("--date", default=expected_date(now()))
     parser.add_argument(
         "--game-start", required=True, help="Immutable date of first game issue"
     )

@@ -212,6 +212,29 @@ class ReleaseTests(unittest.TestCase):
                 at=not_before(DATE) - dt.timedelta(seconds=1),
             )
 
+    def test_overnight_revision_retains_its_real_date_until_six(self):
+        at=not_before(DATE).replace(hour=5, minute=59) + dt.timedelta(days=1)
+        output=self.root/'overnight'
+        build(ROOT/'site',output,release=self.release,at=at)
+        sync(output,self.root/'overnight-published',at=at)
+        self.assertEqual(read_json(output/'data/publication.json')['publish_date'], DATE)
+        with patch('pulse.pipeline.now',return_value=at):
+            from pulse.pipeline import wait_for
+            wait_for(DATE,'07:30')
+
+    def test_exact_next_six_blocks_build_sync_and_pipeline_wait(self):
+        at=not_before(DATE).replace(hour=6, minute=0) + dt.timedelta(days=1)
+        output=self.root/'morning'
+        build(ROOT/'site',output,release=self.release,at=not_before(DATE))
+        with self.assertRaises(ValueError):
+            build(ROOT/'site',self.root/'blocked',release=self.release,at=at)
+        with self.assertRaises(ValueError):
+            sync(output,self.root/'blocked-sync',at=at)
+        with patch('pulse.pipeline.now',return_value=at):
+            from pulse.pipeline import wait_for
+            with self.assertRaisesRegex(RuntimeError,'expired'):
+                wait_for(DATE,'07:30')
+
     def test_expired_build_rejected(self):
         with self.assertRaises(ValueError):
             build(

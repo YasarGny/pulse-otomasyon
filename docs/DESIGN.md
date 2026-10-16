@@ -71,3 +71,5 @@ minimum gerçek ses süreleri 900 / 720 saniyedir. Gemini ses yöntemi ve iki ö
 ses kimliği değişmez; tamamlanan WAV parçaları senaryo/model/ses kimliğine
 bağlı SHA-256 anahtarıyla yeniden kullanılır. Eski mühürlü kısa yayınlar kendi
 sözleşmeleriyle doğrulanabilir.
+
+Yayın günü sınırı tüm katmanlarda İstanbul 06:00’dır. Gece 00:00–05:59 arasında yapılan düzeltme önceki yayın tarihini korur; 06:00’da eski tarihli derleme, senkronizasyon ve push reddedilir. Yeni yayın için 07:30 alt sınırı ayrıca korunur.
