@@ -51,7 +51,7 @@ def wait_for(date, clock):
 
 
 def pronunciation(text):
-    # Same established Edge TTS narrator and pronunciation rules as pulse_audio.py.
+    # Established Edge TTS narrator and pronunciation rules, retained after migration.
     for word, spoken in {
         "PULSE": "Pals",
         "AI": "yapay zeka",

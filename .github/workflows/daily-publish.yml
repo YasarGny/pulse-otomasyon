@@ -7,6 +7,7 @@ on:
         type: boolean
         default: true
   schedule:
+    # Owner-approved launch: scheduled production is enabled unless explicitly paused.
     # UTC: Istanbul is UTC+3 year-round. Extra runs recover delayed/failed starts.
     - cron: "0 3 * * *"
     - cron: "20 3 * * *"
@@ -20,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED == 'true')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED != 'false')
     runs-on: ubuntu-24.04
     outputs:
       date: ${{ steps.plan.outputs.date }}

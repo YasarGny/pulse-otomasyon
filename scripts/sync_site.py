@@ -41,6 +41,13 @@ def sync(source, target, *, at=None):
             raise ValueError("Destination symlink")
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, dest)
+    # Retire only the two known, unsourced pre-migration pilot files. Real daily
+    # editions live under immutable releases; unrelated repository files stay intact.
+    for section in ("teknoloji", "oyun"):
+        obsolete = target / "data" / (section + ".json")
+        if not (source / "data" / obsolete.name).exists():
+            if obsolete.is_file() or obsolete.is_symlink():
+                obsolete.unlink()
     # Historical releases and the target's existing Pages workflow are retained.
     # No source code or generated prompts are copied to the publication repository.
 
