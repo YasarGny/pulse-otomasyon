@@ -6,6 +6,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import re
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -78,6 +79,11 @@ def https_url(value):
     )
 
 
+def category_allowed(section, category):
+    words = set(re.findall(r"[a-zçğıöşü]+", str(category).casefold()))
+    return not (section == "teknoloji" and words.intersection({"oyun", "gaming", "konsol"}))
+
+
 def validate_content(data, section, date, game_start):
     if data.get("section") != section or data.get("publish_date") != date:
         raise ValueError("Edition identity/date mismatch")
@@ -92,6 +98,8 @@ def validate_content(data, section, date, game_start):
         raise ValueError("Each edition needs 3–12 sourced stories")
     ids, urls = set(), set()
     for story in stories:
+        if data.get("content_revision", 1) >= 2 and not category_allowed(section, story.get("category")):
+            raise ValueError("Gaming story cannot appear in the technology edition")
         if "brief" in story and (
             not isinstance(story["brief"], str)
             or not 20 <= len(story["brief"].strip()) <= 500

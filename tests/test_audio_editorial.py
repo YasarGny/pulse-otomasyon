@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from fixtures import edition
 from pulse.editorial import summary_script
-from pulse.publication import read_json
+from pulse.publication import read_json, validate_content
+from fixtures import DATE
 import pulse_podcast_writer as writer
 
 APPROVED = {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}
@@ -16,6 +17,18 @@ TURNS = [{"speaker": "Yaşar" if i % 2 == 0 else "Necdet", "text": "Kaynak notla
 
 
 class AudioEditorialTests(unittest.TestCase):
+    def test_revised_technology_edition_rejects_explicit_game_category(self):
+        data = edition("teknoloji")
+        data["content_revision"] = 2
+        data["stories"][0]["category"] = "OYUN DÜNYASI"
+        with self.assertRaisesRegex(ValueError, "Gaming story"):
+            validate_content(data, "teknoloji", DATE, DATE)
+
+    def test_gaming_category_remains_valid_in_game_edition(self):
+        data = edition("oyun")
+        data["content_revision"] = 2
+        validate_content(data, "oyun", DATE, DATE)
+
     def test_summary_reads_each_brief_but_no_headline_or_analysis(self):
         data = edition("oyun")
         for i, story in enumerate(data["stories"]):
@@ -71,3 +84,8 @@ class AudioEditorialTests(unittest.TestCase):
         turns[0]["speaker"] = "Necdet"
         with self.assertRaisesRegex(RuntimeError, "Yaşar must open"):
             writer._validate({"turns": turns})
+
+    def test_short_natural_exchange_does_not_need_ten_artificial_turns(self):
+        self.assertEqual(writer._validate({"turns": TURNS[:6]}), TURNS[:6])
+        with self.assertRaisesRegex(RuntimeError, "number of dialogue turns"):
+            writer._validate({"turns": TURNS[:2]})
