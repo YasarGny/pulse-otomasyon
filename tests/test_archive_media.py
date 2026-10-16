@@ -29,3 +29,8 @@ class PublisherImageTests(unittest.TestCase):
     def test_fake_image_header_is_not_enough(self):
         with self.assertRaises(subprocess.CalledProcessError):portable_image(b'\x89PNG fake','image/png')
         with self.assertRaises(ValueError):portable_image(b'<html>blocked</html>','text/html')
+
+    def test_generic_binary_header_requires_a_real_decodable_image(self):
+        body=Path('site/assets/covers/teknoloji-768.webp').read_bytes()
+        self.assertEqual(portable_image(body,'application/octet-stream'),(body,'.webp'))
+        with self.assertRaises(ValueError):portable_image(b'<html>not a photograph</html>','application/octet-stream')

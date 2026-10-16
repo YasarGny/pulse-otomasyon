@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def portable_image(body, kind):
-    if not kind.lower().startswith('image/'):
+    if not kind.lower().startswith('image/') and kind.lower().split(';')[0].strip() not in {'application/octet-stream','binary/octet-stream'}:
         raise ValueError('Archive media response is not an image')
     if body.startswith(b'\xff\xd8\xff'):
         suffix = '.jpg'

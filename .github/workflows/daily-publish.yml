@@ -160,7 +160,11 @@ jobs:
             echo "release_path=.pulse-work/$PULSE_DATE/expanded-v1" >> "$GITHUB_OUTPUT"
           elif [ "$REFRESH_MEDIA" = 'true' ]; then
             media_path=".pulse-media/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-            python -m pulse.media_refresh --published .published --output "$media_path" --checkpoint ".pulse-work/$PULSE_DATE"
+            if [ -f ".pulse-work/$PULSE_DATE/expanded-v1/release.json" ]; then
+              python -m pulse.media_refresh --published .published --release ".pulse-work/$PULSE_DATE/expanded-v1" --prefer-original --output "$media_path" --checkpoint ".pulse-work/$PULSE_DATE"
+            else
+              python -m pulse.media_refresh --published .published --prefer-original --output "$media_path" --checkpoint ".pulse-work/$PULSE_DATE"
+            fi
             echo "release_path=$media_path" >> "$GITHUB_OUTPUT"
           elif [ "$REFRESH_AUDIO" = 'true' ]; then
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published --refresh-audio
