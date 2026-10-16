@@ -262,7 +262,7 @@
           image = el("img", "story-image");
         image.src =
           window.PULSE_ARCHIVE &&
-          /^\.\.\/\.\.\/media\/[a-f0-9]+\.(jpg|png|webp|gif)$/.test(
+          /^\.\.\/\.\.\/media\/[a-f0-9]+\.(jpg|png|webp|gif|svg)$/.test(
             s.archive_image || "",
           )
             ? new URL(s.archive_image, release.url).href

@@ -12,6 +12,7 @@ from pulse.build import assert_public_tree
 from pulse.details import display_date
 from pulse.publication import SECTIONS, digest, read_json, verify_manifest, write_json
 from pulse.source_media import fetch_public
+from pulse.archive_media import portable_image
 
 
 def package(site, destination, *, fetch=fetch_public):
@@ -37,9 +38,7 @@ def package(site, destination, *, fetch=fetch_public):
                 if not url:
                     continue
                 body, kind = fetch(url)
-                if not kind.startswith('image/') or not body.startswith((b'\xff\xd8\xff', b'\x89PNG', b'RIFF', b'GIF8')):
-                    raise ValueError('Archive image is not a supported real image')
-                suffix = '.jpg' if body.startswith(b'\xff\xd8') else '.png' if body.startswith(b'\x89PNG') else '.webp' if body.startswith(b'RIFF') else '.gif'
+                body, suffix = portable_image(body, kind)
                 name = hashlib.sha256(body).hexdigest() + suffix
                 path = root / 'media' / name
                 path.parent.mkdir(exist_ok=True)
