@@ -1,11 +1,10 @@
 # PULSE işletim ve güvenli geçiş rehberi
 
-Bu değişiklik **kendiliğinden canlıya geçmez**. Eski Notion iş akışları, kök
-`index.html`, `web-player/` ve mevcut MP3'ler korunur. Yeni otomasyonun varsayılan
-manuel çalışması yalnızca denemedir. Ayrıca `pulse/deployment.json` içindeki
-`live_enabled: false` kod kapısı, mevcut hesap değişkenleri ne olursa olsun canlı
-dağıtımı engeller. Bu kapı ancak son onaydan sonra ayrı commit ile açılır. Canlıya geçiş ve eski sistemin kapatılması
-ayrı son kullanıcı onayı gerektirir.
+Kullanıcı 16 Ekim 2026'da canlı geçişi ve ardından eski Notion sisteminin
+temizlenmesini açıkça onayladı. `live_enabled` kod kapısı açıktır; canlı işler ayrıca
+`PULSE_LIVE_APPROVED=true` gerektirir. Günlük cron varsayılan olarak açıktır;
+`PULSE_AUTOMATION_ENABLED=false` ile durdurulur. Manuel işler varsayılan olarak
+denemedir. Aşağıdaki kurulum ve geçiş adımları yeni kurulum/geri alma referansıdır.
 
 ## Tek kaynak, iki depo
 
@@ -17,10 +16,7 @@ ayrı son kullanıcı onayı gerektirir.
 - Üretim dosyaları `releases/YYYY-MM-DD-<içerik-parmakizi>/` altında değişmezdir.
   `data/publication.json` iki yayını birden gösteren tek atomik giriş noktasıdır.
   Kaynak, ham RSS alıntıları, konuşma taslakları ve anahtarlar siteye kopyalanmaz.
-- Eski `site/data/{teknoloji,oyun}.json` pilotları yeni build'e **alınmaz**.
-  Teknoloji pilotunda kaynak URL'leri eksik, oyun pilotu boş olduğundan bunlar
-  doğrulanmış yayına yükseltilemez. Mevcut sesler yalnız teknolojiye aittir;
-  oyun podcast'iymiş gibi yeniden etiketlenmez.
+- Kaynaksız eski pilot JSON dosyaları ve Notion üretim betikleri kaldırılmıştır.
 
 ## Geliştirme ve test
 
@@ -243,50 +239,43 @@ Bu bölüm **kullanıcı son onayı olmadan uygulanmaz**.
 4. [Ana site](https://yasargny.github.io/) ve `/teknoloji/`, `/oyun/` üzerinde
    tarih, sayı, dört gerçek ses, mobil ve kaynak bağlantılarını doğrulayın.
    Pages workflow'unun tamamlanmasını ve manifestin yeni sürüm olduğunu kontrol edin.
-5. `PULSE_AUTOMATION_ENABLED` = `true` ekleyin. Production environment'ın her gün
+5. Zamanlama varsayılan açıktır; durdurmak için `PULSE_AUTOMATION_ENABLED=false` kullanın. Production environment'ın her gün
    insan onayı istememesi için yalnız doğrulama sonrası gerekli reviewer kuralını
    kaldırın; dal kısıtını `main` ile sınırlı tutabilirsiniz.
 6. Sonraki gün 06.00 kapanışı ve yeni iki yayının birlikte açılışını da izleyin.
 
-`PULSE_AUTOMATION_ENABLED` eksik/false ise yeni cron hiçbir şey yapmaz.
+`PULSE_AUTOMATION_ENABLED=false` ise cron hiçbir şey yapmaz; değişken yoksa zamanlama açıktır.
 `PULSE_LIVE_APPROVED` eksik/false veya kodda `live_enabled` false ise yeni
 workflow hiçbir canlı dosyayı değiştirmez.
 Günlük üretim yine ücretli API kullanabilir: yalnız denemeye hazırken manuel başlatın.
 
-### 6. Eski sistemi kapatma ve yönlendirme (ayrı onay)
+### 6. Onaylı eski sistem temizliği
 
-Ana site en az bir gerçek günlük döngüde doğrulanmadan bu adımlar yapılmaz.
-
-1. Kullanıcının eski otomasyonu kapatma onayını alın.
-2. [Kaynak Actions](https://github.com/YasarGny/pulse-otomasyon/actions) → eski
-   **PULSE Daily Publication** ve **Sync PULSE Player Embed** → `…` →
-   `Disable workflow`. Eski dosyalar ilk aşamada silinmez.
-3. Eski kök `index.html` için yeni köke canonical + görünür bağlantı + kısa gecikmeli
-   meta refresh planlanır. `/web-player/` → `/teknoloji/`,
-   `/web-player/podcast/` → `/teknoloji/` karşılıkları korunur. GitHub Pages gerçek
-   HTTP 301 vermez; yanlış bir 301 garantisi vermeyin.
-4. Gömülü Notion oynatıcısının kullanılıp kullanılmadığını kontrol edin; otomatik
-   Notion düzenlemesi yapmayın. Eski MP3 URL'lerini ve oynatıcıyı bir geçiş süresi
-   boyunca tutun. Sonra bağımlılıkları doğrulayarak ayrı temizlik PR'ı açın.
+Yeni canlı yayın doğrulandıktan sonra eski Notion workflow ve betikleri kaldırılır.
+Eski kök sayfa yeni köke; `/web-player/` ve `/web-player/podcast/` teknoloji
+sayfasına canonical, görünür bağlantı ve meta refresh ile yönlendirilir.
+GitHub Pages bu yöntemle HTTP 301 döndürmez. Eski MP3 dosyaları doğrudan
+bağlantıların bozulmaması için tutulur; Notion'a erişilmez ve yeni anahtar gerekmez.
+Ana geliştirme/otomasyon deposu silinmez. Ertesi günün gerçek 06.00/07.30 döngüsü
+ayrıca izlenmelidir; ilk canlı dağıtım bu gelecek döngünün kanıtı değildir.
 
 ## Geri alma
 
 Yeni otomasyonu durdurmak için `PULSE_AUTOMATION_ENABLED=false` ve
 `PULSE_LIVE_APPROVED=false` yapın. Hedef deponun son site commit'ini GitHub'da
-revert etmek önceki atomik dağıtımı geri getirir. Eski Notion yayını kapatılmadığı
-sürece bağımsız çalışır. Güncel tarihli eksiksiz manifest yoksa matbaa ekranının
+revert etmek önceki atomik dağıtımı geri getirir. Notion üreticisi kaldırılmıştır; geri alma GitHub tabanlı sürümler üzerinden yapılır. Güncel tarihli eksiksiz manifest yoksa matbaa ekranının
 kalması beklenen güvenli davranıştır; eski haberi bugünkü diye etiketlemeyin.
 
 ## Mevcut dosyaların durumu
 
 | Dosya/akış | Karar |
 |---|---|
-| `pulse_audio.py`, `pulse_publish.py`, `sync_player_embed.py` | Eski üretim bağımlılıkları; korundu. |
-| `.github/workflows/pulse-audio.yml`, `sync-player-embed.yml` | Aktif eski üretim; kapatılmadı. |
+| `pulse_audio.py`, `pulse_publish.py`, `sync_player_embed.py` | Yeni hatta bağımlılığı olmadığı doğrulandı; kaldırıldı. |
+| `.github/workflows/pulse-audio.yml`, `sync-player-embed.yml` | Notion tabanlı eski üretim; kaldırıldı. |
 | `pulse_podcast_audio.py` | Yeni ve eski sistemin ortak ses motoru; başarılı API/yöntem ve kimlikler korundu; hata loglarında yanıt gövdesi çıkarıldı; eski üreticinin varsayılan yanıt uyumluluğu korundu. Yeni hat `strict_audio=True` ile ses dışı API verisini reddeder; iki yol ayrı testlerle doğrulandı. |
 | `pulse_podcast_writer.py` | Eski çağrı biçimi korundu; bölüm/tarih/sayı için isteğe bağlı argümanlar eklendi. |
-| `site/data/teknoloji.json`, `site/data/oyun.json` | Doğrulanmamış pilot; build dışında, bağımlılık incelemesi için şimdilik korunuyor. |
-| `web-player/` | Mevcut başarılı yayın ve kalıcı ses URL'leri; dokunulmadı. |
+| `site/data/teknoloji.json`, `site/data/oyun.json` | Doğrulanmamış pilot; kaldırıldı. |
+| `web-player/` | HTML sayfaları yeni adrese yönlendirilir; eski ses URL'leri korunur. |
 | `site/` | Tek yeni web kaynağı; yayın deposuna elle çatallanmaz. |
 
 ## Bulut ortamının ağ erişimi

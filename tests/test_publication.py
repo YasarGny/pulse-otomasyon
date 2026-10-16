@@ -297,6 +297,9 @@ class ReleaseTests(unittest.TestCase):
         target = self.root / "target"
         target.mkdir()
         (target / "keep.txt").write_text("preserve existing files")
+        (target / "data").mkdir()
+        (target / "data/teknoloji.json").write_text('{"pilot": true}')
+        (target / "data/oyun.json").write_text('{"pilot": true}')
 
         def git(*args):
             return subprocess.run(
@@ -310,6 +313,8 @@ class ReleaseTests(unittest.TestCase):
         git("config", "user.name", "PULSE test")
         git("config", "user.email", "test@example.com")
         sync(output, target, at=not_before(DATE))
+        self.assertFalse((target / "data/teknoloji.json").exists())
+        self.assertFalse((target / "data/oyun.json").exists())
         git("add", ".")
         git("commit", "-m", "atomic release")
         sync(output, target, at=not_before(DATE))

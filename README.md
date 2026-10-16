@@ -8,9 +8,8 @@ Teknoloji ve oyun dünyasında ilgimizi çeken haberler; her sabah 07.30'da sesl
 - **PULSE Oyun:** PC, konsol, duyurular, güncellemeler ve oyun kültürü.
   Podcast: **Moradon FM**, Yaşar ve Necdet.
 
-Hedef adres: **https://yasargny.github.io/**. Mevcut
-[sesli yayın](https://yasargny.github.io/pulse-otomasyon/web-player/) geçiş
-onaylanana kadar korunur.
+Yayın adresi: **https://yasargny.github.io/**. Eski proje ve oynatıcı
+sayfaları yeni adrese yönlendirilir; eski ses dosyaları bağlantı uyumluluğu için tutulur.
 
 ## Yapı
 
@@ -38,6 +37,7 @@ Tarayıcı testleri yalnız sentetik içerik kullanır; `test-results/` altında
 masaüstü/mobil görseller üretir. Gerçek Gemini ve Edge TTS entegrasyonları için
 ayrı, anahtarlı deneme gerekir. Anahtarsız testler API başarısını kanıtlamaz.
 
-**Yeni canlı otomasyon varsayılan olarak kapalıdır** (`pulse/deployment.json`: `live_enabled=false`). Eski Notion iş akışları ve
-oynatıcı dosyaları korunur. GitHub App, Secrets, deneme, son onay, geçiş ve geri
-alma adımları: **[İşletim rehberi](docs/OPERATIONS.md)**.
+**Canlı yayın ve günlük zamanlama kullanıcı onayıyla açılmıştır.**
+`PULSE_AUTOMATION_ENABLED=false` zamanlamayı durdurur. Manuel çalıştırmalar
+varsayılan olarak denemedir. Notion bağlantıları ve eski üretim iş akışları kaldırılmıştır.
+GitHub App, Secrets, doğrulama ve geri alma adımları: **[İşletim rehberi](docs/OPERATIONS.md)**.
