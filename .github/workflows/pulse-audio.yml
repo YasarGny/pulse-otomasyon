@@ -2,7 +2,7 @@ name: PULSE Daily Publication
 on:
   workflow_dispatch:
   schedule:
-    - cron: "8 7 * * *"
+    - cron: "50 6 * * *"
       timezone: "Europe/Istanbul"
 permissions:
   contents: write
