@@ -55,6 +55,14 @@ olarak yükler. Standart testler sentetiktir. `live-*-mobile.png` görüntüleri
   ara kayıt eksikliği canlı çıktıyı etkilemedi. PR #5 `include-hidden-files:true`
   ekler; tekrar çalışma yayımlanmış JSON/MP3 üzerinden de geri dönebilir.
 
+- [Gerçek aynı gün tekrarı](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38908982331)
+  dört işte de başarılı. Sayı 001 ve `2026-10-16-75d6476f03155fb9` sürümü
+  korunur; yayımlanan dosyalar üzerinden geri dönüş ve tekrar doğrulama çalışır.
+  `pulse-state-2026-10-16-38908982331-1` artifact'ı gerçekten oluştu
+  (9.892.080 bayt); gizli klasör düzeltmesi hosted ortamda doğrulandı.
+- Üç eski HTML adresinin yeni köke/teknolojiye yönlenmesi gerçek tarayıcıda
+  doğrulandı; hedef `data/` altında yalnız `publication.json` kaldı.
+
 ## Kalan gözlem
 
 İlk gerçek ertesi sabah 06.00 kapanışı ve 07.30/gerçek hazır olma açılışı
