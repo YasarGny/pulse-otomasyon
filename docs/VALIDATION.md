@@ -74,3 +74,28 @@ Bulut makinesine Gemini anahtarı kopyalanmadı; gerçek üretim mevcut GitHub
 Secret ile çalıştı. GitHub yönetim API'si Secrets/Variables/Pages ayarı
 değişikliklerine 403 verdiğinden yalnız bu hesap ayarları kullanıcı tarafından
 yapıldı. Site çıktısına anahtar veya ham senaryo aktarılmadı.
+
+## Mobil tasarım ve yeni ses akışı — 16 Ekim 2026
+
+- PR #7 ile sade PULSE/pembe nokta markası, kırpılmayan MMORPG/bilim kapakları,
+  özel erişilebilir oynatıcılar ve açılışta matbaa parlamayan doğrulama uygulandı.
+- Yerel ve hosted kontroller: 62 Python, 14 Node ve 23 Chromium senaryosu.
+  Yavaş manifestte sıfır matbaa açılışı, ses hızı/ses seviyesi/arama/sessize alma,
+  tek aktif oynatıcı ve mobil/yatay ölçüler kapsandı.
+- İlk gerçek prova kısa ama geçerli diyaloğu eski 10 sıra sınırı yüzünden reddetti.
+  PR #8 redakte edilmiş üretim hatalarını check annotation'larında görünür yaptı;
+  PR #9 sınırı gerçek karşılıklı konuşma için dört sıraya indirdi. Tam MP3
+  çözümleme ve en az 40 sn podcast kontrolü korundu.
+- Eski teknoloji seçkisindeki iki açık oyun kategorili haber ayıklandı; yeni
+  seçkiler `content_revision=2` ile bu karışımı engeller. Tarih ve sayı korunur.
+- [Yeni gerçek ses provası](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38925720523)
+  başarılı: plan/generate geçti; gate/publish deneme modunda atlandı. Kısa,
+  yorumsuz Edge özetleri ve ayrı editör/kaynak denetiminden geçen Gemini
+  sohbetleri aynı mevcut özel ses kimlikleriyle üretildi.
+- Son beş tarayıcı artifact'ı korunarak 26 eski görsel artifact temizlendi.
+  Geçici site/state çıktıları 2, tarayıcı çıktıları 3 gün saklanır; kalıcı
+  `releases/` arşivi etkilenmez.
+
+Bu kayıt otomatik doğruluk denetiminin hatasız olduğunu veya seslerin insan
+tarafından dinlenip öznel olarak onaylandığını iddia etmez. Denetim kaynak
+notlarına ve mevcutsa ham RSS kanıtına dayanır; onaysız senaryo seslendirilmez.

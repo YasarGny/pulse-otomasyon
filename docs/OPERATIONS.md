@@ -78,13 +78,13 @@ yeni seçkiden çıkarır. Yeterli yeni haber kalmazsa eski haber yeniden yayım
 Aynı günün sürümü yayın deposunda zaten mevcutsa, Actions artifact'ları silinmiş
 olsa bile doğrulanmış sürüm oradan geri alınır; yeniden API ücreti oluşturulmaz.
 
-İşin başarılı ara çıktıları, başarısız sonucun ardından da 30 günlük Actions
+İşin başarılı ara çıktıları, başarısız sonucun ardından da 2 günlük Actions
 artifact'ına yazılır. Yalnız bu depodaki bu iş akışının `main` üzerindeki güvenilir
 `schedule`/`workflow_dispatch` çalışmaları geri yüklenir; PR çıktıları kullanılmaz.
 Yeniden çalıştırma aynı günlük JSON'u, konuşma metnini ve geçerli sesleri kullanır.
 Tamamlanmış bir sürüm yeniden numaralandırılmaz veya tekrar seslendirilmez.
 Artifact silinirse henüz yayımlanmamış, tamamlanmamış günün bazı ücretli üretimleri yeniden gerekebilir;
-30 günlük artifact geçmişi uzun vadeli arşiv değildir. Yayımlanmış sürümler yayın
+2 günlük artifact geçmişi uzun vadeli arşiv değildir. Yayımlanmış sürümler yayın
 deposunda kalır. Araştırma başarısız olursa diğer günün haberleriyle doldurulmaz.
 
 Teknoloji sayısı 16 Ekim 2026 = 001 takvim başlangıcına bağlıdır. Oyun başlangıcı
@@ -309,3 +309,15 @@ uygulama veya yayınlama değildir. `CONNECT tunnel failed, response 403` ağ
 engeline işaret eder; bunu sırf `gh auth status` token değişkenini tanımadı diye
 yeni bir GitHub token'ı isteyerek çözmeye çalışmayın. Mevcut platform Git proxy
 kimlik doğrulamasıyla Git read/push ayrıca sınanmalıdır.
+
+## Private depo çıktı bütçesi
+
+Geçici site ve yeniden başlatma artifact'ları 2, tarayıcı sonuçları 3 gün saklanır.
+Kalıcı hazır yayınlar public yayın deposundaki `releases/` altında korunur;
+artifact'ın silinmesi arşivi veya aynı günün dayanıklı geri dönüşünü silmez.
+İlk temizlikte son beş tarayıcı kanıtı korundu, daha eski ekran görüntüsü
+artifact'ları kaldırıldı; job/test geçmişi silinmedi. Kaynak private olduğundan
+planın Actions dakika ve depolama kotası geçerlidir.
+
+Geçiş revizyonu, teknolojiye yanlış konmuş açık oyun kategorili haberleri ayıklar;
+tarih ve sayı korunur. Yeni `content_revision=2` yayınları bu ayrımı doğrular.
