@@ -6,7 +6,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | Kontrol | Sonuç |
 |---|---|
 | Python 3.12 / FFmpeg / ffprobe / bağımlılıklar | Hazır; pip check başarılı. |
-| Python unittest | **45 geçti**, başarısız/atlanan test yok. |
+| Python unittest | **46 geçti**, başarısız/atlanan test yok. |
 | Node yayın kapısı testleri | **14 geçti**, başarısız/atlanan test yok. |
 | Chromium işlevsel tarayıcı senaryoları | **19 geçti**. |
 | axe erişilebilirlik | Ana sayfa, teknoloji (1440/820/390/320 px), oyun ve matbaa üzerinde ihlal yok. |
@@ -20,7 +20,7 @@ Bu kayıt yerel bulut makinesi ve PR üzerindeki gerçek GitHub Actions kalite
 | GitHub Actions kalite koşuları | PR ve push koşuları başarılı: [PR CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897975490), [push CI](https://github.com/YasarGny/pulse-otomasyon/actions/runs/38897933764). |
 | Runner kararlılığı | Yeni akışlar Ubuntu 24.04 üzerinde sabitlenir; duyurulan ubuntu-latest → 26 geçişine bağımlı değildir. |
 | Actions YAML | Yeni iki workflow actionlint v1.7.7 ile başarılı; dağıtım composite ve bütün shell blokları ayrıca sözdizimi kontrolünden geçti. |
-| Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; ses dışı yanıt reddedildi. Gerçek API çağrısı yapılmadı. |
+| Mevcut Gemini yöntemi | Mock sağlayıcı + gerçek FFmpeg ile başarılı WAV yolu ve iki özel ses ID'si doğrulandı; yeni strict modda ses dışı yanıt reddedildi. Eski üreticinin tip bilgisi olmayan WAV yanıtıyla uyumluluğu ayrıca korundu ve sınandı. Gerçek API çağrısı yapılmadı. |
 | Eski akış uyumluluğu | Senaryo üreticisinin eski çağrı biçimi ve varsayılan Yeni Sekme prompt'u test edildi. Eski giriş noktaları, Notion workflow'ları, oynatıcılar ve yayımlanmış sesler korunuyor. |
 | Public artifact / sırlar | Build yalnız web varlıklarını kopyalıyor; ham araştırma/senaryo/kaynak Python'ları dışarıda. Anahtar desenleri ve mevcut secret değerleri için engelleme test edildi. |
 | Build tekrarı | Hazırlık build'i aynı komutla iki kez başarıyla çalıştı. |

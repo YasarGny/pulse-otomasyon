@@ -269,7 +269,7 @@ class ReleaseTests(unittest.TestCase):
             for i in range(12)
         ]
 
-        def render(dialogue, target):
+        def render(dialogue, target, *, strict_audio=False):
             shutil.copyfile(self.audio, target)
 
         with (
@@ -282,6 +282,7 @@ class ReleaseTests(unittest.TestCase):
             two = generate_audio(root, one)
             self.assertEqual(writer.call_count, 1)
             self.assertEqual(tts.call_count, 1)
+            self.assertTrue(tts.call_args.kwargs["strict_audio"])
             self.assertEqual(edge.call_count, 1)
             self.assertEqual(edge.call_args.kwargs["voice"], "tr-TR-EmelNeural")
             self.assertEqual(two["podcast"]["title"], "Yeni Sekme")
@@ -409,6 +410,7 @@ class ReleaseTests(unittest.TestCase):
                 ],
                 self.root / "part.wav",
                 0,
+                strict_audio=True,
             )
         payload = request.call_args.kwargs["json"]
         self.assertEqual(
@@ -418,6 +420,42 @@ class ReleaseTests(unittest.TestCase):
                 {"speaker": "Necdet", "voice": "voice_8nqcoox86z5q"},
             ],
         )
+        self.assertGreaterEqual(engine.duration(self.root / "part.wav"), 2.9)
+
+    def test_legacy_untyped_audio_response_remains_compatible(self):
+        import pulse_podcast_audio as engine
+
+        wav = self.root / "legacy-provider.wav"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                str(self.audio),
+                "-t",
+                "3",
+                "-c:a",
+                "pcm_s16le",
+                str(wav),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        response = Mock(status_code=200, ok=True)
+        response.json.return_value = {
+            "steps": [
+                {"content": [{"data": base64.b64encode(wav.read_bytes()).decode()}]}
+            ]
+        }
+        with (
+            patch.dict(os.environ, {"GEMINI_API_KEY": "fixture-only-key"}),
+            patch("pulse_podcast_audio.requests.post", return_value=response),
+        ):
+            engine.synthesize(
+                [{"speaker": "Yaşar", "text": "Test."}], self.root / "part.wav", 0
+            )
         self.assertGreaterEqual(engine.duration(self.root / "part.wav"), 2.9)
 
     def test_non_audio_provider_data_is_rejected_without_decoding_it_as_pcm(self):
@@ -443,7 +481,10 @@ class ReleaseTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "No audio returned"):
                 engine.synthesize(
-                    [{"speaker": "Yaşar", "text": "Test."}], self.root / "part.wav", 0
+                    [{"speaker": "Yaşar", "text": "Test."}],
+                    self.root / "part.wav",
+                    0,
+                    strict_audio=True,
                 )
             decode.assert_not_called()
 

@@ -126,7 +126,7 @@ def generate_audio(root, data):
     if not valid_audio(podcast, 40):
         temp = folder / "podcast.partial.mp3"
         pulse_podcast_audio.render(
-            turns, temp
+            turns, temp, strict_audio=True
         )  # Existing Gemini Interactions API and custom voices.
         audio_info(temp, 40)
         temp.replace(podcast)

@@ -280,7 +280,7 @@ kalması beklenen güvenli davranıştır; eski haberi bugünkü diye etiketleme
 |---|---|
 | `pulse_audio.py`, `pulse_publish.py`, `sync_player_embed.py` | Eski üretim bağımlılıkları; korundu. |
 | `.github/workflows/pulse-audio.yml`, `sync-player-embed.yml` | Aktif eski üretim; kapatılmadı. |
-| `pulse_podcast_audio.py` | Yeni ve eski sistemin ortak ses motoru; başarılı API/yöntem ve kimlikler korundu; hata loglarında yanıt gövdesi çıkarıldı; ses dışı API verisini PCM sayan güvensiz fallback kaldırıldı ve ayrı testle doğrulandı. |
+| `pulse_podcast_audio.py` | Yeni ve eski sistemin ortak ses motoru; başarılı API/yöntem ve kimlikler korundu; hata loglarında yanıt gövdesi çıkarıldı; eski üreticinin varsayılan yanıt uyumluluğu korundu. Yeni hat `strict_audio=True` ile ses dışı API verisini reddeder; iki yol ayrı testlerle doğrulandı. |
 | `pulse_podcast_writer.py` | Eski çağrı biçimi korundu; bölüm/tarih/sayı için isteğe bağlı argümanlar eklendi. |
 | `site/data/teknoloji.json`, `site/data/oyun.json` | Doğrulanmamış pilot; build dışında, bağımlılık incelemesi için şimdilik korunuyor. |
 | `web-player/` | Mevcut başarılı yayın ve kalıcı ses URL'leri; dokunulmadı. |

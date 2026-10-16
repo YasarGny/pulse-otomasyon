@@ -46,7 +46,7 @@ def make_parts(turns):
     return parts
 
 
-def synthesize(group, destination, number):
+def synthesize(group, destination, number, *, strict_audio=False):
     # Gemini 3.8 uses the Interactions API, not legacy generateContent.
     # Existing prebuilt voices remain defaults until persistent voice IDs are chosen.
     payload = {
@@ -102,6 +102,16 @@ def synthesize(group, destination, number):
                 break
         if encoded:
             break
+    # Preserve the legacy producer's response handling until cutover. The new
+    # pipeline explicitly requires typed audio; it never treats arbitrary data as PCM.
+    if not encoded and not strict_audio:
+        for step in response.get("steps", []):
+            for content in step.get("content", []):
+                if content.get("data"):
+                    encoded = content["data"]
+                    break
+            if encoded:
+                break
     if not encoded:
         raise RuntimeError("No audio returned for segment " + str(number))
     raw = destination.with_suffix(".raw")
@@ -115,7 +125,7 @@ def synthesize(group, destination, number):
     raw.unlink(missing_ok=True)
 
 
-def render(turns, target):
+def render(turns, target, *, strict_audio=False):
     # Keep custom voices consistent; no fixed station ident or style instructions.
     groups = chunks(turns, max_chars=3500, max_turns=24)
     with tempfile.TemporaryDirectory() as folder:
@@ -123,7 +133,7 @@ def render(turns, target):
         paths = []
         for index, group in enumerate(groups):
             path = root / ("part_%03d.wav" % index)
-            synthesize(group, path, index)
+            synthesize(group, path, index, strict_audio=strict_audio)
             paths.append(path)
         # Short intentional pause after ident; small section gaps avoid rushed edits.
         manifest = root / "concat.txt"
