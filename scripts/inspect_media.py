@@ -25,10 +25,14 @@ def inspect(item):
             return None
         kind=re.sub(r'[^a-zA-Z0-9/+.;=-]','',kind)[:100]
         result=f"{section}/{story['id']}; MIME={kind}; header={body[:12].hex()}; image={safe_url(url)}; source={safe_url(story['source_url'])}"
-        alternate=article_image(story['source_url'])
-        if alternate and alternate != url:
-            raw,mime=fetch_public(alternate)
-            result+=f'; publisher alternative MIME={mime.split(";")[0]}; image={safe_url(alternate)}; header={raw[:12].hex()}'
+        try:
+            alternate=article_image(story['source_url'])
+            if alternate and alternate != url:
+                raw,mime=fetch_public(alternate)
+                mime=re.sub(r'[^a-zA-Z0-9/+.;=-]','',mime)[:100]
+                result+=f'; publisher alternative MIME={mime}; image={safe_url(alternate)}; header={raw[:12].hex()}'
+        except Exception as error:
+            result+='; alternative retrieval='+type(error).__name__
         return result
     except Exception as error:
         return f"{section}/{story['id']}; image={safe_url(url)}; retrieval={type(error).__name__}"
