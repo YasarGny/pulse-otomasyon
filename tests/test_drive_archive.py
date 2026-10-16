@@ -55,6 +55,28 @@ class BackupTests(unittest.TestCase):
                 for kind in ('summary', 'podcast'):
                     self.assertEqual((revised / section / f'{kind}.mp3').read_bytes(), (self.release / section / f'{kind}.mp3').read_bytes())
 
+    def test_original_image_revision_can_use_complete_checkpoint_without_old_live_news(self):
+        from pulse.media_refresh import refresh
+        with tempfile.TemporaryDirectory() as tmp, patch('pulse.media_refresh.now',return_value=not_before(DATE)):
+            output=Path(tmp)/'originals'
+            result=refresh(Path(tmp)/'no-old-site',output,release=self.release,prefer_original=True,lookup=lambda url:'https://images.example.test/publisher-original.png')
+            self.assertNotEqual(result['release_id'],self.manifest['release_id'])
+            for section in ('teknoloji','oyun'):
+                before=read_json(self.release/f'{section}.json');after=read_json(output/f'{section}.json')
+                self.assertEqual(after['issue'],before['issue'])
+                self.assertEqual([s['title'] for s in after['stories']],[s['title'] for s in before['stories']])
+                self.assertTrue(all(s['image_url'].endswith('publisher-original.png') for s in after['stories']))
+                for kind in ('summary','podcast'):
+                    self.assertEqual((output/section/f'{kind}.mp3').read_bytes(),(self.release/section/f'{kind}.mp3').read_bytes())
+
+    def test_image_lookup_without_a_better_picture_keeps_original_manifest(self):
+        from pulse.media_refresh import refresh
+        with tempfile.TemporaryDirectory() as tmp, patch('pulse.media_refresh.now',return_value=not_before(DATE)):
+            result=refresh(self.site,Path(tmp)/'unchanged',prefer_original=True,lookup=lambda url:'')
+            self.assertEqual(result,self.manifest)
+            from pulse.publication import verify_manifest
+            verify_manifest(Path(tmp)/'unchanged',result)
+
     def test_encoded_feed_image_uses_largest_supplied_srcset(self):
         from pulse.editorial import parse_feed
         raw = b'''<rss><channel><item><title>A real source article with a useful image</title><link>https://www.nasa.gov/test</link><pubDate>Fri, 16 Oct 2026 02:00:00 GMT</pubDate><description><![CDATA[A source description long enough to qualify for this daily research feed with a genuinely attributable image. <img src="https://images.example.test/small.jpg" srcset="https://images.example.test/large.jpg 1200w, https://images.example.test/small.jpg 400w">]]></description></item></channel></rss>'''
@@ -205,3 +227,16 @@ class BackupTests(unittest.TestCase):
         data['content_revision'] = 3
         with self.assertRaisesRegex(ValueError, 'Unapproved'):
             validate_content(data, 'teknoloji', DATE, DATE)
+
+
+class VerifiedOriginalTests(unittest.TestCase):
+    def test_google_generic_binary_webp_original_is_verified(self):
+        from pulse.source_media import verified_article_image
+        body=Path('site/assets/covers/teknoloji-768.webp').read_bytes()
+        with patch('pulse.source_media.article_image',return_value='https://cdn.example.test/original.webp'),patch('pulse.source_media.fetch_public',return_value=(body,'application/octet-stream')):
+            self.assertEqual(verified_article_image('https://www.nasa.gov/story'),'https://cdn.example.test/original.webp')
+
+    def test_html_disguised_as_original_is_rejected(self):
+        from pulse.source_media import verified_article_image
+        with patch('pulse.source_media.article_image',return_value='https://cdn.example.test/original.png'),patch('pulse.source_media.fetch_public',return_value=(b'<html>not an image</html>','text/html')):
+            with self.assertRaises(ValueError):verified_article_image('https://www.nasa.gov/story')

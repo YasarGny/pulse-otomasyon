@@ -104,3 +104,18 @@ def article_text(url):
     parser.feed(raw.decode('utf-8', errors='replace'))
     primary = [text for inside, text in parser.paragraphs if inside]
     return '\n\n'.join(dict.fromkeys(primary or [text for _, text in parser.paragraphs]))[:16000]
+
+
+def verified_article_image(url):
+    """Use an Open Graph original only after fetching and decoding the actual image."""
+    candidate = article_image(url)
+    if not candidate:
+        return ''
+    body, kind = fetch_public(candidate)
+    from pulse.archive_media import portable_image
+    import subprocess
+    try:
+        portable_image(body, kind)
+    except subprocess.SubprocessError:
+        raise ValueError('Publisher original could not be decoded') from None
+    return candidate
