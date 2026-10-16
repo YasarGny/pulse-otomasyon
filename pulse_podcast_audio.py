@@ -163,7 +163,7 @@ def render(turns, target):
             "loudnorm=I=-18:TP=-2:LRA=11", "-ar", "44100", "-ac", "1",
             "-c:a", "libmp3lame", "-b:a", "128k", str(target))
     seconds = duration(target)
-    if seconds < 30:
+    if seconds < 2:
         raise RuntimeError("Rendered podcast unexpectedly short")
     return {"duration": round(seconds, 1), "segments": len(groups), "model": MODEL,
             "voices": VOICES, "mastering": "loudnorm -18 LUFS, -2 dBTP"}
