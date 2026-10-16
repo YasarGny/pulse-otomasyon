@@ -75,3 +75,5 @@ sözleşmeleriyle doğrulanabilir.
 Yayın günü sınırı tüm katmanlarda İstanbul 06:00’dır. Gece 00:00–05:59 arasında yapılan düzeltme önceki yayın tarihini korur; 06:00’da eski tarihli derleme, senkronizasyon ve push reddedilir. Yeni yayın için 07:30 alt sınırı ayrıca korunur.
 
 Başarılı canlı doğrulamadan sonra geçici Actions çıktıları sınırlandırılır: güncel dağıtım paketi, en yeni iki tarihin son devam kaydı ve son iki tarayıcı test kanıtı korunur. Kaynak deposu, yayın dosyaları ve Drive arşivleri bu temizlikte değiştirilmez. Tamamlanmış MP3’ler doğrulandıktan sonra ham TTS parçaları devam kaydından çıkarılır; yarım üretimler korunur.
+
+Zamanlama boş runner bekletmez: 06:00 yalnız matbaa durumunu hazırlar, 06:15 üretim başlar. Erken tamamlanan iki yayın özel devam kaydında saklanır; 07:30 çalışması bu kaydı doğrulayıp derler ve yayımlar. 06:20 ve 08:00 tekrarları kurtarma içindir. Hiçbir sabah aşaması 07:30’u çalışan runner içinde uyuyarak beklemez; erken yayın ve sonraki 06:00 sınırı korunur.
