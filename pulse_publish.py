@@ -43,8 +43,8 @@ def issue_stories():
 
 
 def main():
-    # Notion publishing is a separate scheduled task. Wait briefly for the new issue.
-    deadline = time.monotonic() + 11 * 60
+    # Wait for the 07:00 Notion editorial task; never publish yesterday's content.
+    deadline = time.monotonic() + 12 * 60
     while True:
         try:
             today, stories = issue_stories()
