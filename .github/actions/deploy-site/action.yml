@@ -63,7 +63,7 @@ runs:
         done
         if ! git diff --cached --quiet; then
           git commit -m "PULSE $PULSE_DATE: $PULSE_MODE verified website"
-          python -c "import os; from pulse.publication import expected_date, now; assert expected_date(now()) == os.environ['PULSE_DATE'], 'Issue expired before push'"
+          PYTHONPATH="$GITHUB_WORKSPACE" python -c "import os; from pulse.publication import expected_date, now; assert expected_date(now()) == os.environ['PULSE_DATE'], 'Issue expired before push'"
           git push origin HEAD:main
         fi
     - name: Wait for Pages and verify public HTML, JSON and all MP3 hashes
