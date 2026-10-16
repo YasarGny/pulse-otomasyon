@@ -26,6 +26,8 @@ PUBLIC_ROOTS = (
     "assets",
     "teknoloji",
     "oyun",
+    "gizlilik",
+    "kosullar",
 )
 
 

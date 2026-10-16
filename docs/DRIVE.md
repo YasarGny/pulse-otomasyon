@@ -18,9 +18,15 @@ uygulamanın oluşturduğu dosyalarla sınırlıdır; tüm Drive'ınızı okumak
 2. **APIs & Services → Library** → **Google Drive API** → **Enable**.
 3. **Google Auth Platform → Branding → Get started**. Ad `PULSE`, destek ve iletişim e-postası kendi adresiniz. **Audience: External**.
 4. **Audience → Test users → Add users** ile kendi Google hesabınızı ekleyin. **Data Access → Add or remove scopes** içinde `https://www.googleapis.com/auth/drive.file` seçin.
-5. **Audience → Publishing status → Publish app** ile **In production** yapın. Testing modunda Drive kapsamındaki refresh token genellikle yedi günde biter. Bu işlem web sitesini yayınlamaz; OAuth yetkisinin süresini ilgilendirir.
-6. **Clients → Create client → Application type: Web application** → ad `PULSE GitHub backup`. **Authorized redirect URIs → Add URI** alanına tam olarak `https://developers.google.com/oauthplayground` yazın. **Create** düğmesine basın.
-7. Açılan penceredeki **Client ID** ve **Client secret** değerlerini aşağıdaki iki yerde kullanın. **JSON indirmeniz gerekmiyor.** Secret yalnız oluşturulurken gösterilebilir; güvenli biçimde doğrudan GitHub Secret alanına kopyalayın.
+5. **Branding → App domain** alanlarını şu gerçek adreslerle tamamlayın:
+   - **Application home page:** `https://yasargny.github.io/`
+   - **Application privacy policy link:** `https://yasargny.github.io/gizlilik/`
+   - **Application terms of service link:** `https://yasargny.github.io/kosullar/`
+   - **Authorized domains → Add domain:** `yasargny.github.io` (protokol veya yol yazmayın).
+   **Save** seçin. Bu sayfalar herkese açıktır; gizlilik sayfası sabah yayın kilidinden bağımsızdır. Logo gerekli değildir. Google alan adı sahipliği doğrulaması isterse bu işlem hesap sahibi tarafından tamamlanmalıdır; bu adresleri girmek tek başına yayınlama onayını garanti etmez.
+6. **Audience → Publishing status → Publish app** ile **In production** yapın. Testing modunda Drive kapsamındaki refresh token genellikle yedi günde biter. Bu işlem web sitesini yayınlamaz; OAuth yetkisinin süresini ilgilendirir.
+7. **Clients → Create client → Application type: Web application** → ad `PULSE GitHub backup`. **Authorized redirect URIs → Add URI** alanına tam olarak `https://developers.google.com/oauthplayground` yazın. **Create** düğmesine basın.
+8. Açılan penceredeki **Client ID** ve **Client secret** değerlerini aşağıdaki iki yerde kullanın. **JSON indirmeniz gerekmiyor.** Secret yalnız oluşturulurken gösterilebilir; güvenli biçimde doğrudan GitHub Secret alanına kopyalayın.
 
 ### 2. Google iznini tarayıcıdan verin
 

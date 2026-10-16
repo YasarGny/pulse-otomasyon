@@ -84,6 +84,27 @@ async function run(name, fn) {
         [],
       );
     });
+    await run(
+      "privacy and terms remain public without publication data",
+      async () => {
+        await page.route("**/data/publication.json*", (route) => route.abort());
+        for (const slug of ["gizlilik", "kosullar"]) {
+          await page.goto(base + "/" + slug + "/");
+          assert.equal(await page.locator("h1").count(), 1);
+          assert.equal(
+            await page.locator("#pulse-printing, #publication-loading").count(),
+            0,
+          );
+          await noOverflow();
+          const results = await new AxeBuilder({ page }).analyze();
+          assert.deepEqual(
+            results.violations.map((v) => v.id),
+            [],
+          );
+        }
+        await page.unroute("**/data/publication.json*");
+      },
+    );
     await run("keyboard skip link reaches main content", async () => {
       await page.goto(base);
       await page.waitForFunction(() => window.PULSE_RELEASE);
