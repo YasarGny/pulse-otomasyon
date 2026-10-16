@@ -1666,7 +1666,7 @@ body::before {
 }
 
 /* Make the whole news card a useful tap target; its source remains independent. */
-.story:has(.story-detail-link) {
+.story {
   position: relative;
 }
 .story-detail-link::after {
