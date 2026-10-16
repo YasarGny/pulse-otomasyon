@@ -139,6 +139,7 @@ jobs:
         with:
           name: pulse-state-${{ env.PULSE_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: .pulse-work/
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 30
   publish:
