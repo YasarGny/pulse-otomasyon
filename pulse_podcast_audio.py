@@ -9,7 +9,7 @@ import time
 import requests
 
 MODEL = os.getenv("PULSE_TTS_MODEL", "gemini-3.8-flash-tts")
-VOICES = {"Yaşar": os.getenv("PULSE_YASAR_VOICE_ID", "Puck"), "Necdet": os.getenv("PULSE_NECDET_VOICE_ID", "Algenib")}
+VOICES = {"Yaşar": os.getenv("PULSE_YASAR_VOICE_ID", "voice_glt4mz1jtaeh"), "Necdet": os.getenv("PULSE_NECDET_VOICE_ID", "voice_8nqcoox86z5q")}
 API = "https://generativelanguage.googleapis.com/v1beta/interactions"
 
 def run(*args):
@@ -38,17 +38,10 @@ def make_parts(turns):
         speaker = turn["speaker"]
         if speaker not in VOICES:
             raise ValueError("Unknown podcast speaker: " + str(speaker))
-        style = (
-            "Natural conversational Turkish, warm and curious, moderate pace. "
-            "Avoid announcer delivery; retain the speaker's established vocal identity."
-            if speaker == "Yaşar" else
-            "Natural conversational Turkish, calm and thoughtful, moderate pace. "
-            "Avoid announcer delivery; retain the speaker's established vocal identity."
-        )
         parts.append({
             "type": "text",
             "text": turn["text"],
-            "annotations": [{"type": "speech_metadata", "speaker": speaker, "style": style}],
+            "annotations": [{"type": "speech_metadata", "speaker": speaker}],
         })
     return parts
 
@@ -132,10 +125,8 @@ def synthesize(group, destination, number):
 
 
 def render(turns, target):
-    # Show ident is kept in the same synthesis call to minimize voice drift and quota usage.
-    ident = [{"speaker": "Yaşar", "text": "PULSE sunar. Yeni Sekme."}]
-    # Keep the full dialogue in one request to reduce voice drift.
-    groups = [ident + turns]
+    # Keep custom voices consistent; no fixed station ident or style instructions.
+    groups = chunks(turns, max_chars=3500, max_turns=24)
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder)
         paths = []
