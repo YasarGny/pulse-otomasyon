@@ -149,10 +149,14 @@ def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
                     valid = False
             if not valid:
                 partial = path.with_name(path.stem + '.partial.wav')
-                synthesize(group, partial, index, strict_audio=strict_audio)
-                if persistent and duration(partial) < max(2, sum(len(t['text'].split()) for t in group) / 220 * 60):
-                    raise RuntimeError('TTS segment shorter than its dialogue; refusing truncated audio')
-                partial.replace(path)
+                try:
+                    synthesize(group, partial, index, strict_audio=strict_audio)
+                    if persistent and duration(partial) < max(2, sum(len(t['text'].split()) for t in group) / 220 * 60):
+                        raise RuntimeError('TTS segment shorter than its dialogue; refusing truncated audio')
+                    partial.replace(path)
+                finally:
+                    partial.with_suffix('.raw').unlink(missing_ok=True)
+                    partial.unlink(missing_ok=True)
             paths.append(path)
         # Short intentional pause after ident; small section gaps avoid rushed edits.
         manifest = assembly / "concat.txt"

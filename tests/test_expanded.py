@@ -93,3 +93,18 @@ class TTSCheckpointTests(unittest.TestCase):
                 audio.render(changed,root/'third.mp3',strict_audio=True,checkpoint_dir=relative_cache)
                 self.assertEqual(call.call_count,2)
             self.assertFalse(list((root/'cache').rglob('merged.wav')))
+
+
+class WavRestoreTests(unittest.TestCase):
+    def test_only_scoped_validated_tts_cache_paths_can_be_restored(self):
+        from scripts.state import unpack
+        import io, zipfile
+        for path, allowed in [(DATE+'/expanded-v1/teknoloji/tts-parts/'+'a'*64+'/part_000.wav',True),(DATE+'/arbitrary.wav',False),(DATE+'/teknoloji/tts-parts/invalid/part_000.wav',False)]:
+            raw=io.BytesIO()
+            with zipfile.ZipFile(raw,'w') as z:z.writestr(path,b'not-yet-validated')
+            with tempfile.TemporaryDirectory() as tmp:
+                if allowed:
+                    unpack(raw.getvalue(),tmp,DATE)
+                    self.assertTrue((Path(tmp)/path).exists())
+                else:
+                    with self.assertRaises(ValueError):unpack(raw.getvalue(),tmp,DATE)

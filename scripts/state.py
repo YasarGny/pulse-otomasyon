@@ -3,6 +3,7 @@
 import argparse
 import io
 import os
+import re
 import stat
 import zipfile
 from pathlib import Path
@@ -27,7 +28,8 @@ def unpack(raw, target, date):
                 or stat.S_ISLNK(member.external_attr >> 16)
             ):
                 raise ValueError("Unsafe checkpoint path")
-            if not member.is_dir() and path.suffix not in (".json", ".mp3", ".txt"):
+            cached_wav = re.fullmatch(re.escape(date) + r"/(?:(?:expanded-v\d+|audio-v\d+)/)?(?:teknoloji|oyun)/tts-parts/[a-f0-9]{64}/part_\d{3}\.wav", path.as_posix())
+            if not member.is_dir() and path.suffix not in (".json", ".mp3", ".txt") and not cached_wav:
                 raise ValueError("Unexpected checkpoint file")
         for member in members:
             dest = target / member.filename
