@@ -102,7 +102,7 @@
       d.stories.length <
         (d.publication_profile === "expanded-v1"
           ? section === "teknoloji"
-            ? 10
+            ? 12
             : 8
           : 3) ||
       d.stories.length > 24

@@ -69,3 +69,26 @@ class ExpandedEditorialTests(unittest.TestCase):
         with patch.object(writer,'_request',side_effect=[{'turns':turns},{'turns':turns},approved,{'turns':turns},approved]):
             with self.assertRaisesRegex(RuntimeError,'independent evidence'):
                 writer.generate([('Haber','Doğrulanmış kaynak')],long_form=True)
+
+
+class TTSCheckpointTests(unittest.TestCase):
+    def test_second_render_reuses_verified_parts_and_changed_dialogue_does_not(self):
+        import subprocess
+        import shutil
+        import pulse_podcast_audio as audio
+        from fixtures import tone
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            mp3=tone(root/'tone.mp3')
+            wav=root/'tone.wav'
+            subprocess.run(['ffmpeg','-v','error','-y','-i',str(mp3),str(wav)],check=True)
+            turns=[{'speaker':'Yaşar','text':'Kaynağa göre açıklanan gelişmeyi birlikte konuşalım.'}, {'speaker':'Necdet','text':'Belirsiz kalan noktaları da ayrı değerlendirelim.'}]
+            def synth(group,destination,number,**kwargs):shutil.copyfile(wav,destination)
+            with patch.object(audio,'synthesize',side_effect=synth) as call:
+                audio.render(turns,root/'first.mp3',strict_audio=True,checkpoint_dir=root/'cache')
+                audio.render(turns,root/'second.mp3',strict_audio=True,checkpoint_dir=root/'cache')
+                self.assertEqual(call.call_count,1)
+                changed=copy.deepcopy(turns);changed[1]['text']+=' Bir sorumuz daha var.'
+                audio.render(changed,root/'third.mp3',strict_audio=True,checkpoint_dir=root/'cache')
+                self.assertEqual(call.call_count,2)
+            self.assertFalse(list((root/'cache').rglob('merged.wav')))

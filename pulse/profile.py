@@ -1,7 +1,7 @@
 """Versioned publishing targets; old sealed issues remain verifiable."""
 PROFILE = 'expanded-v1'
 TARGETS = {'teknoloji': (15, 20), 'oyun': (12, 18)}
-MIN_STORIES = {'teknoloji': 10, 'oyun': 8}
+MIN_STORIES = {'teknoloji': 12, 'oyun': 10}
 WORDS = {'teknoloji': (2100, 2900), 'oyun': (1700, 2500)}
 PODCAST_SECONDS = {'teknoloji': (900, 1500), 'oyun': (720, 1320)}
 

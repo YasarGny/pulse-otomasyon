@@ -61,7 +61,7 @@ hesap sahibinin OAuth izni olmadan yapılamaz; özellik varsayılan olarak kapal
 ## Geniş günlük seçki
 
 Teknoloji 15–20, oyun 12–18 haber hedefler. Yeni `expanded-v1` yayınları en az
-10 teknoloji / 8 oyun haberini ve ayrı olay kimliklerini doğrular; yetersiz
+12 teknoloji / 10 oyun haberini ve ayrı olay kimliklerini doğrular; yetersiz
 kaynakla sayı doldurulmaz. İlk beş haber büyük kart, kalanı kompakt karttır.
 Sekizer haber gösterilir, kategori filtresi ve Daha fazla göster düğmesi vardır.
 
