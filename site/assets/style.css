@@ -1297,7 +1297,7 @@ body::before {
   width: 100%;
   max-width: none;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .story figcaption {
   position: absolute;
@@ -1663,4 +1663,19 @@ body::before {
   .card-bottom strong {
     font-size: 16px;
   }
+}
+
+/* Make the whole news card a useful tap target; its source remains independent. */
+.story {
+  position: relative;
+}
+.story-detail-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.story > .source-link {
+  position: relative;
+  z-index: 2;
 }
