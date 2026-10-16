@@ -1,59 +1,70 @@
-name: PULSE Two-Host Podcast Pilot (Temporary)
+name: PULSE Six Short Voice Tests (Temporary)
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  pilot:
+  tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install audio processing tools
+      - name: Install FFmpeg
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          ffmpeg -version | head -n 1
-      - name: Render Yaşar 3 and Necdet 7 conversation
+          python -m pip install requests
+      - name: Six different Necdet voices with Yaşar 3
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PULSE_YASAR_VOICE_ID: voice_p94xlklc2103
-          PULSE_NECDET_VOICE_ID: voice_013isn56gi20
         run: |
-          python -m pip install requests
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
-          from pulse_podcast_audio import render
+          import pulse_podcast_audio as audio
 
+          candidates = {
+              "necdet-1": "voice_f9j8iskjzeqc",
+              "necdet-4": "voice_bb81iykarlon",
+              "necdet-5": "voice_vbozaw08r6hv",
+              "necdet-6": "voice_t53vbt24f9js",
+              "necdet-7": "voice_013isn56gi20",
+              "necdet-8": "voice_n5xry8242n1v",
+          }
           turns = [
-              {"speaker":"Yaşar","text":"Selam Necdet! Bugün telefonlardaki yapay zekâyı konuşalım. Her yeni model daha akıllı diyorlar ama ben hâlâ şarj aletimi yanımda taşıyorum. Bir gariplik yok mu?"},
-              {"speaker":"Necdet","text":"Var tabii! Telefon düşünmeyi öğreniyor ama günün sonunda yine priz arıyoruz. Şaka bir yana, asıl mesele yapay zekânın telefonda mı, bulutta mı çalıştığı."},
-              {"speaker":"Yaşar","text":"Tam da onu soracaktım. Mesela internetsizken fotoğraf düzenleyebilsem, konuşmalarımı çevirebilsem... Hem daha hızlı olmaz mı?"},
-              {"speaker":"Necdet","text":"Çoğu durumda evet. Üstelik verilerin cihazdan çıkmaması mahremiyet açısından da avantaj. Ama güçlü modeller işlemciyi yoruyor. İşte o noktada pil, ısınma ve performans arasında denge gerekiyor."},
-              {"speaker":"Yaşar","text":"Yani telefon üreticilerinin bize daha fazla özellik göstermesi yetmiyor. O özellikleri gün boyunca rahatça kullanabilmemiz gerekiyor."},
-              {"speaker":"Necdet","text":"Kesinlikle. Bir de şu var: Her iş için devasa bir model şart değil. Küçük, iyi optimize edilmiş modeller bazen günlük kullanımda daha mantıklı. Mesela bildirimleri özetlemek için veri merkezine koşmaya gerek yok."},
-              {"speaker":"Yaşar","text":"Güzel örnek. Benim istediğim de bu zaten: Yapay zekâ beni daha fazla ayar yapmaya zorlamasın, arka planda gerçekten işimi kolaylaştırsın."},
-              {"speaker":"Necdet","text":"Aynen. İyi teknoloji kendini sürekli hatırlatmaz. Sen işini yaparsın, o yardımcı olur. Hatta bazen kullandığını bile fark etmezsin."},
-              {"speaker":"Yaşar","text":"Peki senin için iyi bir telefon yapay zekâsının ilk şartı ne? Hız mı, gizlilik mi, pil ömrü mü?"},
-              {"speaker":"Necdet","text":"Önce güvenilirlik derim. Yanlış bilgi verip çok hızlı cevaplamasının kimseye faydası yok. Sonra gizlilik ve pil. Hız zaten bunların yanında gelmeli."},
-              {"speaker":"Yaşar","text":"Güzel. Demek ki daha akıllı telefon demek sadece daha büyük model demek değil. Kullanıcıya daha az zahmet, daha fazla fayda demek."},
-              {"speaker":"Necdet","text":"Tam olarak öyle. Yeni Sekme'nin bu kısa denemesinde bunu konuşmuş olduk. Bir sonraki bölümde gerçek haberlerle devam ederiz."},
-              {"speaker":"Yaşar","text":"Dinlediğiniz için teşekkürler. Görüşmek üzere!"},
+              {"speaker":"Yaşar","text":"Necdet, bugün telefonlardaki yapay zekâyı konuşalım. Sence gerçekten hayatımızı kolaylaştırıyor mu?"},
+              {"speaker":"Necdet","text":"Bazen evet. Ama bana kalırsa asıl marifet, internet yokken de işe yaraması. Her küçük işlem için buluta bağlanmak pek akıllıca değil."},
+              {"speaker":"Yaşar","text":"Katılıyorum. Bir de bütün bunları yaparken telefonun şarjı akşama kadar dayansın istiyorum."},
+              {"speaker":"Necdet","text":"Kesinlikle Yaşar! Yoksa yapay zekâ çok akıllı olsa ne olur? Biz yine priz ararken buluruz kendimizi."},
           ]
-          Path("pilot-output").mkdir(exist_ok=True)
-          info = render(turns, Path("pilot-output/yeni-sekme-yasar3-necdet7.mp3"))
-          Path("pilot-output/metadata.json").write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
-          print(json.dumps(info, ensure_ascii=False))
+          output = Path("voice-tests")
+          output.mkdir(exist_ok=True)
+          manifest = []
+          for name, voice_id in candidates.items():
+              audio.VOICES["Necdet"] = voice_id
+              print("Testing Yaşar 3 +", name, flush=True)
+              target = output / (name + ".mp3")
+              info = audio.render(turns, target)
+              if info["duration"] > 60:
+                  raise RuntimeError(f"{name} exceeds 60 seconds: {info['duration']}")
+              manifest.append({"candidate":name,"necdet_voice_id":voice_id,
+                               "yasar_voice_id":audio.VOICES["Yaşar"],
+                               "duration_seconds":info["duration"],"file":target.name})
+              (output/"manifest.json").write_text(
+                  json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
+              print("Saved", target, info["duration"], "seconds", flush=True)
+          print("All six comparison clips ready. No new voice profiles created.")
           PY
-      - name: Upload pilot without publishing
-        if: success()
+      - name: Download completed tests
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: yeni-sekme-yasar3-necdet7-pilot
-          path: pilot-output/
+          name: pulse-six-short-podcast-tests
+          path: voice-tests/
           if-no-files-found: warn
           retention-days: 7
