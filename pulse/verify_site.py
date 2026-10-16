@@ -28,7 +28,7 @@ def check_site(session, base, expected):
             urljoin(base, route), params={"pulse_check": time.time_ns()}, timeout=30
         )
         page.raise_for_status()
-        if "assets/publication.js" not in page.text or 'data-design="editorial-v2"' not in page.text:
+        if "assets/publication.js" not in page.text or 'data-design="editorial-v3"' not in page.text:
             raise ValueError("Pages HTML has not updated")
     if expected["status"] != "ready":
         return

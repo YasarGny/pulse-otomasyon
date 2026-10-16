@@ -97,6 +97,11 @@ def validate_content(data, section, date, game_start):
     if not isinstance(stories, list) or not 3 <= len(stories) <= 12:
         raise ValueError("Each edition needs 3–12 sourced stories")
     ids, urls = set(), set()
+    if data.get("content_revision", 1) >= 3:
+        from pulse.source_media import trusted_hosts
+        approved_hosts = trusted_hosts(section)
+    else:
+        approved_hosts = None
     for story in stories:
         if data.get("content_revision", 1) >= 2 and not category_allowed(section, story.get("category")):
             raise ValueError("Gaming story cannot appear in the technology edition")
@@ -116,6 +121,8 @@ def validate_content(data, section, date, game_start):
             raise ValueError("Duplicate story/source")
         if not https_url(story.get("source_url")):
             raise ValueError("A verifiable HTTPS source is required")
+        if approved_hosts is not None and urlparse(story["source_url"]).hostname not in approved_hosts:
+            raise ValueError("Unapproved news publisher")
         if story.get("image_url") and not https_url(story["image_url"]):
             raise ValueError("Unsafe image URL")
         published = dt.datetime.fromisoformat(story["source_published_at"])

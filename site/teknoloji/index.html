@@ -30,12 +30,12 @@
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="../assets/style.css?v=2" />
+    <link rel="stylesheet" href="../assets/style.css?v=3" />
     <script src="../assets/publication.js" defer></script>
     <script src="../assets/printing.js" defer></script>
-    <script src="../assets/site.js?v=2" defer></script>
+    <script src="../assets/site.js?v=3" defer></script>
   </head>
-  <body data-design="editorial-v2" data-page="teknoloji" class="technology">
+  <body data-design="editorial-v3" data-page="teknoloji" class="technology">
     <noscript
       ><main class="nojs">
         <h1>PULSE</h1>
@@ -95,38 +95,52 @@
             </div>
           </section>
           <aside class="listening" aria-label="Sesli yayınlar">
-            <div class="listening-heading">
-              <h2>Dinlemeye geç.</h2>
+            <div
+              class="listening-heading"
+              role="tablist"
+              aria-label="Dinleme türü"
+            >
+              <button
+                class="listen-tab"
+                type="button"
+                role="tab"
+                id="summary-tab"
+                aria-controls="summary-panel"
+                aria-selected="true"
+              >
+                Sesli özet
+              </button>
+              <button
+                class="listen-tab"
+                type="button"
+                role="tab"
+                id="podcast-tab"
+                aria-controls="podcast-panel"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Podcast
+              </button>
             </div>
             <div class="listening-cards">
               <section
                 class="audio-box summary-box"
-                aria-labelledby="summary-title"
+                id="summary-panel"
+                role="tabpanel"
+                aria-labelledby="summary-tab"
               >
-                <div class="audio-type">SESLİ ÖZET</div>
                 <h3 id="summary-title">Günün sesli özeti</h3>
-                <p>Bütün haberler, tek bir özette.</p>
+
                 <div id="summary"><p>Ses yükleniyor…</p></div>
               </section>
               <section
                 class="audio-box podcast-box"
-                aria-labelledby="podcast-title"
+                id="podcast-panel"
+                role="tabpanel"
+                aria-labelledby="podcast-tab"
+                hidden
               >
-                <img
-                  src="../assets/covers/teknoloji-768.webp"
-                  srcset="
-                    ../assets/covers/teknoloji-768.webp  768w,
-                    ../assets/covers/teknoloji.webp     1440w
-                  "
-                  sizes="(max-width: 760px) calc(100vw - 44px), 344px"
-                  alt=""
-                  width="768"
-                  height="512"
-                  loading="lazy"
-                  decoding="async"
-                />
                 <div class="podcast-box-body">
-                  <div class="audio-type">PODCAST</div>
                   <h3 id="podcast-title">Yeni Sekme</h3>
                   <p>Yaşar &amp; Necdet</p>
                   <div id="podcast"><p>Podcast yükleniyor…</p></div>

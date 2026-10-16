@@ -144,7 +144,7 @@ async function run(name, fn) {
         assert.equal(await page.locator("audio").count(), 2);
         assert.match(
           await page.locator("#issue").innerText(),
-          /16 Ekim 2026 · Sayı 001/,
+          /16\.10\.2026 · Sayı 001/,
         );
         assert.equal(
           await page.locator("#podcast-title").innerText(),
@@ -165,6 +165,44 @@ async function run(name, fn) {
         );
       });
     }
+    await run(
+      "article details keep sources, full image and numeric date",
+      async () => {
+        await open("/teknoloji/");
+        await page.locator(".story-detail-link").first().click();
+        await page.waitForFunction(() => !!window.PULSE_RELEASE);
+        assert.match(
+          await page.locator(".detail-meta").innerText(),
+          /16\.10\.2026/,
+        );
+        assert.equal(await page.locator(".source-link").count(), 1);
+        assert.equal(await page.locator(".why").count(), 1);
+        assert.equal(await page.locator("audio").count(), 0);
+        assert.equal(await page.locator("h1").count(), 1);
+        await noOverflow();
+        const results = await new AxeBuilder({ page }).analyze();
+        assert.deepEqual(
+          results.violations.map((v) => v.id),
+          [],
+        );
+        await page.screenshot({
+          path: "test-results/detail-mobile.png",
+          fullPage: true,
+        });
+      },
+    );
+    await run("compact listening tabs support keyboard switching", async () => {
+      await open("/teknoloji/");
+      assert(await page.locator("#summary-panel").isVisible());
+      assert(await page.locator("#podcast-panel").isHidden());
+      await page.locator("#summary-tab").focus();
+      await page.keyboard.press("ArrowRight");
+      assert(await page.locator("#podcast-panel").isVisible());
+      assert(await page.locator("#summary-panel").isHidden());
+      await page.keyboard.press("Home");
+      assert(await page.locator("#summary-panel").isVisible());
+      assert((await page.locator(".listening").boundingBox()).height < 310);
+    });
     await run("game edition and distinct podcast on mobile", async () => {
       await open("/oyun/");
       assert.equal(
@@ -201,7 +239,17 @@ async function run(name, fn) {
     await run(
       "custom controls change speed, seek, volume and mute",
       async () => {
-        await page.locator("#summary .player-speed").selectOption("1.5");
+        for (const value of [1.1, 1.2, 1.25, 1.5, 2, 1]) {
+          await page.locator("#summary .player-speed").click();
+          assert.equal(
+            await page
+              .locator("#summary audio")
+              .evaluate((a) => a.playbackRate),
+            value,
+          );
+        }
+        for (let i = 0; i < 4; i++)
+          await page.locator("#summary .player-speed").click();
         assert.equal(
           await page.locator("#summary audio").evaluate((a) => a.playbackRate),
           1.5,
@@ -222,7 +270,7 @@ async function run(name, fn) {
           Math.abs(
             (await page
               .locator("#summary audio")
-              .evaluate((a) => a.currentTime)) - 25,
+              .evaluate((a) => a.currentTime)) - 20,
           ) < 1,
         );
         await page.locator("#summary .player-volume").evaluate((input) => {
@@ -244,6 +292,7 @@ async function run(name, fn) {
     );
     await run("starting the podcast pauses the summary", async () => {
       await page.locator("#summary audio").evaluate((a) => a.play());
+      await page.locator("#podcast-tab").click();
       await page.locator("#podcast audio").evaluate((a) => a.play());
       assert(await page.locator("#summary audio").evaluate((a) => a.paused));
       assert(
@@ -268,7 +317,7 @@ async function run(name, fn) {
           for (const route of ["/", "/teknoloji/", "/oyun/"]) {
             await open(route);
             await noOverflow();
-            for (const audio of await page.locator(".player").all()) {
+            for (const audio of await page.locator(".player:visible").all()) {
               const box = await audio.boundingBox();
               assert(
                 box.width >= 230 && box.height >= 44,
@@ -282,6 +331,7 @@ async function run(name, fn) {
       },
     );
     await run("audio error has a usable retry action", async () => {
+      await page.locator("#summary-tab").click();
       await page
         .locator("#summary audio")
         .evaluate((a) => a.dispatchEvent(new Event("error")));
@@ -411,6 +461,89 @@ async function run(name, fn) {
       assert(await page.locator(".site-shell").isHidden());
       await page.unroute("**/data/publication.json*");
     });
+    await run(
+      "extracted archive works with networking offline, including audio and details",
+      async () => {
+        const offline = await browser.newContext({
+          offline: true,
+          viewport: { width: 390, height: 844 },
+          reducedMotion: "reduce",
+        });
+        const local = await offline.newPage();
+        const localErrors = [];
+        local.on("pageerror", (e) => localErrors.push(e.message));
+        const { pathToFileURL } = require("node:url");
+        try {
+          await local.goto(
+            pathToFileURL(path.resolve("test-results/offline/index.html")).href,
+          );
+        } catch (error) {
+          if (!error.message.includes("ERR_BLOCKED_BY_ADMINISTRATOR"))
+            throw error;
+          console.log(
+            "NOTE local Chromium policy blocks file URLs; checking extracted archive through an in-memory origin with networking offline.",
+          );
+          await offline.route(
+            "https://pulse-offline.test/**",
+            async (route) => {
+              const relative = decodeURIComponent(
+                new URL(route.request().url()).pathname,
+              ).replace(/^\//, "");
+              const file = path.resolve("test-results/offline", relative);
+              assert(
+                file.startsWith(
+                  path.resolve("test-results/offline") + path.sep,
+                ),
+              );
+              const types = {
+                ".html": "text/html",
+                ".js": "application/javascript",
+                ".css": "text/css",
+                ".webp": "image/webp",
+                ".svg": "image/svg+xml",
+                ".mp3": "audio/mpeg",
+              };
+              await route.fulfill({
+                status: 200,
+                contentType:
+                  types[path.extname(file)] || "application/octet-stream",
+                body: await fs.readFile(file),
+              });
+            },
+          );
+          await local.goto("https://pulse-offline.test/index.html");
+        }
+        assert.equal(await local.locator(".edition-card").count(), 2);
+        await local.locator(".edition-card").first().click();
+        await local.waitForSelector(".story-detail-link");
+        assert.equal(await local.locator(".story").count(), 3);
+        assert(
+          await local
+            .locator(".story-image")
+            .first()
+            .evaluate((i) => i.complete && i.naturalWidth > 0),
+        );
+        await local.locator("#summary .player-play").click();
+        await local.waitForFunction(
+          () => document.querySelector("#summary audio").currentTime > 0.1,
+        );
+        await local.locator(".story-detail-link").first().click();
+        assert.equal(await local.locator("h1").count(), 1);
+        assert(
+          await local
+            .locator(".story-image")
+            .evaluate((i) => i.complete && i.naturalWidth > 0),
+        );
+        assert.equal(await local.locator(".source-link").count(), 1);
+        assert.equal(await local.locator("#pulse-printing").count(), 0);
+        assert.deepEqual(localErrors, []);
+        await local.screenshot({
+          path: "test-results/offline-detail-mobile.png",
+          fullPage: true,
+        });
+        await offline.close();
+      },
+    );
     await run("no browser runtime errors", async () =>
       assert.deepEqual(errors, []),
     );

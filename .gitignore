@@ -10,3 +10,9 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+.drive-receipts.json
+*client_secret*.json
+*credentials*.json
+
+.pulse-media/

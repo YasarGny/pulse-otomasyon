@@ -19,11 +19,11 @@
     ui.setAttribute("role", "group");
     ui.setAttribute("aria-label", label + " oynatıcı");
     const icons = {
-      play: '<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+      play: '<path d="m8 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
       pause: '<path d="M8 6v12M16 6v12" stroke-width="4"/>',
-      back: '<path d="M5 9a8 8 0 1 1-1 8M5 3v6h6"/><path d="M10 12v5m3-5h3v2h-3v3h3" stroke-width="1.1"/>',
+      back: '<path d="M5 9a8 8 0 1 1-1 8M5 3v6h6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
       forward:
-        '<path d="M19 9a8 8 0 1 0 1 8M19 3v6h-6"/><path d="M10 12v5m3-5h3v2h-3v3h3" stroke-width="1.1"/>',
+        '<path d="M19 9a8 8 0 1 0 1 8M19 3v6h-6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
       volume:
         '<path d="m11 5-5 4H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
       mute: '<path d="m11 5-5 4H3v6h3l5 4ZM16 9l6 6m0-6-6 6"/>',
@@ -40,16 +40,16 @@
       return b;
     };
     const play = button("player-play", "play", "Oynat");
-    const back = button("player-skip", "back", "15 saniye geri al");
-    const forward = button("player-skip", "forward", "15 saniye ileri al");
-    const speed = el("select", "player-speed");
-    speed.setAttribute("aria-label", label + ": oynatma hızı");
-    for (const value of [0.75, 1, 1.25, 1.5, 1.75, 2]) {
-      const option = el("option", "", value.toString().replace(".", ",") + "×");
-      option.value = String(value);
-      option.selected = value === 1;
-      speed.append(option);
-    }
+    const back = button("player-skip", "back", "10 saniye geri al");
+    const forward = button("player-skip", "forward", "10 saniye ileri al");
+    const rates = [1, 1.1, 1.2, 1.25, 1.5, 2];
+    const speed = el("button", "player-speed", "1×");
+    speed.type = "button";
+    let rateIndex = 0;
+    speed.setAttribute(
+      "aria-label",
+      label + ": hız 1×, değiştirmek için basın",
+    );
     const controls = el("div", "player-controls");
     controls.append(play, back, forward, speed);
     const seek = el("input", "player-seek");
@@ -159,10 +159,16 @@
           Math.min(duration, audio.currentTime + delta),
         );
     };
-    back.addEventListener("click", () => jump(-15));
-    forward.addEventListener("click", () => jump(15));
-    speed.addEventListener("change", () => {
-      audio.playbackRate = Number(speed.value);
+    back.addEventListener("click", () => jump(-10));
+    forward.addEventListener("click", () => jump(10));
+    speed.addEventListener("click", () => {
+      rateIndex = (rateIndex + 1) % rates.length;
+      audio.playbackRate = rates[rateIndex];
+      speed.textContent = rates[rateIndex] + "×";
+      speed.setAttribute(
+        "aria-label",
+        label + ": hız " + rates[rateIndex] + "×, değiştirmek için basın",
+      );
     });
     const updateVolume = () => {
       const silent = audio.muted || audio.volume === 0;
@@ -196,8 +202,8 @@
     if (!data) return;
     const formatted = new Intl.DateTimeFormat("tr-TR", {
       timeZone: "Europe/Istanbul",
-      day: "numeric",
-      month: "long",
+      day: "2-digit",
+      month: "2-digit",
       year: "numeric",
     }).format(new Date(data.publish_date + "T12:00:00+03:00"));
     $("issue").textContent =
@@ -214,7 +220,13 @@
       if (s.image_url && rules.safeHttps(s.image_url)) {
         const figure = el("figure"),
           image = el("img", "story-image");
-        image.src = s.image_url;
+        image.src =
+          window.PULSE_ARCHIVE &&
+          /^\.\.\/\.\.\/media\/[a-f0-9]+\.(jpg|png|webp|gif)$/.test(
+            s.archive_image || "",
+          )
+            ? new URL(s.archive_image, release.url).href
+            : s.image_url;
         image.alt = s.title;
         image.loading = "lazy";
         image.decoding = "async";
@@ -225,7 +237,6 @@
           () => {
             image.width = image.naturalWidth;
             image.height = image.naturalHeight;
-            image.style.maxWidth = image.naturalWidth + "px";
           },
           { once: true },
         );
@@ -237,21 +248,58 @@
         );
         article.append(figure);
       }
-      article.append(category, el("h3", "", s.title));
-      const why = el("div", "why");
-      why.append(el("strong", "", "NEDEN ÖNEMLİ?"), el("p", "", s.why));
+      const heading = el("h3");
+      const detail = el("a", "story-detail-link", s.title);
+      detail.href = "haber/" + encodeURIComponent(s.id) + "/index.html";
+      heading.append(detail);
+      article.append(category, heading);
       const link = el("a", "source-link", `${s.source_name} · Kaynağı oku →`);
       link.href = s.source_url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      article.append(el("p", "", s.summary), why, link);
+      article.append(
+        el("p", "", s.brief || s.summary.split(/(?<=[.!?])\s+/)[0]),
+        link,
+      );
       $("stories").append(article);
     });
     $("stories").setAttribute("aria-busy", "false");
     $("notice").hidden = true;
     player($("summary"), data.summary, release, "Günün sesli özeti");
     player($("podcast"), data.podcast, release, data.podcast.title);
+    setupListening();
     document.title = `PULSE ${section === "teknoloji" ? "Teknoloji" : "Oyun"} · Sayı ${String(data.issue).padStart(3, "0")} · ${formatted}`;
+  }
+  function setupListening() {
+    const tabs = document.querySelectorAll(".listen-tab");
+    const panels = document.querySelectorAll(".listening-cards > section");
+    tabs.forEach((tab) => {
+      const activate = () => {
+        tabs.forEach((t) => {
+          t.setAttribute("aria-selected", String(t === tab));
+          t.tabIndex = t === tab ? 0 : -1;
+        });
+        panels.forEach((panel) => {
+          panel.hidden = panel.id !== tab.getAttribute("aria-controls");
+          if (panel.hidden) panel.querySelector("audio")?.pause();
+        });
+      };
+      tab.onclick = activate;
+      tab.onkeydown = (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+          return;
+        event.preventDefault();
+        const next =
+          event.key === "Home"
+            ? tabs[0]
+            : event.key === "End"
+              ? tabs[tabs.length - 1]
+              : [...tabs].find((t) => t !== tab);
+        next.click();
+        next.focus();
+      };
+    });
+    tabs[0]?.click();
   }
   window.addEventListener("pulse:ready", (event) => render(event.detail));
   if (window.PULSE_RELEASE) render(window.PULSE_RELEASE);
