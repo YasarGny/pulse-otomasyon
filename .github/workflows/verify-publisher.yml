@@ -1,8 +1,14 @@
 name: Verify PULSE publisher access
 on:
   workflow_dispatch:
+    inputs:
+      inspect_media:
+        description: Read-only diagnostics of image responses in the latest daily checkpoint
+        type: boolean
+        default: false
 permissions:
   contents: read
+  actions: read
 jobs:
   verify:
     if: github.ref == 'refs/heads/main'
@@ -48,3 +54,18 @@ jobs:
           echo "Daily schedule enabled: $SCHEDULE_ENABLED"
           echo "Live publication approved: $LIVE_APPROVED"
           echo "Daily schedule enabled: $SCHEDULE_ENABLED; live publication approved: $LIVE_APPROVED" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        if: inputs.inspect_media == true
+      - uses: actions/setup-python@v5
+        if: inputs.inspect_media == true
+        with:
+          python-version: "3.12"
+      - name: Inspect source image MIME types without changing publications or Drive
+        if: inputs.inspect_media == true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install -r requirements.txt
+          date=$(python -c "from pulse.publication import expected_date, now; print(expected_date(now()))")
+          python scripts/state.py --repo "$GITHUB_REPOSITORY" --date "$date"
+          python scripts/inspect_media.py --release ".pulse-work/$date/expanded-v1"
