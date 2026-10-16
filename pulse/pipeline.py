@@ -18,6 +18,7 @@ from pulse.publication import (
     SECTIONS,
     TZ,
     audio_info,
+    category_allowed,
     issue_number,
     now,
     read_json,
@@ -27,7 +28,7 @@ from pulse.publication import (
     write_json,
 )
 
-AUDIO_REVISION = 2
+AUDIO_REVISION = 3
 
 
 def configure_transport():
@@ -210,6 +211,9 @@ def refresh_audio_release(work, date, game_start, previous):
         restore_published(root, previous, date, game_start)
         return finish(verify_manifest(root, read_json(root / "release.json")))
     for section, data in editions.items():
+        data["stories"] = [s for s in data["stories"] if category_allowed(section, s["category"])]
+        data["content_revision"] = 2
+        validate_content(data, section, date, game_start)
         path = root / (section + ".json")
         if not path.exists():
             data = {k: v for k, v in data.items() if k not in ("summary", "podcast")}

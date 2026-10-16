@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import requests
 
 from pulse.publication import (
+    category_allowed,
     SECTIONS,
     TZ,
     https_url,
@@ -209,6 +210,8 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(list(sources.values()),
     )
     stories = []
     for story in generated["stories"]:
+        if not category_allowed(section, story.get("category")):
+            continue
         source = sources[
             story["id"]
         ]  # Model may select an ID, never invent URLs/images/timestamps.
@@ -227,6 +230,7 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(list(sources.values()),
         )
     data = {
         "schema_version": 1,
+        "content_revision": 2,
         "section": section,
         "publish_date": date,
         "date": turkish_date(date),
@@ -244,7 +248,7 @@ def summary_script(data):
         intro
         + "\n\n"
         + "\n\n".join(
-            s.get("brief") or re.split(r"(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ])", s["summary"].strip(), maxsplit=1)[0]
+            s.get("brief") or re.split(r"(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9])", s["summary"].strip(), maxsplit=1)[0]
             for s in data["stories"]
         )
         + "\n\nKaynaklar PULSE'ta."

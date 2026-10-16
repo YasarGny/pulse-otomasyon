@@ -80,7 +80,7 @@ def _request(payload):
 
 def _validate(result):
     turns = result.get("turns", [])
-    if not 10 <= len(turns) <= 120:
+    if not 4 <= len(turns) <= 120:
         raise RuntimeError("Invalid number of dialogue turns")
     if any(t.get("speaker") not in ("Yaşar", "Necdet") or not isinstance(t.get("text"), str) or not t["text"].strip() or len(t["text"]) > 1000 for t in turns):
         raise RuntimeError("Invalid dialogue speaker or text")

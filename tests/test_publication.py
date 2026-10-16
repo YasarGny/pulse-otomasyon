@@ -17,7 +17,7 @@ from fixtures import DATE, edition, ready_release, tone
 from pulse.build import assert_public_tree, build
 from pulse.editorial import create_edition, parse_feed, summary_script
 from pulse.history import exclude_published
-from pulse.pipeline import generate_audio, run
+from pulse.pipeline import AUDIO_REVISION, generate_audio, run
 from pulse.publication import (
     expected_date,
     game_start_from_site,
@@ -267,7 +267,7 @@ class ReleaseTests(unittest.TestCase):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(self.release / source[kind]["file"], dest)
                 data[kind] = source[kind]
-            data["audio_revision"] = 2
+            data["audio_revision"] = AUDIO_REVISION
             data["ready"] = True
             return data
 
