@@ -37,11 +37,14 @@ jobs:
           gh api repos/YasarGny/YasarGny.github.io --jq '.full_name'
           gh api repos/YasarGny/YasarGny.github.io/contents/ --jq 'length'
           echo 'Publisher authentication and Contents write permission verified. No live files changed.' >> "$GITHUB_STEP_SUMMARY"
-      - name: "Daily schedule enabled: ${{ vars.PULSE_AUTOMATION_ENABLED != 'false' }}; live approved: ${{ vars.PULSE_LIVE_APPROVED == 'true' }}"
+      - name: "Daily schedule enabled: ${{ vars.PULSE_AUTOMATION_ENABLED != 'false' }}; live approved: ${{ vars.PULSE_LIVE_APPROVED == 'true' }}; Drive backup enabled: ${{ vars.PULSE_DRIVE_ENABLED == 'true' }}"
         env:
+          DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED == 'true' }}
           SCHEDULE_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED != 'false' }}
           LIVE_APPROVED: ${{ vars.PULSE_LIVE_APPROVED == 'true' }}
         run: |
+          echo "Drive backup enabled: $DRIVE_ENABLED"
+          echo "Drive backup enabled: $DRIVE_ENABLED" >> "$GITHUB_STEP_SUMMARY"
           echo "Daily schedule enabled: $SCHEDULE_ENABLED"
           echo "Live publication approved: $LIVE_APPROVED"
           echo "Daily schedule enabled: $SCHEDULE_ENABLED; live publication approved: $LIVE_APPROVED" >> "$GITHUB_STEP_SUMMARY"
