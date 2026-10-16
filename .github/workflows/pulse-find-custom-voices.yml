@@ -13,7 +13,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python - <<'PY'
-          import json, os, urllib.request, urllib.error
+          import json, os, urllib.request, urllib.error, urllib.parse
           key = os.environ.get("GEMINI_API_KEY")
           if not key:
               raise SystemExit("GEMINI_API_KEY secret is missing")
