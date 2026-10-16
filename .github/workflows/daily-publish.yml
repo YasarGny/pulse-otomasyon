@@ -58,7 +58,8 @@ jobs:
           python - <<'PY'
           import datetime as dt, os
           from zoneinfo import ZoneInfo
-          date=dt.datetime.now(ZoneInfo('Europe/Istanbul')).date()
+          from pulse.publication import expected_date
+          date=dt.date.fromisoformat(expected_date(dt.datetime.now(ZoneInfo('Europe/Istanbul'))))
           from pulse.publication import game_start_from_site, read_json
           start=game_start_from_site('.published',date.isoformat())
           armed=read_json('pulse/deployment.json').get('live_enabled') is True
@@ -212,9 +213,9 @@ jobs:
         run: |
           python - <<'PY'
           import os
-          from pulse.publication import now, not_before
+          from pulse.publication import expected_date, now, not_before
           date=os.environ['PULSE_DATE']
-          if now().date().isoformat()!=date or now()<not_before(date):
+          if expected_date(now())!=date or now()<not_before(date):
               raise SystemExit('Publication is stale or too early')
           PY
       - uses: ./.github/actions/deploy-site

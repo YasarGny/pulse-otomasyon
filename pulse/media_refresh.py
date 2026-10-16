@@ -4,14 +4,14 @@ import shutil
 import requests
 from pathlib import Path
 
-from pulse.publication import SECTIONS, now, read_json, seal_release, verify_manifest, write_json
+from pulse.publication import SECTIONS, expected_date, now, read_json, seal_release, verify_manifest, write_json
 from pulse.source_media import article_image
 
 
 def refresh(published, output, *, lookup=article_image):
     published, output = Path(published), Path(output)
     manifest = read_json(published / 'data/publication.json')
-    if manifest.get('status') != 'ready' or manifest.get('publish_date') != now().date().isoformat():
+    if manifest.get('status') != 'ready' or manifest.get('publish_date') != expected_date(now()):
         raise ValueError('Only the current completed publication can be refreshed')
     source = published / 'releases' / manifest['release_id']
     verify_manifest(source, manifest)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pulse.build import PUBLIC_ROOTS, assert_public_tree
-from pulse.publication import not_before, now, read_json, verify_manifest
+from pulse.publication import expected_date, not_before, now, read_json, verify_manifest
 
 
 def sync(source, target, *, at=None):
@@ -16,9 +16,7 @@ def sync(source, target, *, at=None):
     manifest = read_json(source / "data/publication.json")
     if manifest.get("status") == "ready":
         at = at or now()
-        if at.astimezone(
-            not_before(manifest["publish_date"]).tzinfo
-        ).date().isoformat() != manifest["publish_date"] or at < not_before(
+        if expected_date(at) != manifest["publish_date"] or at < not_before(
             manifest["publish_date"]
         ):
             raise ValueError("Refusing a stale or early deployment")
