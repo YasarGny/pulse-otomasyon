@@ -5,10 +5,11 @@ import requests
 from pathlib import Path
 
 from pulse.publication import SECTIONS, expected_date, now, read_json, seal_release, verify_manifest, write_json
-from pulse.source_media import article_image
+from pulse.source_media import verified_article_image
+from concurrent.futures import ThreadPoolExecutor
 
 
-def refresh(published, output, *, lookup=article_image, release=None, prefer_original=False):
+def refresh(published, output, *, lookup=verified_article_image, release=None, prefer_original=False):
     published, output = Path(published), Path(output)
     manifest = read_json(Path(release) / 'release.json' if release else published / 'data/publication.json')
     if manifest.get('status') != 'ready' or manifest.get('publish_date') != expected_date(now()):
@@ -21,18 +22,25 @@ def refresh(published, output, *, lookup=article_image, release=None, prefer_ori
         raise ValueError('Media output overlaps the published release')
     shutil.copytree(source, output)
     changed = False
+    def resolve(story):
+        if not prefer_original and story.get('image_url'):
+            return story['image_url']
+        try:
+            return lookup(story['source_url']) or story.get('image_url', '')
+        except (requests.RequestException, ValueError, OSError):
+            return story.get('image_url', '')
     for section in SECTIONS:
         data = read_json(output / f'{section}.json')
-        for story in data['stories']:
-            if prefer_original or not story.get('image_url'):
-                try:
-                    original = lookup(story['source_url'])
-                    if original and original != story.get('image_url'):
-                        story['image_url'] = original
-                        changed = True
-                except (requests.RequestException, ValueError, OSError):
-                    pass  # A blocked publisher cannot invalidate the approved audio/news.
-        write_json(output / f'{section}.json', data)
+        section_changed = False
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            originals = list(pool.map(resolve, data['stories']))
+        for story, original in zip(data['stories'], originals):
+            if original and original != story.get('image_url'):
+                story['image_url'] = original
+                section_changed = True
+        if section_changed:
+            write_json(output / f'{section}.json', data)
+            changed = True
     return seal_release(output, manifest['publish_date'], manifest['game_start']) if changed else manifest
 
 

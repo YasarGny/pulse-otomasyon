@@ -269,11 +269,11 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(list(sources.values()),
         )
     from pulse.articles import full_articles
     stories = full_articles(stories, sources, gemini, cache_dir=article_cache)
-    from pulse.source_media import article_image, trusted_hosts
+    from pulse.source_media import verified_article_image, trusted_hosts
     def enrich(story):
         if urlparse(story["source_url"]).hostname in trusted_hosts():
             try:
-                original = article_image(story["source_url"])
+                original = verified_article_image(story["source_url"])
                 if original:
                     story["image_url"] = original
             except (requests.RequestException, ValueError, OSError):

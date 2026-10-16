@@ -74,6 +74,8 @@ class BackupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch('pulse.media_refresh.now',return_value=not_before(DATE)):
             result=refresh(self.site,Path(tmp)/'unchanged',prefer_original=True,lookup=lambda url:'')
             self.assertEqual(result,self.manifest)
+            from pulse.publication import verify_manifest
+            verify_manifest(Path(tmp)/'unchanged',result)
 
     def test_encoded_feed_image_uses_largest_supplied_srcset(self):
         from pulse.editorial import parse_feed
@@ -225,3 +227,16 @@ class BackupTests(unittest.TestCase):
         data['content_revision'] = 3
         with self.assertRaisesRegex(ValueError, 'Unapproved'):
             validate_content(data, 'teknoloji', DATE, DATE)
+
+
+class VerifiedOriginalTests(unittest.TestCase):
+    def test_google_generic_binary_webp_original_is_verified(self):
+        from pulse.source_media import verified_article_image
+        body=Path('site/assets/covers/teknoloji-768.webp').read_bytes()
+        with patch('pulse.source_media.article_image',return_value='https://cdn.example.test/original.webp'),patch('pulse.source_media.fetch_public',return_value=(body,'application/octet-stream')):
+            self.assertEqual(verified_article_image('https://www.nasa.gov/story'),'https://cdn.example.test/original.webp')
+
+    def test_html_disguised_as_original_is_rejected(self):
+        from pulse.source_media import verified_article_image
+        with patch('pulse.source_media.article_image',return_value='https://cdn.example.test/original.png'),patch('pulse.source_media.fetch_public',return_value=(b'<html>not an image</html>','text/html')):
+            with self.assertRaises(ValueError):verified_article_image('https://www.nasa.gov/story')
