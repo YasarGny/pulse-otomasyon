@@ -61,6 +61,21 @@ class BackupTests(unittest.TestCase):
         stories = parse_feed(raw, {'name': 'NASA', 'hosts': ['www.nasa.gov']}, DATE)
         self.assertEqual(stories[0]['image_url'], 'https://images.example.test/large.jpg')
 
+    def test_browser_setup_creates_root_folder_without_folder_variable(self):
+        drive = Mock()
+        drive.folder.return_value = 'automatic-root'
+        drive.existing.return_value = {'verified': True, 'release_id': self.manifest['release_id']}
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', {'PULSE_DRIVE_FOLDER_ID': ''}):
+            backup_releases(self.site, self.site, Path(tmp) / 'receipt.json', drive=drive)
+        self.assertEqual(drive.folder.call_args_list[0].args, ('root', 'PULSE'))
+        self.assertEqual(drive.folder.call_args_list[1].args, ('automatic-root', '2026'))
+
+    def test_drive_refuses_a_file_with_folder_name(self):
+        drive = Drive.__new__(Drive)
+        drive.children = Mock(return_value=[{'id': 'file', 'mimeType': 'application/zip'}])
+        with self.assertRaises(ValueError):
+            drive.folder('root', 'PULSE')
+
     def test_numeric_date(self):
         self.assertEqual(display_date(DATE), '16.10.2026')
         self.assertEqual(display_date('2026-01-02'), '02.01.2026')

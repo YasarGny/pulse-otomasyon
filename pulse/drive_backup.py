@@ -40,7 +40,7 @@ class Drive:
         if not all(c.isalnum() or c in '-_' for c in parent):
             raise ValueError('Invalid Drive folder ID')
         escaped = name.replace('\\', '\\\\').replace("'", "\\'")
-        params = {'q': f"'{parent}' in parents and name = '{escaped}' and trashed = false", 'fields': 'files(id,name,size,appProperties),nextPageToken', 'pageSize': 100}
+        params = {'q': f"'{parent}' in parents and name = '{escaped}' and trashed = false", 'fields': 'files(id,name,size,mimeType,appProperties),nextPageToken', 'pageSize': 100}
         found = []
         while True:
             data = self.request('GET', params=params).json()
@@ -54,6 +54,8 @@ class Drive:
         if len(found) > 1:
             raise ValueError('Ambiguous duplicate Drive folder')
         if found:
+            if found[0].get('mimeType') != 'application/vnd.google-apps.folder':
+                raise ValueError('Drive folder name belongs to a non-folder file')
             return found[0]['id']
         return self.request('POST', json={'name': name, 'parents': [parent], 'mimeType': 'application/vnd.google-apps.folder'}, params={'fields': 'id'}).json()['id']
 
@@ -128,7 +130,7 @@ class Drive:
 def backup_releases(source, published, output, *, drive=None, folder=None):
     Path(output).unlink(missing_ok=True)  # A failed retry must not leave a stale cleanup receipt.
     drive = drive or Drive()
-    folder = folder or os.environ['PULSE_DRIVE_FOLDER_ID']
+    folder = folder or os.environ.get('PULSE_DRIVE_FOLDER_ID') or drive.folder('root', 'PULSE')
     candidates = {}
     for tree in (Path(published), Path(source)):
         for path in (tree / 'releases').glob('*/release.json'):
