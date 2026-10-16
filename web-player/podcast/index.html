@@ -65,7 +65,7 @@ async function checkLatest(){
   const nextSrc='../'+d.audio+'?v='+encodeURIComponent(version);
   if(loaded&&!a.paused&&!a.ended){pendingAudio={src:nextSrc,version,date:d.date};return}
   activeVersion=version;pendingAudio=null;loaded=true;failed=false;
-  a.src=nextSrc;a.load();$('date').textContent=d.date||'Günlük podcast';
+  a.src=nextSrc;a.load();const episode=Number(d.episode||d.issue);const issueLabel=Number.isInteger(episode)&&episode>0?' · Bölüm '+String(episode).padStart(3,'0'):'';$('date').textContent=(d.date||'Günlük podcast')+issueLabel;
   $('current').textContent='0:00';$('duration').textContent='0:00';seek.value=0;paint(seek);setStatus('');refresh();
  }catch(e){if(!loaded){failed=true;setStatus('Ses kaydı bilgisi alınamadı. Tekrar deneniyor…');refresh()}}
 }
