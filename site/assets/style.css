@@ -1502,3 +1502,24 @@ body::before {
   font-size: 12px;
   border-bottom: 1px solid var(--line);
 }
+
+.policy-page h2 {
+  font-size: 23px;
+  line-height: 1.4;
+  margin: 32px 0 12px;
+}
+.policy-page p {
+  color: var(--muted);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.policy-page .source-link {
+  display: inline;
+  font: inherit;
+}
+.policy-link {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+  order: 1;
+}
