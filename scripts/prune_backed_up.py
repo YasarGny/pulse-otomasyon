@@ -13,7 +13,9 @@ from pulse.publication import SECTIONS, read_json, write_json, verify_manifest
 
 def prune(target, receipts):
     target = Path(target)
-    entries = read_json(receipts)['releases']
+    record = read_json(receipts)
+    entries = record['releases']
+    superseded = record.get('superseded', {})
     current = read_json(target / 'data/publication.json')
     folders = sorted((target / 'releases').glob('*/release.json'))
     manifests = [(p.parent, read_json(p)) for p in folders]
@@ -22,8 +24,9 @@ def prune(target, receipts):
     # Preflight everything: missing/failed receipt means delete nothing.
     for root, manifest in candidates:
         verify_manifest(root, manifest)
-        receipt = entries.get(manifest['release_id'], {})
-        if receipt.get('verified') is not True or receipt.get('release_id') != manifest['release_id'] or receipt.get('publish_date') != manifest['publish_date'] or not receipt.get('file_id') or not isinstance(receipt.get('sha256'), str) or len(receipt['sha256']) != 64:
+        archived_id = superseded.get(manifest['release_id'], manifest['release_id'])
+        receipt = entries.get(archived_id, {})
+        if receipt.get('verified') is not True or receipt.get('release_id') != archived_id or receipt.get('publish_date') != manifest['publish_date'] or not receipt.get('file_id') or not isinstance(receipt.get('sha256'), str) or len(receipt['sha256']) != 64:
             raise ValueError('No verified Drive readback receipt; nothing removed')
     ledger_path = target / 'data/source-history.json'
     ledger = read_json(ledger_path) if ledger_path.exists() else {s: [] for s in SECTIONS}

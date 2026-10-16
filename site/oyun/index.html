@@ -30,12 +30,12 @@
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="../assets/style.css?v=3" />
-    <script src="../assets/publication.js" defer></script>
+    <link rel="stylesheet" href="../assets/style.css?v=4" />
+    <script src="../assets/publication.js?v=4" defer></script>
     <script src="../assets/printing.js" defer></script>
-    <script src="../assets/site.js?v=3" defer></script>
+    <script src="../assets/site.js?v=4" defer></script>
   </head>
-  <body data-design="editorial-v3" data-page="oyun" class="gaming">
+  <body data-design="editorial-v4" data-page="oyun" class="gaming">
     <noscript
       ><main class="nojs">
         <h1>PULSE</h1>
@@ -104,28 +104,29 @@
                 class="listen-tab"
                 type="button"
                 role="tab"
-                id="summary-tab"
-                aria-controls="summary-panel"
+                id="podcast-tab"
+                aria-controls="podcast-panel"
                 aria-selected="true"
               >
-                Sesli özet
+                Podcast
               </button>
               <button
                 class="listen-tab"
                 type="button"
                 role="tab"
-                id="podcast-tab"
-                aria-controls="podcast-panel"
+                id="summary-tab"
+                aria-controls="summary-panel"
                 aria-selected="false"
                 tabindex="-1"
               >
-                Podcast
+                Sesli özet
               </button>
             </div>
             <div class="listening-cards">
               <section
                 class="audio-box summary-box"
                 id="summary-panel"
+                hidden
                 role="tabpanel"
                 aria-labelledby="summary-tab"
               >
@@ -138,9 +139,9 @@
                 id="podcast-panel"
                 role="tabpanel"
                 aria-labelledby="podcast-tab"
-                hidden
               >
                 <div class="podcast-box-body">
+                  <div class="podcast-kicker">Oyun podcast’i</div>
                   <h3 id="podcast-title">Moradon FM</h3>
                   <p>Yaşar &amp; Necdet</p>
                   <div id="podcast"><p>Podcast yükleniyor…</p></div>

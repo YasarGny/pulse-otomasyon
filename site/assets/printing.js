@@ -81,7 +81,7 @@
           "div",
           "pulse-print-clock",
           mode === "printing"
-            ? "Yeni sayı 07.30’da, her şey hazır olduğunda."
+            ? "Yeni sayı 07:30’da, her şey hazır olduğunda."
             : "",
         ),
         status,

@@ -64,7 +64,9 @@ class BackupTests(unittest.TestCase):
     def test_browser_setup_creates_root_folder_without_folder_variable(self):
         drive = Mock()
         drive.folder.return_value = 'automatic-root'
-        drive.existing.return_value = {'verified': True, 'release_id': self.manifest['release_id']}
+        drive.api = 'https://www.googleapis.com/drive/v3/files'
+        drive.daily_files.return_value = [{'id':'current', 'size':'100', 'name': 'PULSE-16.10.2026.zip', 'appProperties': {'release_id': self.manifest['release_id']}}]
+        drive.existing.return_value = {'verified': True, 'release_id': self.manifest['release_id'], 'file_id': 'current'}
         with tempfile.TemporaryDirectory() as tmp, patch.dict('os.environ', {'PULSE_DRIVE_FOLDER_ID': ''}):
             backup_releases(self.site, self.site, Path(tmp) / 'receipt.json', drive=drive)
         self.assertEqual(drive.folder.call_args_list[0].args, ('root', 'PULSE'))
@@ -146,6 +148,7 @@ class BackupTests(unittest.TestCase):
     def test_failed_backup_never_writes_receipt(self):
         drive = Mock()
         drive.folder.return_value = 'folder'
+        drive.daily_files.return_value = [{'id':'current', 'size':'100', 'name': 'PULSE-16.10.2026.zip', 'appProperties': {'release_id': self.manifest['release_id']}}]
         drive.existing.side_effect = RuntimeError('Drive unavailable')
         with tempfile.TemporaryDirectory() as tmp:
             receipts = Path(tmp) / 'receipt.json'
@@ -156,7 +159,9 @@ class BackupTests(unittest.TestCase):
     def test_existing_verified_archive_skips_repack_and_upload(self):
         drive = Mock()
         drive.folder.return_value = 'folder'
-        drive.existing.return_value = {'verified': True, 'release_id': self.manifest['release_id']}
+        drive.api = 'https://www.googleapis.com/drive/v3/files'
+        drive.daily_files.return_value = [{'id':'current', 'size':'100', 'name': 'PULSE-16.10.2026.zip', 'appProperties': {'release_id': self.manifest['release_id']}}]
+        drive.existing.return_value = {'verified': True, 'release_id': self.manifest['release_id'], 'file_id': 'current'}
         with tempfile.TemporaryDirectory() as tmp:
             receipt = Path(tmp) / 'receipt.json'
             result = backup_releases(self.site, self.site, receipt, drive=drive, folder='root')

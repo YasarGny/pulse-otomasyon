@@ -99,8 +99,13 @@
       return false;
     if (
       !Array.isArray(d.stories) ||
-      d.stories.length < 3 ||
-      d.stories.length > 12
+      d.stories.length <
+        (d.publication_profile === "expanded-v1"
+          ? section === "teknoloji"
+            ? 12
+            : 10
+          : 3) ||
+      d.stories.length > 24
     )
       return false;
     const ids = new Set(),
@@ -124,7 +129,14 @@
       return false;
     return ["summary", "podcast"].every((kind) => {
       const a = d[kind],
-        min = kind === "summary" ? 20 : 40;
+        min =
+          kind === "summary"
+            ? 20
+            : d.publication_profile === "expanded-v1"
+              ? section === "teknoloji"
+                ? 900
+                : 720
+              : 40;
       return (
         a?.file === `${section}/${kind}.mp3` &&
         Number.isFinite(a.duration) &&

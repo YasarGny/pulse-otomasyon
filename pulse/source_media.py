@@ -65,3 +65,42 @@ def article_image(url):
     parser = Images()
     parser.feed(body.decode('utf-8', errors='replace'))
     return next((urljoin(url, image) for image in parser.urls if https_url(urljoin(url, image))), '')
+
+
+class ArticleText(HTMLParser):
+    """Read paragraph text only; never execute scripts or follow page instructions."""
+    def __init__(self):
+        super().__init__()
+        self.stack = []
+        self.current = None
+        self.paragraphs = []
+
+    def handle_starttag(self, tag, attrs):
+        self.stack.append(tag)
+        if tag == 'p':
+            self.current = []
+
+    def handle_endtag(self, tag):
+        if tag == 'p' and self.current is not None:
+            text = ' '.join(' '.join(self.current).split())
+            if len(text) >= 60:
+                self.paragraphs.append((any(t in ('article', 'main') for t in self.stack), text))
+            self.current = None
+        if tag in self.stack:
+            while self.stack:
+                if self.stack.pop() == tag:
+                    break
+
+    def handle_data(self, data):
+        if self.current is not None and not any(t in ('script', 'style', 'nav', 'footer', 'aside') for t in self.stack):
+            self.current.append(data)
+
+
+def article_text(url):
+    raw, kind = fetch_public(url, limit=2_000_000, hosts=trusted_hosts())
+    if 'html' not in kind:
+        return ''
+    parser = ArticleText()
+    parser.feed(raw.decode('utf-8', errors='replace'))
+    primary = [text for inside, text in parser.paragraphs if inside]
+    return '\n\n'.join(dict.fromkeys(primary or [text for _, text in parser.paragraphs]))[:16000]

@@ -4,7 +4,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: pulse-drive-backup
+  group: pulse-github-daily
   cancel-in-progress: false
 jobs:
   verify:
@@ -26,7 +26,7 @@ jobs:
           ref: main
           path: .published
           persist-credentials: false
-      - name: Archive and fully read back every historical release; delete nothing
+      - name: Archive and fully read back every historical release; retain only the verified latest version of each day
         env:
           PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
           PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}

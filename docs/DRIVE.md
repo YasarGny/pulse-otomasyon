@@ -1,6 +1,6 @@
 # Özel Drive yedeği
 
-Yedekler `PULSE/2026/10/16.10.2026/PULSE-16.10.2026-<yayın-kimliği>.zip` biçimindedir. Sayfalarda da tarih `16.10.2026` görünür; manifest tarihleri hesaplama uyumluluğu için ISO olarak saklanır.
+Yedekler `PULSE/2026/10/16.10.2026/PULSE-16.10.2026.zip` biçimindedir. Sayfalarda da tarih `16.10.2026` görünür; manifest tarihleri hesaplama uyumluluğu için ISO olarak saklanır.
 
 ZIP'i indirip çıkardıktan sonra **index.html** dosyasını tarayıcıda açın. İnternet olmadan haberler, ayrıntı sayfaları, kaynak bağlantıları, yerel görseller ve dört ses dosyası kullanılabilir. Drive HTML klasörlerini web sitesi olarak sunmaz; Drive önizlemesi canlı site gibi çalışmaz. Arşivde sabah kilidi ve ağdan JSON isteği yoktur. Kaynak bağlantılarını açmak internet gerektirir.
 
@@ -67,3 +67,23 @@ Her ZIP içinde dosya boyutları ve SHA-256 envanteri bulunur. Yükleme tamamlan
 Günlük dağıtımda Drive etkinse yedekleme senkronizasyondan önce yapılır. Yedekleme başarısızsa dağıtım/temizleme durur; mevcut dosyalar korunur. En yeni iki yayın tarihi ve aktif yayın GitHub'da kalır. Silinen yayınların kaynak URL özetleri küçük bir tekrar önleme defterine aktarılır. Drive'dan hiçbir eski yedek otomatik silinmez.
 
 **Git geçmişi:** Klasör temizliği çalışma ağacını küçültür; eski MP3 Git nesnelerini küçültmez. Kalıcı boyut azaltma için yayın deposunu yalnız güncel anlık görüntüler tutacak bir dala geçirmek ve eski geçmişi kaldırmak gerekir. Bu geri dönüşü etkileyen ayrı bir geçiştir: tüm Drive yedekleri doğrulanmadan, depo yedeği alınmadan ve sahibinden ayrıca açık onay gelmeden geçmiş yeniden yazılmaz. Bu sürüm force-push veya eski Git geçmişini silme yapmaz.
+
+
+## Gün başına yalnız son sürüm
+
+Günün klasöründe tek `PULSE-16.10.2026.zip` tutulur. Yeni sürüm geçici bir ZIP
+olarak yüklenir, tamamen geri okunup SHA-256 ile doğrulanır; ardından günün arşivi
+olarak adlandırılır. Önceki sürümler ancak bundan sonra Drive çöp kutusuna taşınır.
+Kalıcı silme yapılmaz. Hata olursa önceki doğrulanmış ZIP korunur. Aynı sürümün
+tekrarı yeni ZIP üretmez. Geçici yükleme veya adlandırma sırasında kesinti olursa
+sonraki çalışma doğrulanmış dosyayı kullanarak tamamlar.
+
+Birbirinden farklı arşiv sürümleri dosya adındaki karma değerle sıralanmaz;
+aktif manifest ve doğrulama zamanı kullanılır. Drive'da daha yeni bir sürüm varsa
+gecikmiş eski iş onu değiştiremez. Günlük yayın ve arşiv provası aynı GitHub
+concurrency grubundadır; iki işlem aynı arşivi eşzamanlı değiştirmez.
+
+Son sürüm eski sürümlerin yerini aldığında eski GitHub klasörlerinin temizlenmesi
+için açık bir `superseded` kaydı üretilir. Bu, eski sürümlerin ZIP içinde bulunduğu
+anlamına gelmez: o tarihin yalnız son onaylanmış içeriği korunur. Kaynak tekrar
+önleme defteri, temizlenen eski sürümlerin bağlantı özetlerini saklar.

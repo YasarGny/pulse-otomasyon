@@ -94,15 +94,27 @@ def validate_content(data, section, date, game_start):
     if data.get("date") != turkish_date(date):
         raise ValueError("Incorrect Turkish date")
     stories = data.get("stories")
-    if not isinstance(stories, list) or not 3 <= len(stories) <= 12:
-        raise ValueError("Each edition needs 3–12 sourced stories")
-    ids, urls = set(), set()
+    from pulse.profile import MIN_STORIES, expanded
+    minimum = MIN_STORIES[section] if expanded(data) else 3
+    if not isinstance(stories, list) or not minimum <= len(stories) <= 24:
+        raise ValueError("Edition needs sufficient distinct sourced stories (maximum 24)")
+    ids, urls, events = set(), set(), set()
     if data.get("content_revision", 1) >= 3:
         from pulse.source_media import trusted_hosts
         approved_hosts = trusted_hosts(section)
     else:
         approved_hosts = None
     for story in stories:
+        if expanded(data):
+            event = story.get('event_key')
+            if not isinstance(event, str) or not 4 <= len(event) <= 120 or event.casefold() in events:
+                raise ValueError('Missing or duplicate event identity')
+            events.add(event.casefold())
+            body = story.get('body')
+            if not isinstance(body, list) or not 2 <= len(body) <= 6 or any(not isinstance(p, str) or not 30 <= len(p) <= 4000 for p in body):
+                raise ValueError('Expanded stories require complete source-grounded articles')
+            if story.get('body_reviewed') is not True or story.get('body_sha256') != hashlib.sha256(json.dumps(body, ensure_ascii=False).encode()).hexdigest():
+                raise ValueError('Full article differs from reviewed text')
         if data.get("content_revision", 1) >= 2 and not category_allowed(section, story.get("category")):
             raise ValueError("Gaming story cannot appear in the technology edition")
         if "brief" in story and (
@@ -207,11 +219,14 @@ def validate_release(root, date, game_start):
         data = validate_content(read_json(path), section, date, game_start)
         if data.get("ready") is not True:
             raise ValueError("Edition not ready")
-        for kind, minimum in [("summary", 20), ("podcast", 40)]:
+        from pulse.profile import podcast_minimum, PODCAST_SECONDS, expanded
+        for kind, minimum in [("summary", 20), ("podcast", podcast_minimum(data))]:
             asset = data.get(kind, {})
             if asset.get("file") != section + "/" + kind + ".mp3":
                 raise ValueError("Unexpected audio path")
             actual = audio_info(safe_file(root, asset["file"]), minimum)
+            if kind == "podcast" and expanded(data) and actual["duration"] > PODCAST_SECONDS[section][1]:
+                raise ValueError("Podcast exceeds the expanded issue duration budget")
             if any(asset.get(k) != v for k, v in actual.items()):
                 raise ValueError("Audio hash/size/duration mismatch")
             if asset.get("episode") != data["issue"] or not isinstance(

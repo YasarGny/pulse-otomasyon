@@ -6,6 +6,10 @@ on:
         description: Validate and save artifacts without changing the live site
         type: boolean
         default: true
+      expanded_issue:
+        description: Produce a full researched edition with long podcasts; keeps date and issue
+        type: boolean
+        default: false
       refresh_media:
         description: Fill missing publisher images without changing news or audio
         type: boolean
@@ -140,18 +144,26 @@ jobs:
           PULSE_NECDET_VOICE_ID: voice_8nqcoox86z5q
           REFRESH_AUDIO: ${{ inputs.refresh_audio == true }}
           REFRESH_MEDIA: ${{ inputs.refresh_media == true }}
+          EXPANDED_ISSUE: ${{ inputs.expanded_issue == true }}
         run: |
           if [ "$REFRESH_AUDIO" = 'true' ] && [ "$REFRESH_MEDIA" = 'true' ]; then
             echo "Choose one revision mode at a time."
             exit 1
           fi
-          if [ "$REFRESH_MEDIA" = 'true' ]; then
+          if [ "$EXPANDED_ISSUE" = 'true' ]; then
+            if [ "$REFRESH_AUDIO" = 'true' ] || [ "$REFRESH_MEDIA" = 'true' ]; then
+              echo "Choose expanded_issue without another revision mode."
+              exit 1
+            fi
+            python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published --expanded
+            echo "release_path=.pulse-work/$PULSE_DATE/expanded-v1" >> "$GITHUB_OUTPUT"
+          elif [ "$REFRESH_MEDIA" = 'true' ]; then
             media_path=".pulse-media/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
             python -m pulse.media_refresh --published .published --output "$media_path" --checkpoint ".pulse-work/$PULSE_DATE"
             echo "release_path=$media_path" >> "$GITHUB_OUTPUT"
           elif [ "$REFRESH_AUDIO" = 'true' ]; then
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published --refresh-audio
-            echo "release_path=.pulse-work/$PULSE_DATE/audio-v3" >> "$GITHUB_OUTPUT"
+            echo "release_path=.pulse-work/$PULSE_DATE/audio-v4" >> "$GITHUB_OUTPUT"
           else
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --scheduled --previous .published
             echo "release_path=.pulse-work/$PULSE_DATE" >> "$GITHUB_OUTPUT"

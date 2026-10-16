@@ -1,5 +1,7 @@
 """Chunked Gemini 3.8 multi-speaker synthesis and transparent podcast mastering."""
 import base64
+import hashlib
+from contextlib import nullcontext
 import json
 import os
 from pathlib import Path
@@ -125,35 +127,60 @@ def synthesize(group, destination, number, *, strict_audio=False):
     raw.unlink(missing_ok=True)
 
 
-def render(turns, target, *, strict_audio=False):
+def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
     # Keep custom voices consistent; no fixed station ident or style instructions.
     groups = chunks(turns, max_chars=3500, max_turns=24)
-    with tempfile.TemporaryDirectory() as folder:
-        root = Path(folder)
+    identity = hashlib.sha256(json.dumps({'turns': turns, 'voices': VOICES, 'model': MODEL}, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    persistent = Path(checkpoint_dir) / identity if checkpoint_dir else None
+    if persistent:
+        persistent.mkdir(parents=True, exist_ok=True)
+    with (nullcontext(str(persistent)) if persistent else tempfile.TemporaryDirectory()) as folder, tempfile.TemporaryDirectory() as assembly_folder:
+        root = Path(folder).resolve()
+        assembly = Path(assembly_folder)
         paths = []
         for index, group in enumerate(groups):
             path = root / ("part_%03d.wav" % index)
-            synthesize(group, path, index, strict_audio=strict_audio)
+            valid = False
+            if persistent and path.exists():
+                try:
+                    run('ffmpeg', '-v', 'error', '-i', str(path), '-f', 'null', '-')
+                    valid = duration(path) >= max(2, sum(len(t['text'].split()) for t in group) / 220 * 60)
+                except (ValueError, subprocess.CalledProcessError):
+                    valid = False
+            if not valid:
+                partial = path.with_name(path.stem + '.partial.wav')
+                try:
+                    synthesize(group, partial, index, strict_audio=strict_audio)
+                    if persistent and duration(partial) < max(2, sum(len(t['text'].split()) for t in group) / 220 * 60):
+                        raise RuntimeError('TTS segment shorter than its dialogue; refusing truncated audio')
+                    partial.replace(path)
+                finally:
+                    partial.with_suffix('.raw').unlink(missing_ok=True)
+                    partial.unlink(missing_ok=True)
             paths.append(path)
         # Short intentional pause after ident; small section gaps avoid rushed edits.
-        manifest = root / "concat.txt"
+        manifest = assembly / "concat.txt"
         with manifest.open("w", encoding="utf-8") as file:
             for index, path in enumerate(paths):
                 file.write("file '" + str(path) + "'\n")
                 if index < len(paths) - 1:
                     gap = 0.75 if index == 0 else 0.25
-                    silence = root / ("silence_%03d.wav" % index)
+                    silence = assembly / ("silence_%03d.wav" % index)
                     run("ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i",
                         "anullsrc=r=44100:cl=mono", "-t", str(gap),
                         "-c:a", "pcm_s16le", str(silence))
                     file.write("file '" + str(silence) + "'\n")
-        merged = root / "merged.wav"
+        merged = assembly / "merged.wav"
         run("ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0",
             "-i", str(manifest), "-c:a", "pcm_s16le", str(merged))
         # Loudness consistency without altering pitch or speed.
         run("ffmpeg", "-v", "error", "-y", "-i", str(merged), "-af",
             "loudnorm=I=-18:TP=-2:LRA=11", "-ar", "44100", "-ac", "1",
             "-c:a", "libmp3lame", "-b:a", "128k", str(target))
+    if persistent:
+        (persistent / 'merged.wav').unlink(missing_ok=True)
+        for gap in persistent.glob('silence_*.wav'):
+            gap.unlink()
     seconds = duration(target)
     if seconds < 2:
         raise RuntimeError("Rendered podcast unexpectedly short")

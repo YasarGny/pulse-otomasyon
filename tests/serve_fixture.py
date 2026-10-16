@@ -12,7 +12,8 @@ from fixtures import DATE, ready_release, tone
 from pulse.build import build
 from pulse.archive import package
 import zipfile
-from pulse.publication import not_before
+from pulse.publication import not_before, read_json, write_json, seal_release
+import copy
 
 root = Path("test-results")
 root.mkdir(exist_ok=True)
@@ -24,6 +25,16 @@ build("site", root / "site", release=release, at=not_before(DATE))
 package(root / "site", root / "offline.zip", fetch=lambda url: (Path("site/assets/covers/teknoloji-768.webp").read_bytes(), "image/webp"))
 with zipfile.ZipFile(root / "offline.zip") as archive:
     archive.extractall(root / "offline")
+
+large_release = root / 'large-release'
+ready_release(large_release, audio)
+for section in ('teknoloji', 'oyun'):
+    data = read_json(large_release / (section + '.json'))
+    original = copy.deepcopy(data['stories'])
+    data['stories'] = [dict(original[i % 3], id=f'{section}{i}', source_url=f'https://example.com/{section}/{i}', body=['Bu, ayrıntı sayfasında görünen tam haber metninin ilk test paragrafıdır.', 'İkinci paragraf kaynak bağlantısının yanında ek ayrıntıları görüntüler.'], category='BİLİM' if i % 2 else 'YAZILIM') for i in range(20)]
+    write_json(large_release / (section + '.json'), data)
+seal_release(large_release, DATE, DATE)
+build('site', root / 'site' / 'expanded', release=large_release, at=not_before(DATE))
 
 
 class Handler(SimpleHTTPRequestHandler):
