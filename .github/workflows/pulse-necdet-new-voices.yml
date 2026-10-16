@@ -1,0 +1,85 @@
+name: PULSE New Distinct Necdet Voices (Manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  voice-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install audio dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install 'google-genai>=2.25.0,<3' requests
+      - name: Create two different Turkish Necdet voices and 30-second podcast tests
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_YASAR_VOICE_ID: voice_p94xlklc2103
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from google import genai
+          import pulse_podcast_audio as audio
+
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+          out = Path("new-necdet-tests")
+          out.mkdir(exist_ok=True)
+          profiles = [
+              ("necdet-9", "Necdet 9",
+               "Create a distinctly higher-pitched, bright, light tenor voice of a Turkish man aged 30. "
+               "Contemporary Istanbul Turkish accent, lively and witty conversational timing, naturally youthful. "
+               "Clear upper-mid vocal register, crisp consonants, fast but understandable, no bass resonance. "
+               "NOT a radio presenter, NOT falsetto, NOT childish, NOT similar to a warm baritone. "
+               "Speak exclusively in Turkish for the preview."),
+              ("necdet-10", "Necdet 10",
+               "Create a Turkish male voice aged 31 with a notably different timbre from a warm mid-low baritone: "
+               "a light, airy, higher-register tenor with subtle nasal brightness and agile spontaneous speech. "
+               "Authentic Istanbul Turkish pronunciation, relaxed humorous friend-to-friend manner. "
+               "No deep bass, no broadcaster voice, no cartoonish high pitch, no theatrical acting. "
+               "Speak exclusively in Turkish for the preview."),
+          ]
+          turns = [
+              {"speaker":"Yaşar","text":"Necdet, yapay zekâlı telefonlar çok konuşuluyor. Senin için en önemli özellik ne?"},
+              {"speaker":"Necdet","text":"Bence internetsiz çalışması Yaşar. Telefon akıllıysa her küçük soruda buluta koşmasın!"},
+              {"speaker":"Yaşar","text":"Haklısın. Bir de bütün bunları yaparken şarjı akşama kadar dayansa harika olur."},
+              {"speaker":"Necdet","text":"Kesinlikle! Yoksa yapay zekâ düşünürken biz priz aramaya devam ederiz."},
+          ]
+          records = []
+          for slug, label, prompt in profiles:
+              print("Creating original voice:", label, flush=True)
+              voice = client.voices.create(store=True, voice={
+                  "model": "gemini-3.8-flash-tts",
+                  "type": "prompted",
+                  "display_name": "PULSE " + label,
+                  "gender": "male",
+                  "language_code": "tr-TR",
+                  "prompted": {"input": prompt},
+              })
+              if not voice.id:
+                  raise RuntimeError("Voice ID missing for " + label)
+              records.append({"name": label, "id": voice.id})
+              (out/"voice-ids.json").write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+              audio.VOICES["Yaşar"] = os.environ["PULSE_YASAR_VOICE_ID"]
+              audio.VOICES["Necdet"] = voice.id
+              target = out/(slug+".mp3")
+              result = audio.render(turns, target)
+              if result["duration"] > 60:
+                  raise RuntimeError(f"Test longer than 60 seconds: {slug}")
+              print(label, "Turkish podcast test:", result["duration"], "seconds", flush=True)
+          print("Two new voices created. Daily podcast publishing unchanged.")
+          PY
+      - name: Upload tests and saved voice IDs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-necdet-9-10-voice-tests
+          path: new-necdet-tests/
+          if-no-files-found: warn
+          retention-days: 7
