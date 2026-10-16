@@ -73,3 +73,5 @@ bağlı SHA-256 anahtarıyla yeniden kullanılır. Eski mühürlü kısa yayınl
 sözleşmeleriyle doğrulanabilir.
 
 Yayın günü sınırı tüm katmanlarda İstanbul 06:00’dır. Gece 00:00–05:59 arasında yapılan düzeltme önceki yayın tarihini korur; 06:00’da eski tarihli derleme, senkronizasyon ve push reddedilir. Yeni yayın için 07:30 alt sınırı ayrıca korunur.
+
+Başarılı canlı doğrulamadan sonra geçici Actions çıktıları sınırlandırılır: güncel dağıtım paketi, en yeni iki tarihin son devam kaydı ve son iki tarayıcı test kanıtı korunur. Kaynak deposu, yayın dosyaları ve Drive arşivleri bu temizlikte değiştirilmez. Tamamlanmış MP3’ler doğrulandıktan sonra ham TTS parçaları devam kaydından çıkarılır; yarım üretimler korunur.
