@@ -83,13 +83,31 @@ async function run(name, fn) {
             window.PULSE_RELEASE.manifest.release_id,
       );
     };
-    const noOverflow = async () =>
+    const noOverflow = async () => {
+      const result = await page.evaluate(() => ({
+        width: innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        route: location.pathname,
+        overflowing: [...document.querySelectorAll("body *")]
+          .filter((node) => {
+            const rect = node.getBoundingClientRect();
+            return (
+              rect.width > 0 && (rect.right > innerWidth + 1 || rect.left < -1)
+            );
+          })
+          .slice(0, 12)
+          .map((node) => ({
+            tag: node.tagName,
+            class: node.className,
+            text: node.textContent.slice(0, 80),
+            width: node.getBoundingClientRect().width,
+          })),
+      }));
       assert(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-        "Horizontal overflow",
+        result.scrollWidth <= result.width,
+        "Horizontal overflow: " + JSON.stringify(result),
       );
+    };
     const axe = async () => {
       const r = await new AxeBuilder({ page }).analyze();
       assert.deepEqual(

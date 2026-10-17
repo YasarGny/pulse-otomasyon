@@ -198,6 +198,7 @@ p {
 }
 .nav nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   align-items: center;
   margin-left: auto;
