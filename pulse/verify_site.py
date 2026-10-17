@@ -23,13 +23,24 @@ def check_site(session, base, expected):
     response.raise_for_status()
     if response.json() != expected:
         raise ValueError("Pages is still serving another manifest")
-    for route in ("", "teknoloji/", "oyun/"):
+    routes = ("", "teknoloji/", "oyun/", "haberler/", "podcastler/")
+    if expected["status"] == "ready":
+        routes += ("teknoloji/dinle/", "oyun/dinle/")
+    for route in routes:
         page = session.get(
             urljoin(base, route), params={"pulse_check": time.time_ns()}, timeout=30
         )
         page.raise_for_status()
-        if "assets/publication.js" not in page.text or 'data-design="editor-desk-v1"' not in page.text:
+        if (
+            "assets/publication.js" not in page.text
+            or 'data-design="editor-desk-v1"' not in page.text
+        ):
             raise ValueError("Pages HTML has not updated")
+        if (
+            expected["status"] == "ready"
+            and ('data-release="' + expected["release_id"] + '"') not in page.text
+        ):
+            raise ValueError("Pages HTML belongs to another release")
     if expected["status"] != "ready":
         return
     server = parsedate_to_datetime(response.headers["Date"]) + dt.timedelta(

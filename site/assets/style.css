@@ -1174,8 +1174,8 @@ html.document-hidden .press-newspaper {
   }
   .nav {
     min-height: 0;
-    display: grid;
-    grid-template-columns: auto 1fr 44px;
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px 12px;
     margin-bottom: 24px;
     padding: 16px 0 8px;
@@ -1184,14 +1184,16 @@ html.document-hidden .press-newspaper {
     font-size: 29px;
   }
   .nav-issue {
+    flex: 1;
+    min-width: 9em;
     font-size: 12px;
     justify-self: end;
     line-height: 1.4;
     text-align: right;
   }
   .nav nav {
-    grid-row: 2;
-    grid-column: 1/-1;
+    order: 3;
+    flex-basis: 100%;
     margin: 0;
     gap: 24px;
   }
@@ -1199,8 +1201,7 @@ html.document-hidden .press-newspaper {
     font-size: 15px;
   }
   .theme-toggle {
-    grid-row: 1;
-    grid-column: 3;
+    order: 2;
   }
   .sectiontop {
     margin-bottom: 16px;
@@ -1466,7 +1467,7 @@ html.document-hidden .press-newspaper {
     display: none;
   }
   .nav-issue {
-    max-width: 120px;
+    max-width: none;
     font-size: 11px;
   }
   .nav {
@@ -1575,4 +1576,11 @@ html.document-hidden .press-newspaper {
 
 .brand {
   font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.image-retry {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }

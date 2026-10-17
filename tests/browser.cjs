@@ -243,13 +243,28 @@ async function run(name, fn) {
     await run(
       "200% text enlargement keeps reading and controls within screen",
       async () => {
-        await page.setViewportSize({ width: 390, height: 844 });
-        await open("/");
-        await page.addStyleTag({
-          content:
-            "body{font-size:200%} h1,h2,h3,p,a,button{font-size:inherit!important}",
-        });
-        await noOverflow();
+        for (const width of [390, 320]) {
+          await page.setViewportSize({ width, height: 844 });
+          for (const route of [
+            "/",
+            "/haberler/",
+            "/teknoloji/dinle/",
+            "/teknoloji/haber/teknoloji0/",
+          ]) {
+            await open(route);
+            await page.evaluate(() => {
+              const sizes = [...document.querySelectorAll("body, body *")]
+                .filter((node) => node instanceof HTMLElement)
+                .map((node) => [
+                  node,
+                  parseFloat(getComputedStyle(node).fontSize),
+                ]);
+              for (const [node, size] of sizes)
+                node.style.fontSize = size * 2 + "px";
+            });
+            await noOverflow();
+          }
+        }
       },
     );
     await run("keyboard skip link reaches main", async () => {

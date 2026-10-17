@@ -113,7 +113,10 @@ class ContentTests(unittest.TestCase):
         d = edition("teknoloji")
         script = summary_script(d)
         self.assertTrue(
-            all(s["summary"].split(". ")[0] in script and s["why"] not in script for s in d["stories"])
+            all(
+                s["summary"].split(". ")[0] in script and s["why"] not in script
+                for s in d["stories"]
+            )
         )
 
     def test_model_cannot_invent_source(self):
@@ -213,27 +216,31 @@ class ReleaseTests(unittest.TestCase):
             )
 
     def test_overnight_revision_retains_its_real_date_until_six(self):
-        at=not_before(DATE).replace(hour=5, minute=59) + dt.timedelta(days=1)
-        output=self.root/'overnight'
-        build(ROOT/'site',output,release=self.release,at=at)
-        sync(output,self.root/'overnight-published',at=at)
-        self.assertEqual(read_json(output/'data/publication.json')['publish_date'], DATE)
-        with patch('pulse.pipeline.now',return_value=at):
+        at = not_before(DATE).replace(hour=5, minute=59) + dt.timedelta(days=1)
+        output = self.root / "overnight"
+        build(ROOT / "site", output, release=self.release, at=at)
+        sync(output, self.root / "overnight-published", at=at)
+        self.assertEqual(
+            read_json(output / "data/publication.json")["publish_date"], DATE
+        )
+        with patch("pulse.pipeline.now", return_value=at):
             from pulse.pipeline import wait_for
-            wait_for(DATE,'07:30')
+
+            wait_for(DATE, "07:30")
 
     def test_exact_next_six_blocks_build_sync_and_pipeline_wait(self):
-        at=not_before(DATE).replace(hour=6, minute=0) + dt.timedelta(days=1)
-        output=self.root/'morning'
-        build(ROOT/'site',output,release=self.release,at=not_before(DATE))
+        at = not_before(DATE).replace(hour=6, minute=0) + dt.timedelta(days=1)
+        output = self.root / "morning"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
         with self.assertRaises(ValueError):
-            build(ROOT/'site',self.root/'blocked',release=self.release,at=at)
+            build(ROOT / "site", self.root / "blocked", release=self.release, at=at)
         with self.assertRaises(ValueError):
-            sync(output,self.root/'blocked-sync',at=at)
-        with patch('pulse.pipeline.now',return_value=at):
+            sync(output, self.root / "blocked-sync", at=at)
+        with patch("pulse.pipeline.now", return_value=at):
             from pulse.pipeline import wait_for
-            with self.assertRaisesRegex(RuntimeError,'expired'):
-                wait_for(DATE,'07:30')
+
+            with self.assertRaisesRegex(RuntimeError, "expired"):
+                wait_for(DATE, "07:30")
 
     def test_expired_build_rejected(self):
         with self.assertRaises(ValueError):
@@ -263,9 +270,9 @@ class ReleaseTests(unittest.TestCase):
     def test_pipeline_rerun_reuses_sealed_issue_without_api_calls(self):
         work = self.root / "work"
         shutil.copytree(self.release, work / DATE)
-        parts=work/DATE/'teknoloji'/'tts-parts'/'finished'
+        parts = work / DATE / "teknoloji" / "tts-parts" / "finished"
         parts.mkdir(parents=True)
-        (parts/'part_000.wav').write_bytes(b'finished intermediate')
+        (parts / "part_000.wav").write_bytes(b"finished intermediate")
         with (
             patch(
                 "pulse.pipeline.research",
@@ -280,21 +287,24 @@ class ReleaseTests(unittest.TestCase):
             two = run(work, DATE, DATE)
         self.assertEqual(one, two)
         self.assertFalse(parts.parent.exists())
-        verify_manifest(work/DATE, one)
+        verify_manifest(work / DATE, one)
 
     def test_unverified_release_keeps_all_render_parts_for_recovery(self):
         from pulse.pipeline import verified_checkpoint
-        root=self.root/'invalid-checkpoint'
-        shutil.copytree(self.release,root)
-        parts=root/'teknoloji'/'tts-parts'
+
+        root = self.root / "invalid-checkpoint"
+        shutil.copytree(self.release, root)
+        parts = root / "teknoloji" / "tts-parts"
         parts.mkdir()
-        (parts/'part_000.wav').write_bytes(b'recoverable partial stage')
-        (root/'teknoloji'/'podcast.mp3').write_bytes(b'broken')
+        (parts / "part_000.wav").write_bytes(b"recoverable partial stage")
+        (root / "teknoloji" / "podcast.mp3").write_bytes(b"broken")
         with self.assertRaises((ValueError, subprocess.CalledProcessError)):
             verified_checkpoint(root)
-        self.assertTrue((parts/'part_000.wav').exists())
+        self.assertTrue((parts / "part_000.wav").exists())
 
-    def test_audio_revision_preserves_news_numbering_and_cannot_be_rolled_back_by_rerun(self):
+    def test_audio_revision_preserves_news_numbering_and_cannot_be_rolled_back_by_rerun(
+        self,
+    ):
         published = self.root / "published-for-refresh"
         build(ROOT / "site", published, release=self.release, at=not_before(DATE))
         original = read_json(published / "data/publication.json")
@@ -326,7 +336,10 @@ class ReleaseTests(unittest.TestCase):
         for section in ("teknoloji", "oyun"):
             result = read_json(work / DATE / (section + ".json"))
             self.assertEqual(result["issue"], 1)
-            self.assertEqual(result["stories"], read_json(self.release / (section + ".json"))["stories"])
+            self.assertEqual(
+                result["stories"],
+                read_json(self.release / (section + ".json"))["stories"],
+            )
 
     def test_generation_resume_and_preserve_existing_voice_method(self):
         root = self.root / "audio"
@@ -348,12 +361,27 @@ class ReleaseTests(unittest.TestCase):
             shutil.copyfile(self.audio, target)
 
         def reviewed_writer(*args, **kwargs):
-            write_json(kwargs["audit_path"], {"turns_sha256": __import__("pulse_podcast_writer").dialogue_digest(turns), "review": {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}})
+            write_json(
+                kwargs["audit_path"],
+                {
+                    "turns_sha256": __import__("pulse_podcast_writer").dialogue_digest(
+                        turns
+                    ),
+                    "review": {
+                        "approved": True,
+                        "unsupported_claims": [],
+                        "misleading_opinions": [],
+                        "concerns": [],
+                    },
+                },
+            )
             return "", turns
 
         with (
             patch("edge_tts.Communicate") as edge,
-            patch("pulse_podcast_writer.generate", side_effect=reviewed_writer) as writer,
+            patch(
+                "pulse_podcast_writer.generate", side_effect=reviewed_writer
+            ) as writer,
             patch("pulse_podcast_audio.render", side_effect=render) as tts,
         ):
             edge.return_value.save = save
@@ -583,7 +611,17 @@ class ReleaseTests(unittest.TestCase):
             for i in range(12)
         ]
         with patch(
-            "pulse_podcast_writer._request", side_effect=[{"turns": turns}, {"turns": turns}, {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}]
+            "pulse_podcast_writer._request",
+            side_effect=[
+                {"turns": turns},
+                {"turns": turns},
+                {
+                    "approved": True,
+                    "unsupported_claims": [],
+                    "misleading_opinions": [],
+                    "concerns": [],
+                },
+            ],
         ) as request:
             writer.generate([("Fixture headline", "Fixture source facts")])
         self.assertEqual(
@@ -602,7 +640,17 @@ class ReleaseTests(unittest.TestCase):
             for i in range(12)
         ]
         with patch(
-            "pulse_podcast_writer._request", side_effect=[{"turns": turns}, {"turns": turns}, {"approved": True, "unsupported_claims": [], "misleading_opinions": [], "concerns": []}]
+            "pulse_podcast_writer._request",
+            side_effect=[
+                {"turns": turns},
+                {"turns": turns},
+                {
+                    "approved": True,
+                    "unsupported_claims": [],
+                    "misleading_opinions": [],
+                    "concerns": [],
+                },
+            ],
         ) as request:
             writer.generate(
                 [("Oyun haberi", "Kaynak notları")],
@@ -712,6 +760,29 @@ class ReleaseTests(unittest.TestCase):
         build(ROOT / "site", output, release=self.release, at=not_before(DATE))
         (output / "index.html").write_text("<h1>Old site</h1>")
         with self.assertRaisesRegex(ValueError, "HTML has not updated"):
+            check_site(
+                self.public_session(output), "https://example.test/", self.manifest
+            )
+
+    def test_pages_same_design_with_stale_release_html_cannot_open(self):
+        output = self.root / "site"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
+        page = output / "haberler/index.html"
+        page.write_text(
+            page.read_text().replace(self.manifest["release_id"], "old-release")
+        )
+        with self.assertRaisesRegex(ValueError, "another release"):
+            check_site(
+                self.public_session(output), "https://example.test/", self.manifest
+            )
+
+    def test_pages_missing_new_listening_route_is_not_a_complete_deployment(self):
+        import requests
+
+        output = self.root / "site"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
+        (output / "oyun/dinle/index.html").unlink()
+        with self.assertRaises(requests.HTTPError):
             check_site(
                 self.public_session(output), "https://example.test/", self.manifest
             )
