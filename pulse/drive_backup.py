@@ -142,7 +142,7 @@ class Drive:
         return self.readback(result['id'], expected)
 
 
-def backup_releases(source, published, output, *, drive=None, folder=None):
+def backup_releases(source, published, output, *, drive=None, folder=None, refresh_current=False):
     Path(output).unlink(missing_ok=True)  # A failed retry must not leave a stale cleanup receipt.
     drive = drive or Drive()
     folder = folder or os.environ.get('PULSE_DRIVE_FOLDER_ID') or drive.folder('root', 'PULSE')
@@ -150,6 +150,8 @@ def backup_releases(source, published, output, *, drive=None, folder=None):
     chosen, grouped = select_daily(source, published)
     if not chosen:
         raise ValueError('No complete release to archive')
+    active_file = Path(source) / "data/publication.json"
+    active = read_json(active_file) if refresh_current and active_file.exists() else {}
     receipts, superseded = {}, {}
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -163,7 +165,7 @@ def backup_releases(source, published, output, *, drive=None, folder=None):
             # Reuse any already verified legacy/pending/current ZIP of exactly this release.
             matching = [f for f in files if f.get('appProperties', {}).get('release_id') == release_id and int(f.get('size', 0)) > 0]
             receipt = None
-            if matching:
+            if matching and not (refresh_current and release_id == active.get("release_id")):
                 match = sorted(matching, key=lambda f: (f['name'] != canonical_name(date), f['name']))[0]
                 try:
                     receipt = drive.existing(match['name'], parent, release, manifest, file_id=match['id'])
@@ -189,8 +191,9 @@ def main():
     p.add_argument('--source', default='site')
     p.add_argument('--published', default='.published')
     p.add_argument('--receipts', default='.drive-receipts.json')
+    p.add_argument('--refresh-current', action='store_true', help='Rebuild the active date archive with the current website before retiring its previous ZIP')
     args = p.parse_args()
-    receipts = backup_releases(args.source, args.published, args.receipts)
+    receipts = backup_releases(args.source, args.published, args.receipts, refresh_current=args.refresh_current)
     print(f'Drive: {len(receipts)} complete releases verified by full readback; no credentials logged.')
 
 

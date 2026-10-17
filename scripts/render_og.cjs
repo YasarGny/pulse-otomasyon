@@ -1,32 +1,35 @@
-// Render the same optimized cover artwork and live typography for social previews.
+// Social cover uses the preserved original art and the editor desk brand.
 const { chromium } = require("playwright");
 const fs = require("node:fs/promises");
 (async () => {
-  const system = await fs.access("/usr/bin/chromium").then(
-    () => "/usr/bin/chromium",
-    () => undefined,
-  );
   const browser = await chromium.launch({
-    executablePath: process.env.PULSE_CHROMIUM || system,
+    executablePath:
+      process.env.PULSE_CHROMIUM ||
+      ((await fs.access("/usr/bin/chromium").then(
+        () => true,
+        () => false,
+      ))
+        ? "/usr/bin/chromium"
+        : undefined),
     args: ["--no-sandbox"],
   });
   try {
     const covers = await Promise.all(
       ["teknoloji", "oyun"].map(
-        async (section) =>
+        async (s) =>
           "data:image/webp;base64," +
-          (
-            await fs.readFile("site/assets/covers/" + section + ".webp")
-          ).toString("base64"),
+          (await fs.readFile("site/assets/covers/" + s + ".webp")).toString(
+            "base64",
+          ),
       ),
     );
     const page = await browser.newPage({
       viewport: { width: 1200, height: 630 },
       deviceScaleFactor: 1,
     });
-    await page.setContent(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><style>
-      *{box-sizing:border-box}body{margin:0;background:#080e1a;color:#f1f4fa;font-family:Arial,sans-serif;padding:45px 54px}header{display:flex;justify-content:space-between;align-items:center}b{font-size:26px;letter-spacing:-1px}header span{font-size:15px;color:#acb9cc}h1{font-size:55px;letter-spacing:-3px;margin:26px 0 30px;font-weight:600}h1 span{color:#f2a7cc}main{display:flex;gap:22px}article{flex:1;position:relative;border:1px solid #27354a;border-radius:20px;overflow:hidden;height:335px}img{width:100%;height:100%;object-fit:cover}article div{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:end;padding:25px;background:linear-gradient(transparent 30%,#080e1aee)}h2{font-size:28px;letter-spacing:-1px;margin:0 0 7px}p{font-size:14px;color:#d0daea;margin:0}
-      </style></head><body><header><b>PULSE<span style="color:#f2a7cc">.</span></b><span>Her sabah 07.30</span></header><h1>Günlük <span>gündemimiz.</span></h1><main><article><img src="${covers[0]}" alt=""><div><h2>PULSE Teknoloji</h2><p>Yeni Sekme · Yaşar &amp; Necdet</p></div></article><article><img src="${covers[1]}" alt=""><div><h2>PULSE Oyun</h2><p>Moradon FM · Yaşar &amp; Necdet</p></div></article></main></body></html>`);
+    await page.setContent(
+      `<!doctype html><html lang="tr"><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;padding:36px 48px;background:#151618;color:#f2f1ed;font-family:Arial,sans-serif}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3c4046;padding-bottom:20px}b{font-size:36px;letter-spacing:-2px}b span{color:#f2a7cc}header p{font-size:16px;color:#babbc1}h1{font-size:42px;letter-spacing:-1.6px;margin:22px 0}main{display:flex;gap:24px}article{flex:1;min-width:0}img{display:block;width:100%;height:280px;object-fit:contain;background:#202225;border-radius:8px}h2{font-size:23px;margin:14px 0 6px}article p{margin:0;color:#babbc1;font-size:16px}</style><header><b>PULSE<span>.</span></b><p>Her sabah 07:30</p></header><h1>Teknoloji, oyun ve iyi muhabbet.</h1><main><article><img src="${covers[0]}" alt=""><h2>Teknoloji</h2><p>Yeni Sekme · Teknoloji podcast’i</p></article><article><img src="${covers[1]}" alt=""><h2>Oyun</h2><p>Moradon FM · Oyun podcast’i</p></article></main></html>`,
+    );
     await page.evaluate(() =>
       Promise.all([...document.images].map((i) => i.decode())),
     );

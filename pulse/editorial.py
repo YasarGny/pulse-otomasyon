@@ -297,7 +297,7 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(list(sources.values()),
 
 def summary_script(data):
     # Every story contributes a short factual brief; never read the analysis field.
-    intro = f"{data['date']}. PULSE {'Teknoloji' if data['section'] == 'teknoloji' else 'Oyun'}, sayı {data['issue']:03d}. Günün sesli özeti."
+    intro = f"{data['date']}. PULSE {'Teknoloji' if data['section'] == 'teknoloji' else 'Oyun'}, sayı {data['issue']:03d}. Günün Özeti."
     return (
         intro
         + "\n\n"

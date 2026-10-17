@@ -3,6 +3,21 @@
   "use strict";
   const rules = window.PulsePublication,
     base = new URL("../", document.currentScript.src);
+  /* press-projection:start */
+  const pressProjection = {
+    size: 640,
+    matrix: [
+      1.079682191212972, -0.4779174327850342, 0.5009516477584839,
+      0.576335221529007, 177.78244018554688, 400.41967391967773,
+    ],
+    paper_corners: [
+      [177.78244018554688, 400.41967391967773],
+      [436.90616607666016, 285.71949005126953],
+      [597.210693359375, 470.1467514038086],
+      [338.0869674682617, 584.84694480896],
+    ],
+  };
+  /* press-projection:end */
   let serverEpoch = null,
     observed = 0,
     lastSuccess = 0,
@@ -15,9 +30,34 @@
     if (text) n.textContent = text;
     return n;
   };
-  function lock(reason = "", mode = "printing") {
+  function lock(reason = "", mode = null) {
+    const moveFocus =
+      shell.contains(document.activeElement) ||
+      !!document.activeElement.closest(".audio-session");
+    if (!mode) {
+      const at =
+        serverEpoch === null
+          ? null
+          : new Date(serverEpoch + performance.now() - observed);
+      mode =
+        at && at >= new Date(rules.expectedDate(at) + "T07:30:00+03:00")
+          ? "delayed"
+          : "printing";
+    }
     active = null;
     window.PULSE_RELEASE = null;
+    if (document.body.dataset.page === "legal") {
+      document.getElementById("pulse-printing")?.remove();
+      document.getElementById("publication-loading")?.remove();
+      shell.inert = false;
+      shell.removeAttribute("aria-hidden");
+      document.documentElement.classList.remove(
+        "pulse-locked",
+        "pulse-loading",
+      );
+      window.dispatchEvent(new CustomEvent("pulse:locked"));
+      return;
+    }
     shell.inert = true;
     shell.setAttribute("aria-hidden", "true");
     shell.querySelectorAll("audio").forEach((a) => a.pause());
@@ -36,68 +76,104 @@
       const card = make("div", "pulse-print-card");
       const art = make("div", "press-scene");
       art.setAttribute("aria-hidden", "true");
-      art.innerHTML = `<svg class="press-illustration" viewBox="0 0 400 290" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="press-metal" x2="0" y2="1"><stop stop-color="#344356"/><stop offset="1" stop-color="#172234"/></linearGradient><linearGradient id="press-light"><stop stop-color="#f2a7cc" stop-opacity="0"/><stop offset=".5" stop-color="#f2a7cc"/><stop offset="1" stop-color="#f2a7cc" stop-opacity="0"/></linearGradient></defs>
-        <ellipse cx="200" cy="264" rx="148" ry="12" fill="#000" opacity=".25"/>
-        <rect x="67" y="64" width="266" height="130" rx="20" fill="url(#press-metal)" stroke="#526178"/>
-        <rect x="88" y="84" width="224" height="15" rx="7" fill="#0b111c"/>
-        <circle cx="300" cy="119" r="4" fill="#f2a7cc" class="press-led"/>
-        <path d="M92 147H308" stroke="#080e1a" stroke-width="13" stroke-linecap="round"/>
-        <g class="press-newspaper"><rect x="112" y="133" width="176" height="116" rx="3" fill="#eeeae5"/>
-        <text x="126" y="161" fill="#192232" font-size="22" font-family="Arial,sans-serif" font-weight="900" letter-spacing="-1">PULSE<tspan fill="#a34872">.</tspan></text>
-        <path d="M126 170H274" stroke="#192232"/>
-        <rect x="126" y="180" width="66" height="39" rx="2" fill="#658b94"/>
-        <path d="m128 213 19-22 14 13 10-8 19 18" stroke="#b6d3d4" stroke-width="2"/>
-        <path d="M204 182H273M204 190H273M204 198H273M204 206H255M126 230H274M126 237H252" stroke="#9a9ba0" stroke-width="3"/>
-        </g>
-        <path d="M92 147H308" stroke="url(#press-light)" stroke-width="2"/>
-        <path d="M79 183v11a12 12 0 0 0 12 12h12m218-23v11a12 12 0 0 1-12 12h-12" stroke="#526178" stroke-width="2"/>
-      </svg>`;
-      if (mode === "offline") art.hidden = true;
+      if (mode === "offline") {
+        const image = make("img", "connection-illustration");
+        image.src = new URL("assets/connection-paper.webp", base).href;
+        image.alt = "";
+        image.width = 768;
+        image.height = 512;
+        art.append(image);
+      } else {
+        art.innerHTML = `<svg class="press-illustration" style="stroke:none" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <mask id="press-paper-visibility" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="640" style="mask-type:luminance"><image class="press-occlusion-mask" href="${new URL("assets/press-mask.png", base).href}" width="640" height="640"/></mask>
+            <g id="press-ink">
+              <text x="17" y="59" fill="#242426" font-size="42" font-family="Arial,sans-serif" font-weight="900" letter-spacing="-2">PULSE<tspan fill="#e84c86">.</tspan></text>
+              <path d="M18 76h205" stroke="#666561" stroke-width="1.5"/>
+              <rect x="18" y="94" width="93" height="74" fill="#d8799a"/>
+              <path d="M125 100h98m-98 13h98m-98 13h98m-98 13h98m-98 13h98m-98 13h74M18 190h205m-205 13h205m-205 13h205m-205 13h205m-205 13h155" stroke="#9d9b96" stroke-width="4.5"/>
+              <rect x="18" y="264" width="52" height="26" fill="#d8799a"/>
+              <path d="M84 269h139m-139 12h139" stroke="#9d9b96" stroke-width="4.5"/>
+            </g>
+          </defs>
+          <image class="press-model" href="${new URL("assets/press-model.webp", base).href}" width="640" height="640"/>
+          <g class="press-paper-path" mask="url(#press-paper-visibility)">
+            <g transform="matrix(${pressProjection.matrix.join(" ")})">
+              <g class="press-newspaper"><use href="#press-ink"/><use href="#press-ink" y="-320"/></g>
+            </g>
+          </g>
+        </svg>`;
+      }
       const status = make("p", "pulse-print-small");
       status.id = "printing-status";
       status.setAttribute("role", "status");
-      const retry = make("button", "retry", "Yayın durumunu kontrol et");
+      const retry = make("button", "retry", "Tekrar dene");
       retry.type = "button";
+      retry.hidden = mode !== "offline";
       retry.addEventListener("click", () => check());
       card.append(
-        make("div", "pulse-print-brand", "PULSE"),
+        Object.assign(make("div", "pulse-print-brand"), {
+          innerHTML: "PULSE<span>.</span>",
+        }),
         art,
         make(
           "h1",
           "",
-          mode === "printing"
-            ? "Haberler baskıya giriyor!"
-            : "Yayına ulaşamadık.",
+          mode === "offline"
+            ? "Yayın durumu doğrulanamadı."
+            : mode === "delayed"
+              ? "Hazırlık devam ediyor."
+              : "Haberler baskıya giriyor!",
         ),
         make(
           "p",
           "",
-          mode === "printing"
-            ? "Gündemi toparlıyor, mikrofonları hazırlıyoruz."
-            : "Bağlantıyı kontrol edip yeniden deneyebilirsiniz.",
+          mode === "offline"
+            ? "Bağlantını kontrol edip yeniden deneyebilirsin."
+            : mode === "delayed"
+              ? "İki yayın tamamlandığında burada olacak."
+              : "Teknoloji ve oyun gündemi hazırlanıyor.",
         ),
         make(
           "div",
           "pulse-print-clock",
           mode === "printing"
-            ? "Yeni sayı 07:30’da, her şey hazır olduğunda."
-            : "",
+            ? "Yeni sayı hedefi 07:30."
+            : mode === "delayed"
+              ? "07:30 hedef saati aşıldı."
+              : "",
         ),
         status,
         retry,
       );
       overlay.append(card);
       document.body.append(overlay);
-      if (shell.contains(document.activeElement)) retry.focus();
+      if (moveFocus) {
+        const focusTarget = retry.hidden ? overlay.querySelector("h1") : retry;
+        focusTarget.tabIndex = -1;
+        focusTarget.focus();
+      }
     }
     document.getElementById("printing-status").textContent = reason;
     window.dispatchEvent(new CustomEvent("pulse:locked"));
   }
-  function unlock(manifest, editions, url) {
-    const changed = active !== manifest.release_id;
-    active = manifest.release_id;
-    window.PULSE_RELEASE = { manifest, editions, url };
+  function reveal() {
+    if (
+      !window.PULSE_RELEASE ||
+      (document.body.dataset.page !== "legal" &&
+        document.getElementById("main")?.dataset.release !== active)
+    )
+      return;
+    if (
+      serverEpoch !== null &&
+      !rules.isReady(
+        window.PULSE_RELEASE.manifest,
+        new Date(serverEpoch + performance.now() - observed),
+      )
+    ) {
+      lock();
+      return;
+    }
     const overlay = document.getElementById("pulse-printing");
     const hadFocus = overlay?.contains(document.activeElement);
     overlay?.remove();
@@ -105,16 +181,27 @@
     shell.removeAttribute("aria-hidden");
     document.documentElement.classList.remove("pulse-locked", "pulse-loading");
     document.getElementById("publication-loading")?.remove();
-    if (hadFocus) {
-      const main = document.getElementById("main");
-      main.tabIndex = -1;
-      main.focus();
-    }
+    if (hadFocus) document.getElementById("main").focus();
+  }
+  function unlock(manifest, editions, url) {
+    const changed = active !== manifest.release_id;
+    active = manifest.release_id;
+    window.PULSE_RELEASE = { manifest, editions, url };
+    // Verified JSON must not expose a cached HTML page from another release.
     if (changed)
       window.dispatchEvent(
         new CustomEvent("pulse:ready", { detail: window.PULSE_RELEASE }),
       );
   }
+  window.addEventListener("pulse:rendered", (event) => {
+    if (event.detail?.release_id === active) reveal();
+  });
+  window.addEventListener("pulse:render-error", () =>
+    lock(
+      "Sayfa güncel yayınla eşleşmedi. Yeniden kontrol edeceğiz.",
+      "offline",
+    ),
+  );
   async function get(url) {
     const response = await fetch(url, {
       cache: "no-store",
@@ -186,10 +273,7 @@
       lastSuccess = performance.now();
       unlock(manifest, editions, url);
     } catch (error) {
-      lock(
-        "Yayın durumu doğrulanamadı. Birazdan yeniden kontrol edeceğiz.",
-        "offline",
-      );
+      lock("", "offline");
     } finally {
       busy = false;
     }
@@ -200,11 +284,15 @@
   shell.setAttribute("aria-hidden", "true");
   setTimeout(() => {
     if (!document.documentElement.classList.contains("pulse-loading")) return;
-    const loading = make("div", "publication-loading", "PULSE");
+    const loading = make("div", "publication-loading");
     loading.id = "publication-loading";
-    loading.append(make("span", "", "."));
+    const content = make("div", "loading-content");
+    content.innerHTML =
+      '<div class="loading-brand">PULSE<span>.</span></div><div class="loading-preview" aria-hidden="true"><div class="loading-picture"></div><div class="loading-lines"><i></i><i></i><i></i></div></div>';
+    content.append(make("p", "loading-message", "Yayın kontrol ediliyor…"));
+    loading.append(content);
     loading.setAttribute("role", "status");
-    loading.setAttribute("aria-label", "Yayın yükleniyor");
+    loading.setAttribute("aria-label", "Yayın kontrol ediliyor");
     document.body.append(loading);
   }, 180);
   check();
@@ -219,6 +307,10 @@
       lock();
   }, 1000);
   document.addEventListener("visibilitychange", () => {
+    document.documentElement.classList.toggle(
+      "document-hidden",
+      document.hidden,
+    );
     if (!document.hidden) {
       if (
         active &&

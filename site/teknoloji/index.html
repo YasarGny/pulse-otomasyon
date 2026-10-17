@@ -1,163 +1,93 @@
 <!doctype html>
-<html lang="tr" class="pulse-loading">
+<html lang="tr" class="pulse-loading" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#080e1a" />
+    <meta name="theme-color" content="#151618" />
     <meta
       name="description"
-      content="Yapay zekâ, bilim, uzay, yazılım, siber güvenlik ve dijital dünya. Günlük sesli özet ve Yeni Sekme podcast."
+      content="Teknoloji, oyun ve iyi muhabbet. Günlük haberler, Günün Özeti ve podcast’ler."
     />
-    <title>PULSE Teknoloji — Günlük haberler ve Yeni Sekme</title>
+    <title>PULSE. — Günlük gündemimiz</title>
     <link rel="canonical" href="https://yasargny.github.io/teknoloji/" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="tr_TR" />
     <meta property="og:site_name" content="PULSE" />
-    <meta
-      property="og:title"
-      content="PULSE Teknoloji — Günlük haberler ve Yeni Sekme"
-    />
+    <meta property="og:title" content="PULSE. — Günlük gündemimiz" />
     <meta
       property="og:description"
-      content="Yapay zekâ, bilim, uzay, yazılım, siber güvenlik ve dijital dünya. Günlük sesli özet ve Yeni Sekme podcast."
+      content="Teknoloji, oyun ve iyi muhabbet. Günlük haberler, Günün Özeti ve podcast’ler."
     />
     <meta property="og:url" content="https://yasargny.github.io/teknoloji/" />
     <meta
       property="og:image"
-      content="https://yasargny.github.io/assets/og.png?v=2"
+      content="https://yasargny.github.io/assets/og.png?v=3"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="../assets/style.css?v=5" />
+    <link rel="manifest" href="../manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="../assets/app-180.png" />
+    <meta name="apple-mobile-web-app-title" content="PULSE" />
+    <script src="../assets/theme.js?v=1"></script>
+    <link rel="stylesheet" href="../assets/style.css?v=11" />
     <script src="../assets/publication.js?v=4" defer></script>
-    <script src="../assets/printing.js" defer></script>
-    <script src="../assets/site.js?v=4" defer></script>
+    <script src="../assets/printing.js?v=7" defer></script>
+    <script src="../assets/site.js?v=10" defer></script>
+    <script src="../assets/install.js?v=1" defer></script>
   </head>
-  <body data-design="editorial-v4" data-page="teknoloji" class="technology">
+  <body
+    data-design="editor-desk-v1"
+    data-page="news"
+    data-section="teknoloji"
+    data-story=""
+  >
     <noscript
-      ><main class="nojs">
-        <h1>PULSE</h1>
-        <p>
-          Yayın durumunu doğrulamak ve oynatıcıları kullanmak için JavaScript’i
-          etkinleştirin.
-        </p>
-      </main></noscript
+      ><style>
+        .pulse-loading .site-shell {
+          visibility: visible !important;
+        }
+        .site-shell {
+          display: block !important;
+        }
+        [data-audio-section],
+        .theme-toggle {
+          display: none !important;
+        }
+      </style>
+      <p class="nojs-note">
+        Bu kayıt tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak
+        için JavaScript’i etkinleştirin.
+      </p></noscript
     >
     <div class="site-shell">
       <a class="skip" href="#main">İçeriğe geç</a>
       <header class="nav">
-        <a class="brand" href="../" aria-label="PULSE ana sayfa"
+        <a class="brand" href="../index.html" aria-label="PULSE ana sayfa"
           >PULSE<span class="brand-dot">.</span></a
-        >
+        ><span class="nav-issue"></span>
         <nav aria-label="Ana menü">
-          <a href="../teknoloji/" aria-current="page">Teknoloji</a
-          ><a href="../oyun/">Oyun</a>
+          <a href="../haberler/index.html" aria-current="page">Haberler</a
+          ><a href="../podcastler/index.html">Podcast’ler</a>
         </nav>
-      </header>
-      <main id="main">
-        <section class="pagehero">
-          <a class="back" href="../">← Tüm yayınlar</a>
-          <div class="pagehero-layout">
-            <div>
-              <div class="eyebrow">GÜNLÜK YAYIN</div>
-              <h1>PULSE <span>Teknoloji</span></h1>
-              <p>Yapay zekâ, bilim, uzay, yazılım ve dijital dünya.</p>
-              <div id="issue" class="issue" role="status">
-                Güncel sayı doğrulanıyor…
-              </div>
-            </div>
-            <img
-              class="pagehero-art"
-              src="../assets/covers/teknoloji-768.webp"
-              srcset="
-                ../assets/covers/teknoloji-768.webp  768w,
-                ../assets/covers/teknoloji.webp     1440w
-              "
-              sizes="(max-width: 760px) calc(100vw - 44px), 344px"
-              width="768"
-              height="512"
-              alt=""
-              decoding="async"
+        <button type="button" class="theme-toggle" aria-label="Açık temaya geç">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"
             />
-          </div>
-        </section>
-        <div id="notice" class="notice" role="status" hidden></div>
-        <div class="content-grid">
-          <section aria-labelledby="news-title">
-            <div class="sectiontop news-top">
-              <h2 id="news-title">Günün gündemi</h2>
-              <span id="story-count" class="section-note"></span>
-            </div>
-            <div id="stories" aria-busy="true">
-              <p class="empty">Haberler yükleniyor…</p>
-            </div>
-          </section>
-          <aside class="listening" aria-label="Sesli yayınlar">
-            <div
-              class="listening-heading"
-              role="tablist"
-              aria-label="Dinleme türü"
-            >
-              <button
-                class="listen-tab"
-                type="button"
-                role="tab"
-                id="podcast-tab"
-                aria-controls="podcast-panel"
-                aria-selected="true"
-              >
-                Podcast
-              </button>
-              <button
-                class="listen-tab"
-                type="button"
-                role="tab"
-                id="summary-tab"
-                aria-controls="summary-panel"
-                aria-selected="false"
-                tabindex="-1"
-              >
-                Sesli özet
-              </button>
-            </div>
-            <div class="listening-cards">
-              <section
-                class="audio-box summary-box"
-                id="summary-panel"
-                hidden
-                role="tabpanel"
-                aria-labelledby="summary-tab"
-              >
-                <h3 id="summary-title">Günün sesli özeti</h3>
-
-                <div id="summary"><p>Ses yükleniyor…</p></div>
-              </section>
-              <section
-                class="audio-box podcast-box"
-                id="podcast-panel"
-                role="tabpanel"
-                aria-labelledby="podcast-tab"
-              >
-                <div class="podcast-box-body">
-                  <div class="podcast-kicker">Teknoloji podcast’i</div>
-                  <h3 id="podcast-title">Yeni Sekme</h3>
-                  <p>Yaşar &amp; Necdet</p>
-                  <div id="podcast"><p>Podcast yükleniyor…</p></div>
-                </div>
-              </section>
-            </div>
-          </aside>
-        </div>
+          </svg>
+        </button>
+      </header>
+      <main id="main" tabindex="-1" data-release="">
+        <h1>Günlük gündemimiz.</h1>
+        <p>Yayın doğrulanıyor…</p>
       </main>
       <footer class="foot">
-        <a class="policy-link" href="https://yasargny.github.io/gizlilik/"
-          >Gizlilik</a
-        >
-        <a class="brand" href="../" aria-label="PULSE ana sayfa"
+        <a class="brand" href="../index.html" aria-label="PULSE ana sayfa"
           >PULSE<span class="brand-dot">.</span></a
-        >
+        ><a href="../gizlilik/index.html">Gizlilik</a>
       </footer>
     </div>
   </body>

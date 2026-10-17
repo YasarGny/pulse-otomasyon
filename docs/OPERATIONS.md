@@ -321,3 +321,20 @@ planın Actions dakika ve depolama kotası geçerlidir.
 
 Geçiş revizyonu, teknolojiye yanlış konmuş açık oyun kategorili haberleri ayıklar;
 tarih ve sayı korunur. Yeni `content_revision=2` yayınları bu ayrımı doğrular.
+
+## Haberleri değiştirmeden web tasarımını yayımlama
+
+Onaylı ve test edilmiş `main` için **Publish reviewed website without regenerating
+content** (`refresh-website.yml`) elle çalıştırılabilir. Günlük işlerle aynı concurrency
+grubunu ve `pulse-production` ortamını kullanır. Canlı onayı ve Drive etkinliği
+zorunludur. Mevcut manifest, tarih, sayı, JSON ve dört MP3 değiştirilmez.
+
+Akış mevcut eksiksiz yayını doğrular, tek kaynak `site/` ile yeniden derler, aktif
+günün ZIP’ini yeni tasarımla Drive’a yükleyip tamamen geri okuyarak doğrular.
+Yalnız bundan sonra eski günlük ZIP emekliye ayrılır; gün başına tek son sürüm
+politikası korunur. Normal günlük işler değişmeyen arşivi yeniden yüklemez.
+
+Atomik yayın commit’inden sonra Pages üzerindeki HTML, JSON, dört MP3 ve ayrıca
+uygulama/tasarım varlıklarının hash’leri denetlenir. Tarihi geçmiş veya hazırlık
+halindeki yayınla bu akış çalışmaz; yeni eksiksiz günlük sayıyı beklemek gerekir.
+Uygulama ekleme desteği yeni Secrets veya ek GitHub izni gerektirmez.

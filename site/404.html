@@ -1,41 +1,95 @@
 <!doctype html>
-<html lang="tr" class="pulse-loading">
+<html lang="tr" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#090f1d" />
+    <meta name="theme-color" content="#151618" />
     <meta
       name="description"
-      content="Bu sayfa bulunamadı. PULSE günlük yayınlarına dönün."
+      content="Teknoloji, oyun ve iyi muhabbet. Günlük haberler, Günün Özeti ve podcast’ler."
     />
-    <title>Sayfa bulunamadı — PULSE</title>
+    <title>PULSE. — Günlük gündemimiz</title>
     <link rel="canonical" href="https://yasargny.github.io/" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="tr_TR" />
     <meta property="og:site_name" content="PULSE" />
-    <meta property="og:title" content="Sayfa bulunamadı — PULSE" />
+    <meta property="og:title" content="PULSE. — Günlük gündemimiz" />
     <meta
       property="og:description"
-      content="Bu sayfa bulunamadı. PULSE günlük yayınlarına dönün."
+      content="Teknoloji, oyun ve iyi muhabbet. Günlük haberler, Günün Özeti ve podcast’ler."
     />
     <meta property="og:url" content="https://yasargny.github.io/" />
     <meta
       property="og:image"
-      content="https://yasargny.github.io/assets/og.png"
+      content="https://yasargny.github.io/assets/og.png?v=3"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/assets/style.css" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/app-180.png" />
+    <meta name="apple-mobile-web-app-title" content="PULSE" />
+    <script src="/assets/theme.js?v=1"></script>
+    <link rel="stylesheet" href="/assets/style.css?v=11" />
     <script src="/assets/publication.js?v=4" defer></script>
-    <script src="/assets/printing.js" defer></script>
+    <script src="/assets/install.js?v=1" defer></script>
   </head>
-  <body>
-    <main class="nojs">
-      <h1>Bu sekme boş kalmış.</h1>
-      <p>Aradığınız sayfayı bulamadık.</p>
-      <a href="/">PULSE ana sayfasına dön →</a>
-    </main>
+  <body
+    data-design="editor-desk-v1"
+    data-page="not-found"
+    data-section=""
+    data-story=""
+  >
+    <noscript
+      ><style>
+        .pulse-loading .site-shell {
+          visibility: visible !important;
+        }
+        .site-shell {
+          display: block !important;
+        }
+        [data-audio-section],
+        .theme-toggle {
+          display: none !important;
+        }
+      </style>
+      <p class="nojs-note">
+        Bu kayıt tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak
+        için JavaScript’i etkinleştirin.
+      </p></noscript
+    >
+    <div class="site-shell">
+      <a class="skip" href="#main">İçeriğe geç</a>
+      <header class="nav">
+        <a class="brand" href="/index.html" aria-label="PULSE ana sayfa"
+          >PULSE<span class="brand-dot">.</span></a
+        ><span class="nav-issue"></span>
+        <nav aria-label="Ana menü">
+          <a href="/haberler/index.html">Haberler</a
+          ><a href="/podcastler/index.html">Podcast’ler</a>
+        </nav>
+        <button type="button" class="theme-toggle" aria-label="Açık temaya geç">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"
+            />
+          </svg>
+        </button>
+      </header>
+      <main id="main" tabindex="-1" data-release="">
+        <div class="not-found">
+          <h1>Bu sekme boş kalmış.</h1>
+          <p>Aradığın sayfayı bulamadık.</p>
+          <a href="/">Ana sayfaya dön →</a>
+        </div>
+      </main>
+      <footer class="foot">
+        <a class="brand" href="/index.html" aria-label="PULSE ana sayfa"
+          >PULSE<span class="brand-dot">.</span></a
+        ><a href="/gizlilik/index.html">Gizlilik</a>
+      </footer>
+    </div>
   </body>
 </html>

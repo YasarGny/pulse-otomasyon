@@ -117,13 +117,15 @@ class BackupTests(unittest.TestCase):
                 home = z.read('index.html').decode()
                 self.assertIn('16.10.2026', home)
                 self.assertNotIn('printing.js', home)
-                self.assertNotIn('pulse-loading', home)
-                self.assertIn('./teknoloji/index.html', home)
+                self.assertNotIn('install.js', home)
+                self.assertNotIn('rel="manifest"', home)
+                self.assertNotIn('class="pulse-loading"', home)
+                self.assertRegex(home, r'href="(?:\./)?teknoloji/index.html"')
                 section = z.read('teknoloji/index.html').decode()
                 self.assertIn('window.PULSE_ARCHIVE=true', section)
                 detail = z.read('teknoloji/haber/teknoloji0/index.html').decode()
                 self.assertIn('../../../media/', detail)
-                self.assertNotIn('https://images.example.test/', detail)
+                self.assertNotRegex(detail, r'<img[^>]+src="https://images\.example\.test/')
 
     def test_archive_deterministic_for_idempotent_retry(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -190,6 +192,33 @@ class BackupTests(unittest.TestCase):
             self.assertTrue(result[self.manifest['release_id']]['verified'])
             drive.upload.assert_not_called()
             self.assertIn('16.10.2026', drive.folder.call_args[0])
+
+    def test_layout_refresh_replaces_archive_only_after_new_zip_is_verified(self):
+        drive = Mock()
+        drive.folder.return_value = 'folder'
+        drive.api = 'https://www.googleapis.com/drive/v3/files'
+        files = [{'id':'old', 'size':'100', 'name':'PULSE-16.10.2026.zip', 'appProperties':{'release_id':self.manifest['release_id']}}]
+        drive.daily_files.side_effect = lambda *args: list(files)
+        def uploaded(path, parent, expected):
+            verify_package(path)
+            files.append({'id':'new', 'size':str(expected['bytes']), 'name':Path(path).name, 'appProperties':{'release_id':self.manifest['release_id']}})
+            return {'file_id':'new', 'verified':True, **expected}
+        drive.upload.side_effect = uploaded
+        with tempfile.TemporaryDirectory() as tmp, patch('pulse.drive_backup.package', side_effect=lambda site, dest: package(site, dest, fetch=self.media)):
+            receipt = Path(tmp) / 'receipts.json'
+            backup_releases(self.site, self.site, receipt, drive=drive, folder='root', refresh_current=True)
+            self.assertEqual(read_json(receipt)['releases'][self.manifest['release_id']]['file_id'], 'new')
+            drive.existing.assert_not_called()
+            self.assertEqual(drive.request.call_args_list[0].args[1], drive.api+'/new')
+            self.assertEqual(drive.request.call_args_list[1].kwargs['json'], {'trashed':True})
+        drive.reset_mock()
+        drive.upload.side_effect = RuntimeError('upload failed')
+        with tempfile.TemporaryDirectory() as tmp, patch('pulse.drive_backup.package', side_effect=lambda site, dest: package(site, dest, fetch=self.media)):
+            receipt = Path(tmp) / 'receipts.json'
+            with self.assertRaises(RuntimeError):
+                backup_releases(self.site, self.site, receipt, drive=drive, folder='root', refresh_current=True)
+            drive.request.assert_not_called()
+            self.assertFalse(receipt.exists())
 
     def test_prune_preflight_preserves_all_without_receipts(self):
         with tempfile.TemporaryDirectory() as tmp:

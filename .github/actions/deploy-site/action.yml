@@ -13,6 +13,10 @@ inputs:
   date:
     required: true
     description: Istanbul publication date
+  refresh-backup:
+    required: false
+    default: "false"
+    description: Rebuild the active daily archive after a website-only revision
 runs:
   using: composite
   steps:
@@ -40,7 +44,14 @@ runs:
     - name: Back up complete publications to private Drive before any cleanup
       if: env.PULSE_DRIVE_ENABLED == 'true'
       shell: bash
-      run: python -m pulse.drive_backup --source dist --published .published --receipts .drive-receipts.json
+      env:
+        REFRESH_BACKUP: ${{ inputs.refresh-backup }}
+      run: |
+        if [ "$REFRESH_BACKUP" = 'true' ]; then
+          python -m pulse.drive_backup --source dist --published .published --receipts .drive-receipts.json --refresh-current
+        else
+          python -m pulse.drive_backup --source dist --published .published --receipts .drive-receipts.json
+        fi
     - name: Validate and synchronize public files
       shell: bash
       run: python scripts/sync_site.py dist .published
@@ -58,7 +69,7 @@ runs:
         cd .published
         git config user.name 'pulse-publisher[bot]'
         git config user.email 'pulse-publisher[bot]@users.noreply.github.com'
-        for path in index.html 404.html robots.txt sitemap.xml .nojekyll assets teknoloji oyun gizlilik kosullar data releases; do
+        for path in index.html 404.html robots.txt sitemap.xml manifest.webmanifest sw.js .nojekyll assets teknoloji oyun haberler podcastler gizlilik kosullar data releases; do
           if [ -e "$path" ]; then git add -- "$path"; fi
         done
         if ! git diff --cached --quiet; then
@@ -68,4 +79,4 @@ runs:
         fi
     - name: Wait for Pages and verify public HTML, JSON and all MP3 hashes
       shell: bash
-      run: python -m pulse.verify_site --expected dist/data/publication.json --timeout 900
+      run: python -m pulse.verify_site --expected dist/data/publication.json --tree dist --timeout 900

@@ -25,7 +25,7 @@ def package(site, destination, *, fetch=fetch_public):
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         # Exactly this day's public tree, never other archives or private generation state.
-        for name in ('index.html', 'assets', 'teknoloji', 'oyun'):
+        for name in ('index.html', 'assets', 'teknoloji', 'oyun', 'haberler', 'podcastler', 'gizlilik', 'kosullar'):
             origin = site / name
             if origin.is_dir():
                 shutil.copytree(origin, root / name)
@@ -44,25 +44,24 @@ def package(site, destination, *, fetch=fetch_public):
                 path.parent.mkdir(exist_ok=True)
                 path.write_bytes(body)
                 story['archive_image'] = '../../media/' + name
-                # Article pages are already static and open directly with file://.
-                detail = root / section / 'haber' / story['id'] / 'index.html'
-                if detail.exists():
-                    import html
-                    content = detail.read_text().replace(html.escape(url, quote=True), '../../../media/' + name)
-                    detail.write_text(content)
+        image_paths = {story['image_url']: story['archive_image'].split('/')[-1]
+                       for data in editions.values() for story in data['stories'] if story.get('archive_image')}
         for path in root.rglob('*.html'):
+            import html
+            prefix = '../' * len(path.parent.relative_to(root).parts)
             content = path.read_text()
+            for url, filename in image_paths.items():
+                content = content.replace(html.escape(url, quote=True), prefix + 'media/' + filename)
             content = content.replace('class="pulse-loading"', '')
-            content = re.sub(r'<script src="[^"]*printing.js" defer></script>', '', content)
-            # Local files need explicit filenames; browsers do not resolve directory indexes.
+            content = re.sub(r'<script src="[^"]*install\.js(?:\?[^\"]*)?" defer></script>', '', content)
+            content = re.sub(r'<link rel="manifest"[^>]*>', '', content)
+            content = re.sub(r'<script src="[^"]*printing\.js(?:\?[^\"]*)?" defer></script>', '', content)
+            # Explicit filenames work with file:// and don't need a local HTTP server.
             content = re.sub(r'(href=")((?!https?:|#)[^"]*/)(")', r'\1\2index.html\3', content)
             content = content.replace('<main id="main"', '<div class="archive-label">Arşiv · ' + display_date(manifest['publish_date']) + '</div><main id="main"', 1)
-            if path == root / 'index.html':
-                pass
-            elif path.parent.name in SECTIONS:
-                embedded = json.dumps({'manifest': manifest, 'editions': editions}, ensure_ascii=False).replace('<', '\\u003c')
-                script = f'<script>window.PULSE_ARCHIVE=true;window.PULSE_RELEASE={embedded};window.PULSE_RELEASE.url=new URL("../releases/{manifest["release_id"]}/",location.href);</script>'
-                content = content.replace('<script src="../assets/site.js', script + '<script src="../assets/site.js')
+            embedded = json.dumps({'manifest': manifest, 'editions': editions}, ensure_ascii=False).replace('<', chr(92) + 'u003c')
+            script = f'<script>window.PULSE_ARCHIVE=true;window.PULSE_RELEASE={embedded};window.PULSE_RELEASE.url=new URL("{prefix}releases/{manifest["release_id"]}/",location.href);</script>'
+            content = re.sub(r'(?=<script src="[^\"]*site\.js)', lambda m: script, content, count=1)
             path.write_text(content)
         inventory = {str(p.relative_to(root)): {'sha256': digest(p), 'bytes': p.stat().st_size} for p in sorted(root.rglob('*')) if p.is_file()}
         write_json(root / 'archive.json', {'schema_version': 1, 'publish_date': manifest['publish_date'], 'display_date': display_date(manifest['publish_date']), 'release_id': manifest['release_id'], 'files': inventory})
