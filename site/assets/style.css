@@ -1019,7 +1019,7 @@ body.has-mini {
   height: auto;
 }
 .press-newspaper {
-  animation: paper-feed 14s linear infinite;
+  animation: paper-feed 12s linear infinite;
   transform-origin: center;
 }
 .pulse-print-card h1 {
@@ -1087,7 +1087,7 @@ html.document-hidden .press-newspaper {
     transform: translateY(0);
   }
   to {
-    transform: translateY(540px);
+    transform: translateY(360px);
   }
 }
 @media (min-width: 961px) {
@@ -2004,29 +2004,154 @@ body.has-mini {
   }
 }
 
-/* Reserve a separate listening strip: the dock cannot cover article text or links. */
-body.has-mini {
-  height: 100dvh;
-  overflow: hidden;
-  padding-bottom: 0;
-}
-body.has-mini .site-shell {
-  height: calc(100dvh - var(--dock-space, 140px));
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  scrollbar-gutter: stable;
-  scroll-padding-block: 20px;
-}
-.persistent-audio {
-  max-height: calc(100dvh - 172px - env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-body.has-mini .site-shell:focus-visible {
-  outline-offset: -4px;
-}
-
 .pulse-print-card h1 {
   max-width: 310px;
   font-size: clamp(32px, 5vw, 36px);
+}
+
+/* A single floating launcher. The page keeps its normal scroll and dimensions. */
+body.has-mini {
+  height: auto;
+  overflow: visible;
+  padding-bottom: 100px;
+}
+.persistent-audio {
+  left: auto;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: none;
+  width: 60px;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+.mini-more {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  padding: 4px;
+  background: conic-gradient(
+    var(--accent) var(--progress, 0deg),
+    var(--control) 0
+  );
+  color: var(--text);
+  box-shadow: 0 6px 24px #0005;
+  border: 0;
+}
+.mini-more::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.mini-more svg {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+.mini-more:hover,
+.mini-more[aria-expanded="true"] {
+  background: conic-gradient(
+    var(--accent) var(--progress, 0deg),
+    var(--control) 0
+  );
+}
+.mini-more[data-state="error"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.floating-panel {
+  position: absolute;
+  right: 0;
+  bottom: 76px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - 120px - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+}
+.floating-panel .mini-bar {
+  min-height: 64px;
+  padding: 8px;
+  gap: 12px;
+}
+.floating-panel .mini-cover {
+  width: 48px;
+  height: 48px;
+}
+.floating-panel .mini-subtitle {
+  display: block;
+}
+.floating-panel .mini-time {
+  display: none;
+}
+.mini-collapse {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+}
+.mini-collapse:hover {
+  background: var(--raised);
+}
+.floating-panel .mini-details {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+.floating-panel .player {
+  padding: 8px;
+  border: 0;
+  margin: 0;
+  background: transparent;
+}
+.floating-panel .player-heading {
+  display: none;
+}
+.floating-panel .mini-close {
+  display: block;
+  min-height: 44px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  border-radius: 0;
+}
+.floating-panel .mini-close:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+.site-shell :is(a, button, input, select) {
+  scroll-margin-bottom: 96px;
+}
+.press-gear {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: press-drive 6s linear infinite;
+}
+@keyframes press-drive {
+  to {
+    transform: rotate(360deg);
+  }
+}
+html.document-hidden .press-gear {
+  animation-play-state: paused;
 }

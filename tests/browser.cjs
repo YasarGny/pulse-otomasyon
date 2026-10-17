@@ -448,7 +448,9 @@ async function run(name, fn) {
           path: "test-results/editor-article-playing-mobile.png",
           fullPage: true,
         });
-        await page.locator(".mini-play").click();
+        await page.locator(".mini-more").click();
+        await page.locator(".mini-details .player-play").click();
+        await page.locator(".mini-collapse").click();
       },
     );
     await run(
@@ -488,8 +490,7 @@ async function run(name, fn) {
         assert(
           await page.locator("audio").evaluate((a) => a === window.__dockAudio),
         );
-        assert(await page.locator(".mini-seek").isHidden());
-        assert(await page.locator(".mini-play").isHidden());
+        assert(await page.locator(".floating-panel").isVisible());
         await noOverflow();
         await axe();
         await page.screenshot({
@@ -498,15 +499,6 @@ async function run(name, fn) {
         });
         await page.locator(".mini-details .player-speed").press("Escape");
         assert(await page.locator(".mini-details").isHidden());
-        await page.locator(".mini-seek").evaluate((i) => {
-          i.value = "12";
-          i.dispatchEvent(new Event("input"));
-        });
-        assert(
-          Math.abs(
-            (await page.locator("audio").evaluate((a) => a.currentTime)) - 12,
-          ) < 1,
-        );
         assert(
           await page
             .locator(".mini-more")
@@ -519,49 +511,60 @@ async function run(name, fn) {
       },
     );
     await run(
-      "reading viewport and dock never overlap, including expanded controls and short phones",
+      "floating launcher preserves page geometry, closes outside and restores focus without stopping audio",
       async () => {
+        await page.locator("audio").evaluate((a) => a.play());
         for (const width of [320, 390, 768, 1440]) {
           await page.setViewportSize({ width, height: 568 });
-          for (const expanded of [false, true]) {
-            if (
-              ((await page
-                .locator(".mini-more")
-                .getAttribute("aria-expanded")) ===
-                "true") !==
-              expanded
-            )
-              await page.locator(".mini-more").click();
-            await page.waitForFunction(() => {
-              const content = document
-                .querySelector(".site-shell")
-                .getBoundingClientRect();
-              const dock = document
-                .querySelector(".persistent-audio")
-                .getBoundingClientRect();
-              return content.bottom <= dock.top && content.height >= 120;
-            });
-            const content = page.locator(".site-shell");
-            await content.evaluate((el) => (el.scrollTop = el.scrollHeight));
-            const footer = await page.locator(".foot a").last().boundingBox();
-            const dock = await page.locator(".persistent-audio").boundingBox();
-            assert(
-              footer.y + footer.height <= dock.y,
-              "Footer link obscured by player",
-            );
-            assert(
-              await content.evaluate((el) => el.scrollWidth <= el.clientWidth),
-              "Reading viewport horizontal overflow",
-            );
-            await noOverflow();
-          }
+          const shell = await page.locator(".site-shell").boundingBox();
+          const orb = await page.locator(".mini-more").boundingBox();
+          assert.equal(Math.round(orb.width), Math.round(orb.height));
+          assert(orb.width >= 44 && orb.width <= 64);
+          await page.locator(".mini-more").click();
+          const after = await page.locator(".site-shell").boundingBox();
+          assert.equal(after.width, shell.width);
+          assert.equal(after.height, shell.height);
+          assert.equal(
+            await page
+              .locator("body")
+              .evaluate((n) => getComputedStyle(n).overflow),
+            "visible",
+          );
+          const popup = await page.locator(".floating-panel").boundingBox();
+          assert(
+            popup.x >= 0 && popup.y >= 0 && popup.x + popup.width <= width,
+          );
+          await page.locator(".player-speed").click();
+          assert(await page.locator(".floating-panel").isVisible());
+          await page.mouse.click(2, 100);
+          assert(await page.locator(".floating-panel").isHidden());
+          assert(await page.locator("audio").evaluate((a) => !a.paused));
+          assert(
+            await page
+              .locator("audio")
+              .evaluate((a) => a === window.__dockAudio),
+          );
+          await page.locator(".mini-more").click();
+          await page.locator(".mini-more").click();
+          assert(await page.locator(".floating-panel").isHidden());
+          await page.locator(".foot a").last().scrollIntoViewIfNeeded();
+          const footer = await page.locator(".foot a").last().boundingBox();
+          const circle = await page.locator(".mini-more").boundingBox();
+          assert(
+            footer.y + footer.height <= circle.y ||
+              footer.x + footer.width <= circle.x,
+            "Launcher blocks footer link",
+          );
+          await noOverflow();
         }
-        await page.locator(".mini-more").click();
         await page.setViewportSize({ width: 390, height: 844 });
-        await page.locator(".site-shell").evaluate((el) => (el.scrollTop = 0));
+        await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
         await page.screenshot({
-          path: "test-results/editor-reading-reserved-mobile.png",
-          fullPage: true,
+          path: "test-results/editor-floating-button-mobile.png",
+        });
+        await page.locator("audio").evaluate((a) => {
+          a.playbackRate = 1;
+          a.volume = 1;
         });
       },
     );
@@ -644,9 +647,15 @@ async function run(name, fn) {
           .first()
           .click();
         await page.waitForURL("**/haber/**");
+        await page.locator(".mini-more").click();
         await page.locator(".mini-close").click();
         assert(await page.locator(".persistent-audio").isHidden());
         assert.equal(await page.locator("audio").getAttribute("src"), null);
+        assert(
+          await page
+            .locator("#main")
+            .evaluate((n) => n === document.activeElement),
+        );
       },
     );
     await run(
@@ -831,10 +840,29 @@ async function run(name, fn) {
         });
         await p.goto(base);
         await p.locator('.pulse-printing[data-mode="printing"]').waitFor();
-        await p.waitForFunction(() =>
-          performance
-            .getEntriesByType("resource")
-            .some((r) => r.name.includes("press-machine.webp")),
+        assert(
+          await p
+            .locator(".press-paper-path")
+            .evaluate(
+              (n) =>
+                !!(
+                  n.compareDocumentPosition(
+                    document.querySelector(".press-front-roller"),
+                  ) & Node.DOCUMENT_POSITION_FOLLOWING
+                ),
+            ),
+        );
+        assert(
+          await p
+            .locator(".press-back-roller")
+            .evaluate(
+              (n) =>
+                !!(
+                  n.compareDocumentPosition(
+                    document.querySelector(".press-paper-path"),
+                  ) & Node.DOCUMENT_POSITION_FOLLOWING
+                ),
+            ),
         );
         assert.equal(
           await p
@@ -861,7 +889,7 @@ async function run(name, fn) {
         for (let frame = 0; frame < 14; frame++) {
           await animation.evaluate(
             (a, ms) => (a.currentTime = ms),
-            frame * 1000,
+            frame * (12000 / 14),
           );
           offsets.push(
             await p

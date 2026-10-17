@@ -2,16 +2,9 @@
 (() => {
   "use strict";
   const base = new URL("../", document.currentScript.src);
-  const readingShell = document.querySelector(".site-shell");
-  const readingScroll = () =>
-    document.body.classList.contains("has-mini")
-      ? readingShell.scrollTop
-      : window.scrollY;
+  const readingScroll = () => window.scrollY;
   const scrollReadingTo = (top) =>
-    (document.body.classList.contains("has-mini")
-      ? readingShell
-      : window
-    ).scrollTo({ top, behavior: "instant" });
+    window.scrollTo({ top, behavior: "instant" });
   const $ = (s, root = document) => root.querySelector(s);
   const all = (s, root = document) => [...root.querySelectorAll(s)];
   const make = (tag, cls, text) => {
@@ -132,48 +125,33 @@
     miniStatus = make("span", "mini-status");
   const miniSubtitle = make("span", "mini-subtitle");
   miniTitle.append(miniLink, miniSubtitle, miniTime, miniStatus);
-  const miniPlay = button("mini-play", "play", "Oynat"),
-    close = button(
-      "mini-close",
-      "close",
-      "Dinlemeyi durdur ve oynatıcıyı kapat",
-    );
+  const close = button(
+    "mini-close",
+    "close",
+    "Dinlemeyi durdur ve oynatıcıyı kapat",
+  );
   const miniCover = make("img", "mini-cover");
   miniCover.alt = "";
   miniCover.width = miniCover.height = 44;
-  const miniMore = button("mini-more", "settings", "Hız ve ses ayarlarını aç");
+  const miniMore = button("mini-more", "play", "Oynatıcıyı aç");
+  const panel = make("div", "floating-panel");
+  panel.hidden = true;
+  panel.id = "floating-player-panel";
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "Oynatıcı kontrolleri");
+  const collapse = button("mini-collapse", "close", "Kontrolleri küçült");
+  close.textContent = "Dinlemeyi bitir";
+  close.setAttribute("aria-label", "Dinlemeyi bitir");
+  let lastAudioTrigger = null;
   miniMore.setAttribute("aria-expanded", "false");
-  miniMore.setAttribute("aria-controls", "mini-details");
+  miniMore.setAttribute("aria-controls", "floating-player-panel");
   const miniDetails = make("div", "mini-details");
   miniDetails.id = "mini-details";
   miniDetails.hidden = true;
-  const miniSeek = make("input", "mini-seek");
-  miniSeek.type = "range";
-  miniSeek.min = "0";
-  miniSeek.max = "1";
-  miniSeek.step = ".1";
-  miniSeek.value = "0";
-  miniSeek.disabled = true;
-  miniSeek.setAttribute("aria-label", "Küçük oynatıcı ses ilerlemesi");
-  minibar.append(miniCover, miniTitle, miniPlay, miniMore, close);
-  mini.append(minibar, miniSeek, miniDetails);
+  minibar.append(miniCover, miniTitle, collapse);
+  panel.append(minibar, miniDetails, close);
+  mini.append(panel, miniMore);
   host.append(mini);
-  new ResizeObserver(() => {
-    if (!mini.hidden)
-      document.documentElement.style.setProperty(
-        "--dock-space",
-        Math.ceil(window.innerHeight - mini.getBoundingClientRect().top + 12) +
-          "px",
-      );
-  }).observe(mini);
-  window.addEventListener("resize", () => {
-    if (!mini.hidden)
-      document.documentElement.style.setProperty(
-        "--dock-space",
-        Math.ceil(window.innerHeight - mini.getBoundingClientRect().top + 12) +
-          "px",
-      );
-  });
   const rates = [0.75, 1, 1.1, 1.2, 1.25, 1.5, 2];
   function title() {
     return selected
@@ -185,7 +163,7 @@
   }
   function update() {
     const playing = !!selected && !audio.paused && !audio.ended && !failed;
-    for (const n of [play, miniPlay]) {
+    for (const n of [play]) {
       icon(n, playing ? "pause" : "play");
       n.setAttribute(
         "aria-label",
@@ -227,21 +205,26 @@
       !hasStarted ||
       (fullVisible && !mini.contains(full)) ||
       document.documentElement.classList.contains("pulse-locked");
-    const docked = document.body.classList.contains("has-mini");
-    if (docked !== !mini.hidden) {
-      const top = readingScroll();
-      document.body.classList.toggle("has-mini", !mini.hidden);
-      if (!mini.hidden) {
-        document.documentElement.style.setProperty(
-          "--dock-space",
-          Math.ceil(
-            window.innerHeight - mini.getBoundingClientRect().top + 12,
-          ) + "px",
-        );
-        readingShell.scrollTop = top;
-        window.scrollTo({ top: 0, behavior: "instant" });
-      } else window.scrollTo({ top, behavior: "instant" });
-    }
+    document.body.classList.toggle("has-mini", !mini.hidden);
+    icon(miniMore, playing ? "pause" : "play");
+    miniMore.dataset.state = failed
+      ? "error"
+      : loading
+        ? "loading"
+        : playing
+          ? "playing"
+          : "paused";
+    miniMore.setAttribute(
+      "aria-label",
+      (panel.hidden ? "Oynatıcıyı aç" : "Oynatıcıyı küçült") +
+        ": " +
+        title() +
+        (playing ? ", çalıyor" : ", duraklatıldı"),
+    );
+    miniMore.style.setProperty(
+      "--progress",
+      ((Number(seek.value) / Number(seek.max)) * 360 || 0) + "deg",
+    );
     const rate = audio.playbackRate;
     speed.textContent = rate + "×";
     speed.setAttribute(
@@ -259,17 +242,13 @@
     current.textContent = format(audio.currentTime);
     end.textContent = format(duration);
     playerDuration.textContent = format(duration);
-    miniSeek.max = seek.max;
-    miniSeek.disabled = seek.disabled;
-    miniSeek.value = seek.value;
-    for (const slider of [seek, miniSeek])
-      slider.style.setProperty(
-        "--played",
-        ((audio.currentTime || 0) / (duration || 1)) * 100 + "%",
-      );
-    miniSeek.setAttribute(
-      "aria-valuetext",
-      format(audio.currentTime) + " / " + format(duration),
+    seek.style.setProperty(
+      "--played",
+      ((audio.currentTime || 0) / (duration || 1)) * 100 + "%",
+    );
+    miniMore.style.setProperty(
+      "--progress",
+      ((audio.currentTime || 0) / (duration || 1)) * 360 + "deg",
     );
     miniTime.textContent = format(audio.currentTime) + " / " + format(duration);
     seek.setAttribute(
@@ -289,9 +268,8 @@
   );
   function mount(target) {
     if (target !== miniDetails) {
-      miniDetails.hidden = true;
+      miniDetails.hidden = panel.hidden = true;
       miniMore.setAttribute("aria-expanded", "false");
-      miniMore.setAttribute("aria-label", "Hız ve ses ayarlarını aç");
     }
     observer.disconnect();
     fullVisible = false;
@@ -345,6 +323,8 @@
   }
   async function toggle() {
     if (!selected) return;
+    if (document.getElementById("main").contains(document.activeElement))
+      lastAudioTrigger = document.activeElement;
     if (!audio.paused) {
       audio.pause();
       return;
@@ -363,13 +343,14 @@
       update();
     }
   }
-  for (const n of [play, miniPlay]) n.addEventListener("click", toggle);
+  for (const n of [play]) n.addEventListener("click", toggle);
   close.addEventListener("click", () => {
+    const restoreFocus = mini.contains(document.activeElement);
     audio.pause();
     audio.removeAttribute("src");
     audio.load();
     selected = null;
-    miniDetails.hidden = true;
+    miniDetails.hidden = panel.hidden = true;
     miniMore.setAttribute("aria-expanded", "false");
     hasStarted = false;
     full.hidden = true;
@@ -377,35 +358,53 @@
     fullVisible = false;
     loading = failed = false;
     update();
+    if (
+      restoreFocus &&
+      !document.documentElement.classList.contains("pulse-locked")
+    )
+      (lastAudioTrigger?.isConnected && lastAudioTrigger.getClientRects().length
+        ? lastAudioTrigger
+        : $("#main")
+      ).focus({
+        preventScroll: true,
+      });
   });
-  miniMore.onclick = () => {
-    const expanded = miniDetails.hidden;
-    miniDetails.hidden = !expanded;
-    miniMore.setAttribute("aria-expanded", String(expanded));
-    miniMore.setAttribute(
-      "aria-label",
-      expanded ? "Hız ve ses ayarlarını kapat" : "Hız ve ses ayarlarını aç",
-    );
-    if (expanded) mount(miniDetails);
-    else if (mini.contains(full)) {
+  function collapsePanel(restoreFocus = false) {
+    panel.hidden = miniDetails.hidden = true;
+    miniMore.setAttribute("aria-expanded", "false");
+    if (mini.contains(full)) {
       observer.disconnect();
       host.append(full);
       full.hidden = true;
       fullVisible = false;
     }
     update();
+    if (restoreFocus && !mini.hidden) miniMore.focus({ preventScroll: true });
+  }
+  miniMore.onclick = () => {
+    if (!panel.hidden) {
+      collapsePanel(true);
+      return;
+    }
+    panel.hidden = miniDetails.hidden = false;
+    miniMore.setAttribute("aria-expanded", "true");
+    mount(miniDetails);
+    update();
+    play.focus({ preventScroll: true });
   };
-  miniDetails.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+  collapse.onclick = () => collapsePanel(true);
+  document.addEventListener("pointerdown", (event) => {
+    if (!panel.hidden && !mini.contains(event.target)) collapsePanel(false);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!panel.hidden && !mini.contains(event.target)) collapsePanel(false);
+  });
+  mini.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !panel.hidden) {
       event.preventDefault();
-      miniMore.click();
-      miniMore.focus();
+      collapsePanel(true);
     }
   });
-  miniSeek.oninput = () => {
-    if (audio.readyState) audio.currentTime = Number(miniSeek.value);
-    progress();
-  };
   function jump(delta) {
     if (audio.readyState)
       audio.currentTime = Math.max(
