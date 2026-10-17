@@ -23,7 +23,22 @@ const ready = new Promise((resolve, reject) => {
   setTimeout(() => reject(Error("Fixture timeout")), 30000).unref();
 });
 async function run(name, fn) {
-  await fn();
+  try {
+    await fn();
+  } catch (error) {
+    const detail = `${name}: ${error.stack || error}`;
+    await fs.mkdir("test-results", { recursive: true });
+    await fs.writeFile("test-results/browser-failure.txt", detail);
+    if (process.env.GITHUB_ACTIONS)
+      console.error(
+        "::error::" +
+          detail
+            .replace(/%/g, "%25")
+            .replace(/\r/g, "%0D")
+            .replace(/\n/g, "%0A"),
+      );
+    throw error;
+  }
   passed++;
   console.log("PASS", name);
 }
