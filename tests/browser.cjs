@@ -609,10 +609,37 @@ async function run(name, fn) {
         assert(await page.locator("audio").evaluate((a) => a.paused));
         assert(await page.locator(".persistent-audio").isHidden());
         assert.equal(await page.locator(".player").isVisible(), true);
+        assert.match(
+          await page.locator(".episode .detail-meta").innerText(),
+          /^16\.10\.2026/,
+        );
+        assert(await page.locator(".episode .player-heading").isHidden());
+        await page.screenshot({
+          path: "test-results/editor-full-player-mobile.png",
+          fullPage: true,
+        });
         await axe();
         await page.locator(".theme-toggle").click();
         await axe();
         await page.locator(".theme-toggle").click();
+      },
+    );
+    await run(
+      "summary listening route shows summary identity and never pretends to be the podcast",
+      async () => {
+        await open("/teknoloji/dinle/?ses=ozet");
+        assert.equal(
+          await page.locator(".episode h1").innerText(),
+          "Günün Özeti",
+        );
+        assert(await page.locator(".episode-hosts").isHidden());
+        assert(await page.locator(".episode-heading .program-art").isHidden());
+        assert.match(
+          await page.locator("audio").getAttribute("src"),
+          /summary.mp3/,
+        );
+        assert(await page.locator("audio").evaluate((a) => a.paused));
+        await noOverflow();
       },
     );
     await run(

@@ -617,6 +617,23 @@
           new URLSearchParams(location.search).get("ses") === "ozet"
             ? "summary"
             : "podcast";
+      const edition = release.editions[section];
+      const heading = listen
+        .closest(".episode")
+        .querySelector(".episode-heading");
+      heading.querySelector("h1").textContent =
+        kind === "summary" ? "Günün Özeti" : edition.podcast.title;
+      heading.querySelector(".eyebrow").textContent =
+        (section === "teknoloji" ? "Teknoloji" : "Oyun") +
+        (kind === "podcast" ? " podcast’i" : "");
+      heading.querySelector(".episode-hosts").hidden = kind !== "podcast";
+      heading.querySelector(".program-art").hidden = kind !== "podcast";
+      heading.querySelector(".detail-meta").textContent =
+        release.manifest.publish_date.split("-").reverse().join(".") +
+        " · Sayı " +
+        String(edition.issue).padStart(3, "0") +
+        " · " +
+        format(edition[kind].duration);
       // Merely visiting a program never switches or starts an existing session.
       if (!selected || (selected.section === section && selected.kind === kind))
         configure(section, kind, listen);
