@@ -232,6 +232,33 @@
       "Hız " + rate + "×, değiştirmek için basın",
     );
   }
+  function syncMediaSession() {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState =
+        !selected || audio.ended ? "none" : audio.paused ? "paused" : "playing";
+      if (!selected) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.setPositionState?.();
+      } else if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        navigator.mediaSession.setPositionState?.({
+          duration: audio.duration,
+          playbackRate: audio.playbackRate,
+          position: Math.max(0, Math.min(audio.duration, audio.currentTime)),
+        });
+      }
+    } catch (_) {}
+  }
+  for (const event of [
+    "play",
+    "pause",
+    "ended",
+    "ratechange",
+    "loadedmetadata",
+    "timeupdate",
+    "seeked",
+  ])
+    audio.addEventListener(event, syncMediaSession);
   function progress() {
     const duration = Number.isFinite(audio.duration)
       ? audio.duration
@@ -350,6 +377,7 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
+    syncMediaSession();
     miniDetails.hidden = panel.hidden = true;
     miniMore.setAttribute("aria-expanded", "false");
     hasStarted = false;
@@ -485,21 +513,35 @@
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: title(),
-          artist: "Yaşar ve Necdet",
+          artist: selected.kind === "podcast" ? "Yaşar ve Necdet" : "PULSE",
           album: "PULSE",
           artwork:
             selected.kind === "podcast"
               ? [{ src: playerCover.src, sizes: "192x192", type: "image/webp" }]
               : [],
         });
-        for (const [action, handler] of Object.entries({
-          play: () => audio.play().catch(() => {}),
-          pause: () => audio.pause(),
-          seekbackward: () => jump(-10),
-          seekforward: () => jump(10),
-        }))
-          navigator.mediaSession.setActionHandler(action, handler);
       } catch (_) {}
+      for (const [action, handler] of Object.entries({
+        play: () => audio.play().catch(() => {}),
+        pause: () => audio.pause(),
+        stop: () => close.click(),
+        seekbackward: () => jump(-10),
+        seekforward: () => jump(10),
+        seekto: (details) => {
+          if (
+            Number.isFinite(details.seekTime) &&
+            Number.isFinite(audio.duration)
+          )
+            audio.currentTime = Math.max(
+              0,
+              Math.min(audio.duration, details.seekTime),
+            );
+        },
+      })) {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (_) {}
+      }
     }
     update();
   });
@@ -665,6 +707,26 @@
       const heading = listen
         .closest(".episode")
         .querySelector(".episode-heading");
+      const pageTitle =
+        (kind === "summary"
+          ? "Günün Özeti · " + (section === "teknoloji" ? "Teknoloji" : "Oyun")
+          : edition.podcast.title) + " · PULSE";
+      document.title = pageTitle;
+      $('meta[property="og:title"]')?.setAttribute("content", pageTitle);
+      if (kind === "summary") {
+        const canonical = new URL(location.href);
+        canonical.hash = "";
+        $('link[rel="canonical"]')?.setAttribute("href", canonical.href);
+        $('meta[property="og:url"]')?.setAttribute("content", canonical.href);
+        const description =
+          (section === "teknoloji" ? "Teknoloji" : "Oyun") +
+          " haberleri: Günün Özeti · PULSE";
+        for (const selector of [
+          'meta[name="description"]',
+          'meta[property="og:description"]',
+        ])
+          $(selector)?.setAttribute("content", description);
+      }
       heading.querySelector("h1").textContent =
         kind === "summary" ? "Günün Özeti" : edition.podcast.title;
       heading.querySelector(".eyebrow").textContent =
@@ -701,10 +763,20 @@
       await response.text(),
       "text/html",
     );
+    const path = new URL(url, location.href).pathname;
+    const legal =
+      [
+        "gizlilik/",
+        "gizlilik/index.html",
+        "kosullar/",
+        "kosullar/index.html",
+      ].some((route) => path === new URL(route, base).pathname) &&
+      doc.body.dataset.page === "legal";
     if (
       doc.body.dataset.design !== "editor-desk-v1" ||
       !$("#main", doc) ||
-      $("#main", doc).dataset.release !== release?.manifest.release_id
+      (!legal &&
+        $("#main", doc).dataset.release !== release?.manifest.release_id)
     )
       throw Error("Sayfa güncel sayıyla eşleşmiyor");
     return doc;
@@ -718,6 +790,7 @@
     }
     const main = $("#main"),
       incoming = $("#main", doc);
+    main.className = incoming.className;
     main.replaceChildren(...incoming.childNodes);
     main.dataset.release = incoming.dataset.release;
     for (const key of ["page", "section", "story"])
@@ -810,11 +883,6 @@
       url.origin !== base.origin ||
       !url.pathname.startsWith(base.pathname) ||
       (!url.pathname.endsWith("/") && !url.pathname.endsWith(".html"))
-    )
-      return;
-    if (
-      url.pathname.includes("/gizlilik/") ||
-      url.pathname.includes("/kosullar/")
     )
       return;
     if (

@@ -688,6 +688,17 @@ async function run(name, fn) {
           await page.locator(".episode h1").innerText(),
           "Günün Özeti",
         );
+        assert.equal(await page.title(), "Günün Özeti · Teknoloji · PULSE");
+        assert.equal(
+          await page
+            .locator('meta[property="og:title"]')
+            .getAttribute("content"),
+          await page.title(),
+        );
+        assert.match(
+          await page.locator('meta[property="og:url"]').getAttribute("content"),
+          /ses=ozet/,
+        );
         assert(await page.locator(".episode-hosts").isHidden());
         assert(await page.locator(".episode-heading .program-art").isHidden());
         assert.match(
@@ -723,6 +734,92 @@ async function run(name, fn) {
         await page.waitForFunction(
           () => document.querySelector(".story-image").naturalWidth > 0,
         );
+      },
+    );
+    await run(
+      "audio survives legal navigation and Media Session tracks the actual audio",
+      async () => {
+        await open("/");
+        await page.evaluate(() => {
+          window.__mediaHandlers = {};
+          navigator.mediaSession.setActionHandler = (name, handler) =>
+            (window.__mediaHandlers[name] = handler);
+        });
+        await page.locator(".podcast-box .audio-start").first().click();
+        await page.waitForFunction(
+          () => document.querySelector("audio").currentTime > 0.1,
+        );
+        await page.evaluate(
+          () =>
+            (document.querySelector("audio").dataset.continuity =
+              "legal-proof"),
+        );
+        assert.equal(
+          await page.evaluate(() => navigator.mediaSession.metadata.title),
+          "Yeni Sekme",
+        );
+        await page.locator('.foot a[href*="gizlilik"]').click();
+        await page.waitForURL("**/gizlilik/index.html");
+        await page.waitForFunction(
+          () => document.body.dataset.page === "legal",
+        );
+        assert(
+          await page
+            .locator("#main")
+            .evaluate((n) => n.classList.contains("policy-page")),
+        );
+        assert.equal(
+          await page.locator("audio").evaluate((a) => a.dataset.continuity),
+          "legal-proof",
+        );
+        assert.equal(
+          await page.locator("audio").evaluate((a) => a.paused),
+          false,
+        );
+        await page.evaluate(() => window.__mediaHandlers.pause());
+        assert.equal(
+          await page.evaluate(() => navigator.mediaSession.playbackState),
+          "paused",
+        );
+        await page.evaluate(() =>
+          window.__mediaHandlers.seekto({ seekTime: 1 }),
+        );
+        assert.equal(
+          await page.locator("audio").evaluate((a) => a.currentTime),
+          1,
+        );
+        await page.goBack();
+        await page.waitForFunction(() => document.body.dataset.page === "home");
+        assert.equal(await page.locator("#main").getAttribute("class"), "");
+        assert.equal(
+          await page.locator("audio").evaluate((a) => a.dataset.continuity),
+          "legal-proof",
+        );
+        await page.evaluate(() => window.__mediaHandlers.stop());
+        assert.equal(
+          await page.evaluate(() => navigator.mediaSession.metadata),
+          null,
+        );
+        assert.equal(
+          await page.evaluate(() => navigator.mediaSession.playbackState),
+          "none",
+        );
+        await page.locator('.foot a[href*="gizlilik"]').click();
+        await page.waitForFunction(
+          () => document.body.dataset.page === "legal",
+        );
+        await page.route("**/data/publication.json*", (r) => r.abort());
+        await page.evaluate(() =>
+          document.dispatchEvent(new Event("visibilitychange")),
+        );
+        await page.waitForFunction(() => window.PULSE_RELEASE === null);
+        assert.equal(await page.locator("#pulse-printing").count(), 0);
+        assert.equal(
+          await page.locator(".site-shell").evaluate((n) => n.inert),
+          false,
+        );
+        assert(await page.locator("#main h1").isVisible());
+        await page.unroute("**/data/publication.json*");
       },
     );
     await run(

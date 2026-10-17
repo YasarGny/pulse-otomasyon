@@ -28,7 +28,16 @@ until the owner has reviewed the working result and given final live approval.
   action. The page keeps ordinary window scrolling and back-position restoration.
   Speed cycles through 0.75 / 1 / 1.1 / 1.2 / 1.25 / 1.5 / 2. iOS uses device
   volume controls, explicitly labelled instead of a nonfunctional range slider.
-  Legal pages use ordinary navigation.
+  Privacy/terms navigation from an active session also retains audio. Direct
+  legal pages remain readable without the publication gate. If publication
+  verification expires while a legal page is open, audio stops but legal text
+  remains accessible; publication pages still require a verified matching release.
+  Media Session supplies the selected episode metadata, cover, playback state,
+  position and play/pause/stop/seek handlers where supported. OS/browser policy
+  controls notification/lock-screen presentation and background playback; no
+  physical-phone validation is implied. Summary routes update tab/OG identity
+  independently of any other audio that is already playing. Section stamps use
+  their own issue number; combined pages show only the date if numbers differ.
 - The print room uses an actual isometric 3D press model. The pink ink roll,
   front ivory blanket roll and hidden impression roll share one scene; the
   newspaper passes through the blanket/impression nip. The rendered paper mask

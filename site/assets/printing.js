@@ -46,6 +46,18 @@
     }
     active = null;
     window.PULSE_RELEASE = null;
+    if (document.body.dataset.page === "legal") {
+      document.getElementById("pulse-printing")?.remove();
+      document.getElementById("publication-loading")?.remove();
+      shell.inert = false;
+      shell.removeAttribute("aria-hidden");
+      document.documentElement.classList.remove(
+        "pulse-locked",
+        "pulse-loading",
+      );
+      window.dispatchEvent(new CustomEvent("pulse:locked"));
+      return;
+    }
     shell.inert = true;
     shell.setAttribute("aria-hidden", "true");
     shell.querySelectorAll("audio").forEach((a) => a.pause());
@@ -148,7 +160,8 @@
   function reveal() {
     if (
       !window.PULSE_RELEASE ||
-      document.getElementById("main")?.dataset.release !== active
+      (document.body.dataset.page !== "legal" &&
+        document.getElementById("main")?.dataset.release !== active)
     )
       return;
     if (

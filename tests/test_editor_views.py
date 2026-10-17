@@ -1,6 +1,8 @@
 """Static reading, route safety and archive coverage of the editor desk."""
 
 import tempfile
+import json
+import shutil
 import unittest
 from html.parser import HTMLParser
 from pathlib import Path
@@ -9,7 +11,7 @@ from urllib.parse import urlsplit, unquote
 from fixtures import DATE, ready_release, tone
 from pulse.build import build
 from pulse.details import article_path
-from pulse.pages import picture, story_card
+from pulse.pages import picture, story_card, build_views
 from pulse.publication import not_before
 
 
@@ -41,6 +43,22 @@ class EditorViewsTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.temp.cleanup()
+
+    def test_section_stamp_uses_own_issue_when_numbers_differ(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site"
+            shutil.copytree(self.site, site)
+            manifest = json.loads((site / "data/publication.json").read_text())
+            game = site / "releases" / manifest["release_id"] / "oyun.json"
+            data = json.loads(game.read_text())
+            data["issue"] = 7
+            game.write_text(json.dumps(data))
+            build_views(site, manifest)
+            self.assertIn("Sayı 007</span>", (site / "oyun/index.html").read_text())
+            self.assertIn(
+                "Sayı 001</span>", (site / "teknoloji/index.html").read_text()
+            )
+            self.assertNotIn("Sayı 001</span>", (site / "index.html").read_text())
 
     def test_every_internal_article_and_navigation_link_has_a_real_destination(self):
         for page in self.site.rglob("*.html"):
