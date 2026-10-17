@@ -522,38 +522,9 @@ main > section + section {
   background: #ece8df;
   flex: none;
 }
-.program-art > span {
-  position: absolute;
-  background: #ed3477;
-  left: 45%;
-  right: 0;
-  top: 48%;
-  bottom: 0;
-}
-.art-teknoloji:before {
-  content: "";
-  position: absolute;
-  inset: 14% 27%;
-  background: #1a1b1d;
-  transform: skewY(-22deg);
-}
-.art-oyun {
-  background: #242529;
-}
-.art-oyun:before {
-  content: "";
-  position: absolute;
-  inset: 16% 23% 0;
-  border: 9px solid #e6dfd2;
-  border-bottom: 0;
-  border-radius: 50% 50% 0 0;
-}
-.art-oyun > span {
-  left: 39%;
-  right: 13%;
-  top: 61%;
-  bottom: -10%;
-  transform: rotate(-33deg);
+.program-art {
+  object-fit: contain;
+  background: #151618;
 }
 .summary-mark {
   color: var(--muted);
@@ -1584,4 +1555,31 @@ html.document-hidden .press-newspaper {
   min-width: 0;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.player-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.player-heading .player-label {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.player-cover {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 5px;
+  flex: none;
+}
+.mini-cover {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 4px;
+  flex: none;
 }

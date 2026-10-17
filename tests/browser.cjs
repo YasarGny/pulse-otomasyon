@@ -148,6 +148,20 @@ async function run(name, fn) {
           await page.locator(".nav-issue").innerText(),
           /16\.10\.2026 · Sayı 001/,
         );
+        assert.deepEqual(
+          await page
+            .locator(".podcast-box .program-art")
+            .evaluateAll((images) =>
+              images.map((img) => ({
+                loaded: img.complete && img.naturalWidth > 0,
+                square: img.naturalWidth === img.naturalHeight,
+              })),
+            ),
+          [
+            { loaded: true, square: true },
+            { loaded: true, square: true },
+          ],
+        );
         await noOverflow();
         await axe();
         await page.screenshot({
@@ -419,6 +433,15 @@ async function run(name, fn) {
             before,
         );
         await page.locator(".persistent-audio").waitFor({ state: "visible" });
+        await page.waitForFunction(
+          () =>
+            document.querySelector(".mini-cover").complete &&
+            document.querySelector(".mini-cover").naturalWidth > 0,
+        );
+        assert.match(
+          await page.locator(".mini-cover").getAttribute("src"),
+          /yeni-sekme-192.webp/,
+        );
         await noOverflow();
         await axe();
         await page.screenshot({

@@ -74,6 +74,11 @@ def duration(value):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
+def podcast_art(section, root):
+    name = "yeni-sekme" if section == "teknoloji" else "moradon-fm"
+    return f'<img class="program-art" src="{root}assets/covers/{name}-192.webp" srcset="{root}assets/covers/{name}-192.webp 192w, {root}assets/covers/{name}-768.webp 768w" sizes="(max-width: 640px) 88px, 120px" width="192" height="192" alt="" decoding="async">'
+
+
 def audio_card(section, kind, data, root):
     asset = data[kind]
     name = NAMES[section] if kind == "podcast" else LABELS[section]
@@ -82,7 +87,7 @@ def audio_card(section, kind, data, root):
     if kind == "summary":
         route += "?ses=ozet"
     artwork = (
-        f'<span class="program-art art-{section}" aria-hidden="true"><span></span></span>'
+        podcast_art(section, root)
         if kind == "podcast"
         else '<span class="summary-mark" aria-hidden="true">≡</span>'
     )
@@ -223,7 +228,7 @@ def build_views(output, manifest):
     )
     for section in SECTIONS:
         data = editions[section]
-        main = f"""<a class="back" href="../../{section}/index.html">← {LABELS[section]} yayını</a><section class="episode"><div class="episode-heading"><span class="program-art art-{section}" aria-hidden="true"><span></span></span><div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p>Yaşar ve Necdet</p><p class="detail-meta">{date} · Sayı {data['issue']:03d} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
+        main = f"""<a class="back" href="../../{section}/index.html">← {LABELS[section]} yayını</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p>Yaşar ve Necdet</p><p class="detail-meta">{date} · Sayı {data['issue']:03d} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
         save(
             section + "/dinle/",
             main,

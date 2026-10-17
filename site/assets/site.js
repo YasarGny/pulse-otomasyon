@@ -55,6 +55,11 @@
   full.hidden = true;
   full.setAttribute("role", "group");
   const label = make("div", "player-label");
+  const playerHeading = make("div", "player-heading");
+  const playerCover = make("img", "player-cover");
+  playerCover.alt = "";
+  playerCover.width = playerCover.height = 64;
+  playerHeading.append(playerCover, label);
   const controls = make("div", "player-controls");
   const back = button("player-skip", "back", "10 saniye geri al");
   const play = button("player-play", "play", "Oynat");
@@ -97,7 +102,7 @@
   const retry = make("button", "retry", "Tekrar dene");
   retry.type = "button";
   retry.hidden = true;
-  full.append(label, seek, times, controls, bottom, status, retry);
+  full.append(playerHeading, seek, times, controls, bottom, status, retry);
   host.append(full);
   const mini = make("div", "persistent-audio");
   mini.hidden = true;
@@ -115,7 +120,10 @@
       "close",
       "Dinlemeyi durdur ve oynatıcıyı kapat",
     );
-  minibar.append(miniTitle, miniPlay, close);
+  const miniCover = make("img", "mini-cover");
+  miniCover.alt = "";
+  miniCover.width = miniCover.height = 44;
+  minibar.append(miniCover, miniTitle, miniPlay, close);
   mini.append(minibar);
   host.append(mini);
   const rates = [0.75, 1, 1.1, 1.2, 1.25, 1.5, 2];
@@ -226,6 +234,11 @@
       failed = false;
       hasStarted = false;
     }
+    const coverName = section === "teknoloji" ? "yeni-sekme" : "moradon-fm";
+    const coverUrl = new URL("assets/covers/" + coverName + "-192.webp", base)
+      .href;
+    playerCover.hidden = miniCover.hidden = kind !== "podcast";
+    if (kind === "podcast") playerCover.src = miniCover.src = coverUrl;
     label.textContent = title();
     full.setAttribute("aria-label", title() + " oynatıcı");
     episode.textContent = "Bölüm " + String(asset.episode).padStart(3, "0");
@@ -350,6 +363,10 @@
           title: title(),
           artist: "Yaşar ve Necdet",
           album: "PULSE",
+          artwork:
+            selected.kind === "podcast"
+              ? [{ src: playerCover.src, sizes: "192x192", type: "image/webp" }]
+              : [],
         });
         for (const [action, handler] of Object.entries({
           play: () => audio.play().catch(() => {}),
