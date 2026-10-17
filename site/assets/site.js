@@ -19,6 +19,7 @@
     volume:
       '<path d="m11 5-5 4H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
     mute: '<path d="m11 5-5 4H3v6h3l5 4ZM16 9l6 6m0-6-6 6"/>',
+    settings: '<path d="M4 7h16M4 17h16M8 4v6m8 4v6"/>',
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
   };
   const icon = (n, name) => {
@@ -56,10 +57,14 @@
   full.setAttribute("role", "group");
   const label = make("div", "player-label");
   const playerHeading = make("div", "player-heading");
+  const playerInfo = make("div", "player-info");
+  const playerSubtitle = make("p", "player-subtitle");
+  const playerDuration = make("p", "player-duration");
+  playerInfo.append(label, playerSubtitle, playerDuration);
   const playerCover = make("img", "player-cover");
   playerCover.alt = "";
   playerCover.width = playerCover.height = 64;
-  playerHeading.append(playerCover, label);
+  playerHeading.append(playerCover, playerInfo);
   const controls = make("div", "player-controls");
   const back = button("player-skip", "back", "10 saniye geri al");
   const play = button("player-play", "play", "Oynat");
@@ -96,13 +101,15 @@
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   )
     volume.hidden = true;
-  bottom.append(episode, mute, volume);
+  const deviceVolume = make("span", "device-volume", "Ses: cihaz tuşları");
+  deviceVolume.hidden = !volume.hidden;
+  bottom.append(mute, volume, deviceVolume, episode);
   const status = make("p", "audio-status");
   status.setAttribute("role", "status");
   const retry = make("button", "retry", "Tekrar dene");
   retry.type = "button";
   retry.hidden = true;
-  full.append(playerHeading, seek, times, controls, bottom, status, retry);
+  full.append(playerHeading, controls, seek, times, bottom, status, retry);
   host.append(full);
   const mini = make("div", "persistent-audio");
   mini.hidden = true;
@@ -113,7 +120,8 @@
     miniLink = make("a"),
     miniTime = make("span", "mini-time"),
     miniStatus = make("span", "mini-status");
-  miniTitle.append(miniLink, miniTime, miniStatus);
+  const miniSubtitle = make("span", "mini-subtitle");
+  miniTitle.append(miniLink, miniSubtitle, miniTime, miniStatus);
   const miniPlay = button("mini-play", "play", "Oynat"),
     close = button(
       "mini-close",
@@ -123,8 +131,22 @@
   const miniCover = make("img", "mini-cover");
   miniCover.alt = "";
   miniCover.width = miniCover.height = 44;
-  minibar.append(miniCover, miniTitle, miniPlay, close);
-  mini.append(minibar);
+  const miniMore = button("mini-more", "settings", "Hız ve ses ayarlarını aç");
+  miniMore.setAttribute("aria-expanded", "false");
+  miniMore.setAttribute("aria-controls", "mini-details");
+  const miniDetails = make("div", "mini-details");
+  miniDetails.id = "mini-details";
+  miniDetails.hidden = true;
+  const miniSeek = make("input", "mini-seek");
+  miniSeek.type = "range";
+  miniSeek.min = "0";
+  miniSeek.max = "1";
+  miniSeek.step = ".1";
+  miniSeek.value = "0";
+  miniSeek.disabled = true;
+  miniSeek.setAttribute("aria-label", "Küçük oynatıcı ses ilerlemesi");
+  minibar.append(miniCover, miniTitle, miniPlay, miniMore, close);
+  mini.append(minibar, miniSeek, miniDetails);
   host.append(mini);
   const rates = [0.75, 1, 1.1, 1.2, 1.25, 1.5, 2];
   function title() {
@@ -169,13 +191,15 @@
       : loading
         ? "Ses yükleniyor…"
         : "";
+    full.classList.toggle("is-loading", loading && !failed);
+    full.classList.toggle("is-error", failed);
     status.textContent = state;
     miniStatus.textContent = state;
     retry.hidden = !failed;
     mini.hidden =
       !selected ||
       !hasStarted ||
-      fullVisible ||
+      (fullVisible && !mini.contains(full)) ||
       document.documentElement.classList.contains("pulse-locked");
     document.body.classList.toggle("has-mini", !mini.hidden);
     const rate = audio.playbackRate;
@@ -194,6 +218,19 @@
     seek.value = String(audio.currentTime || 0);
     current.textContent = format(audio.currentTime);
     end.textContent = format(duration);
+    playerDuration.textContent = format(duration);
+    miniSeek.max = seek.max;
+    miniSeek.disabled = seek.disabled;
+    miniSeek.value = seek.value;
+    for (const slider of [seek, miniSeek])
+      slider.style.setProperty(
+        "--played",
+        ((audio.currentTime || 0) / (duration || 1)) * 100 + "%",
+      );
+    miniSeek.setAttribute(
+      "aria-valuetext",
+      format(audio.currentTime) + " / " + format(duration),
+    );
     miniTime.textContent = format(audio.currentTime) + " / " + format(duration);
     seek.setAttribute(
       "aria-valuetext",
@@ -202,12 +239,20 @@
   }
   const observer = new IntersectionObserver(
     (entries) => {
-      fullVisible = !full.hidden && entries.some((x) => x.isIntersecting);
+      fullVisible =
+        !full.hidden &&
+        !mini.contains(full) &&
+        entries.some((x) => x.isIntersecting);
       update();
     },
     { threshold: 0.15 },
   );
   function mount(target) {
+    if (target !== miniDetails) {
+      miniDetails.hidden = true;
+      miniMore.setAttribute("aria-expanded", "false");
+      miniMore.setAttribute("aria-label", "Hız ve ses ayarlarını aç");
+    }
     observer.disconnect();
     fullVisible = false;
     target.append(full);
@@ -240,8 +285,14 @@
     playerCover.hidden = miniCover.hidden = kind !== "podcast";
     if (kind === "podcast") playerCover.src = miniCover.src = coverUrl;
     label.textContent = title();
+    playerSubtitle.textContent =
+      kind === "podcast"
+        ? (section === "teknoloji" ? "Teknoloji" : "Oyun") +
+          " podcast’i · Yaşar ve Necdet"
+        : (section === "teknoloji" ? "Teknoloji" : "Oyun") + " · Günün Özeti";
     full.setAttribute("aria-label", title() + " oynatıcı");
     episode.textContent = "Bölüm " + String(asset.episode).padStart(3, "0");
+    miniSubtitle.textContent = playerSubtitle.textContent;
     miniLink.textContent = title();
     miniLink.href = new URL(
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
@@ -278,6 +329,8 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
+    miniDetails.hidden = true;
+    miniMore.setAttribute("aria-expanded", "false");
     hasStarted = false;
     full.hidden = true;
     observer.disconnect();
@@ -285,6 +338,34 @@
     loading = failed = false;
     update();
   });
+  miniMore.onclick = () => {
+    const expanded = miniDetails.hidden;
+    miniDetails.hidden = !expanded;
+    miniMore.setAttribute("aria-expanded", String(expanded));
+    miniMore.setAttribute(
+      "aria-label",
+      expanded ? "Hız ve ses ayarlarını kapat" : "Hız ve ses ayarlarını aç",
+    );
+    if (expanded) mount(miniDetails);
+    else if (mini.contains(full)) {
+      observer.disconnect();
+      host.append(full);
+      full.hidden = true;
+      fullVisible = false;
+    }
+    update();
+  };
+  miniDetails.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      miniMore.click();
+      miniMore.focus();
+    }
+  });
+  miniSeek.oninput = () => {
+    if (audio.readyState) audio.currentTime = Number(miniSeek.value);
+    progress();
+  };
   function jump(delta) {
     if (audio.readyState)
       audio.currentTime = Math.max(
@@ -309,6 +390,10 @@
   };
   const updateVolume = () => {
     const silent = audio.muted || audio.volume === 0;
+    volume.style.setProperty(
+      "--level",
+      (silent ? 0 : audio.volume * 100) + "%",
+    );
     icon(mute, silent ? "mute" : "volume");
     mute.setAttribute("aria-label", silent ? "Sesi aç" : "Sesi kapat");
     mute.setAttribute("aria-pressed", String(silent));

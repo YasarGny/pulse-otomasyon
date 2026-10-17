@@ -13,9 +13,21 @@ until the owner has reviewed the working result and given final live approval.
 - `theme.js` runs before paint. First visit defaults to dark, the user's explicit
   choice is stored locally. Storage denial does not break the site. No external
   font request is required; the system sans stack includes Turkish fallbacks.
+- The matching Yeni Sekme / Moradon FM covers use local 192px and 768px WebP
+  files. Moradon artwork draws on a medieval merchant-town plaza; it is original
+  artwork, not a game screenshot. The covers also appear in the full/mini player
+  and supported browser media controls.
 - `site.js`: progressive list filtering and one persistent audio element. Internal
   publication navigation keeps audio alive, ordinary links and static full text
-  remain usable without the enhancement. Legal pages use ordinary navigation.
+  remain usable without the enhancement. The mini player has seeking and an
+  expandable panel with the same full controls (not a second audio element).
+  Speed cycles through 0.75 / 1 / 1.1 / 1.2 / 1.25 / 1.5 / 2. iOS uses device
+  volume controls, explicitly labelled instead of a nonfunctional range slider.
+  Legal pages use ordinary navigation.
+- The print room uses a local transparent 3D press asset with an independently
+  animated SVG newspaper; connection failure uses its own newspaper illustration.
+  Reduced motion disables movement; hidden tabs pause the paper animation. A
+  neutral checking skeleton never claims printing before the manifest is known.
 - The manifest gate waits for both verified editions, all four MP3s **and HTML
   from the matching release**. Cached HTML is refreshed before the site is shown.
   A missing or mismatched page fails closed. No client-clock opening shortcut.

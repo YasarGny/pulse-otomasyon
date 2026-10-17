@@ -46,30 +46,28 @@
       const card = make("div", "pulse-print-card");
       const art = make("div", "press-scene");
       art.setAttribute("aria-hidden", "true");
-      art.innerHTML = `<svg class="press-illustration" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <ellipse cx="200" cy="277" rx="123" ry="8" fill="#000" opacity=".15" stroke="none"/>
-        <path d="m91 49 14-8h202l-14 8Z" fill="#f0ece4" stroke="#a8a59f"/>
-        <path d="m293 49 14-8v203l-14 9Z" fill="#b8b5b0" stroke="#918f8c"/>
-        <rect x="91" y="49" width="202" height="17" rx="4" fill="#ece7df" stroke="#a8a59f"/>
-        <rect x="91" y="59" width="17" height="194" rx="5" fill="#e4dfd7" stroke="#aaa69f"/>
-        <rect x="276" y="59" width="17" height="194" rx="5" fill="#e4dfd7" stroke="#aaa69f"/>
-        <rect x="108" y="84" width="168" height="27" rx="13" fill="#d783a9" stroke="#9b5f7a"/>
-        <path d="M120 90h140" stroke="#efb9d1" stroke-width="3"/>
-        <rect x="108" y="127" width="168" height="22" rx="11" fill="#6d7176" stroke="#292c30"/>
-        <path d="M120 132h140" stroke="#999da2" stroke-width="2"/>
-        <rect x="92" y="238" width="201" height="15" rx="3" fill="#c9c4bc" stroke="#a8a59f"/>
-        <g class="press-newspaper" stroke="none"><rect x="131" y="144" width="122" height="121" rx="2" fill="#f0ece5"/>
-        <text x="142" y="193" fill="#202125" font-size="23" font-family="Arial,sans-serif" font-weight="800" letter-spacing="-1">PULSE<tspan fill="#ad366c">.</tspan></text>
-        <path d="M142 202h100" stroke="#4f5155"/>
-        <rect x="142" y="212" width="43" height="26" fill="#d387a7" rx="1"/>
-        <path d="M194 214h48m-48 7h48m-48 7h48m-100 18h100m-100 7h80" stroke="#acaaa7" stroke-width="3"/>
-        </g>
-        <rect x="108" y="146" width="168" height="23" rx="11" fill="#b5b7b9" stroke="#6c6f73"/>
-        <path d="M120 151h140" stroke="#d9d9d9" stroke-width="2"/>
-        <circle cx="99" cy="181" r="4" fill="#d783a9" stroke="#98607a"/>
-        <path d="M85 254h29m156 0h29" stroke="#8e8c89" stroke-width="5"/>
-      </svg>`;
-      if (mode === "offline") art.hidden = true;
+      if (mode === "offline") {
+        const image = make("img", "connection-illustration");
+        image.src = new URL("assets/connection-paper.webp", base).href;
+        image.alt = "";
+        image.width = 768;
+        image.height = 512;
+        art.append(image);
+      } else {
+        art.innerHTML = `<svg class="press-illustration" viewBox="0 0 1280 1280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs><linearGradient id="paper-shade" x2="0.2" y2="1"><stop stop-color="#f2eee6"/><stop offset="1" stop-color="#d8d3c9"/></linearGradient></defs>
+          <image href="${new URL("assets/press-machine.webp", base).href}" width="1280" height="1280"/>
+          <g transform="matrix(.76 -.25 .38 .54 390 610)">
+            <g class="press-newspaper">
+              <rect x="0" y="0" width="720" height="500" rx="5" fill="url(#paper-shade)" stroke="#c2bbb0" stroke-width="4"/>
+              <text x="42" y="105" fill="#202125" font-size="82" font-family="Arial,sans-serif" font-weight="900" letter-spacing="-4">PULSE<tspan fill="#ed3477">.</tspan></text>
+              <path d="M42 135h636" stroke="#7c7b78" stroke-width="4"/>
+              <rect x="42" y="164" width="266" height="150" fill="#d783a9"/>
+              <path d="M342 176h336m-336 28h336m-336 28h336m-336 28h336m-336 28h336M42 350h636m-636 28h636m-636 28h636m-636 28h480" stroke="#a9a69f" stroke-width="13"/>
+            </g>
+          </g>
+        </svg>`;
+      }
       const status = make("p", "pulse-print-small");
       status.id = "printing-status";
       status.setAttribute("role", "status");
@@ -238,10 +236,7 @@
       lastSuccess = performance.now();
       unlock(manifest, editions, url);
     } catch (error) {
-      lock(
-        "Yayın durumu doğrulanamadı. Birazdan yeniden kontrol edeceğiz.",
-        "offline",
-      );
+      lock("", "offline");
     } finally {
       busy = false;
     }
@@ -252,11 +247,15 @@
   shell.setAttribute("aria-hidden", "true");
   setTimeout(() => {
     if (!document.documentElement.classList.contains("pulse-loading")) return;
-    const loading = make("div", "publication-loading", "PULSE");
+    const loading = make("div", "publication-loading");
     loading.id = "publication-loading";
-    loading.append(make("span", "", "."));
+    const content = make("div", "loading-content");
+    content.innerHTML =
+      '<div class="loading-brand">PULSE<span>.</span></div><div class="loading-preview" aria-hidden="true"><div class="loading-picture"></div><div class="loading-lines"><i></i><i></i><i></i></div></div>';
+    content.append(make("p", "loading-message", "Yayın kontrol ediliyor…"));
+    loading.append(content);
     loading.setAttribute("role", "status");
-    loading.setAttribute("aria-label", "Yayın yükleniyor");
+    loading.setAttribute("aria-label", "Yayın kontrol ediliyor");
     document.body.append(loading);
   }, 180);
   check();

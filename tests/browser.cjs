@@ -452,6 +452,73 @@ async function run(name, fn) {
       },
     );
     await run(
+      "mini-player exposes live seek, speed, volume and keyboard-safe full controls",
+      async () => {
+        const original = await page.locator("audio").evaluate((a) => {
+          window.__dockAudio = a;
+          return a.currentTime;
+        });
+        await page.locator(".mini-more").click();
+        assert.equal(
+          await page.locator(".mini-more").getAttribute("aria-expanded"),
+          "true",
+        );
+        await page.locator(".mini-details .player-speed").click();
+        assert.equal(
+          await page.locator("audio").evaluate((a) => a.playbackRate),
+          1.1,
+        );
+        await page.locator(".mini-details .player-volume").evaluate((i) => {
+          i.value = "0.4";
+          i.dispatchEvent(new Event("input"));
+        });
+        assert.equal(
+          await page.locator("audio").evaluate((a) => a.volume),
+          0.4,
+        );
+        await page.locator(".mini-details .player-seek").evaluate((i) => {
+          i.value = "10";
+          i.dispatchEvent(new Event("input"));
+        });
+        assert(
+          Math.abs(
+            (await page.locator("audio").evaluate((a) => a.currentTime)) - 10,
+          ) < 1,
+        );
+        assert(
+          await page.locator("audio").evaluate((a) => a === window.__dockAudio),
+        );
+        assert(await page.locator(".mini-seek").isHidden());
+        assert(await page.locator(".mini-play").isHidden());
+        await noOverflow();
+        await axe();
+        await page.screenshot({
+          path: "test-results/editor-expanded-player-mobile.png",
+          fullPage: true,
+        });
+        await page.locator(".mini-details .player-speed").press("Escape");
+        assert(await page.locator(".mini-details").isHidden());
+        await page.locator(".mini-seek").evaluate((i) => {
+          i.value = "12";
+          i.dispatchEvent(new Event("input"));
+        });
+        assert(
+          Math.abs(
+            (await page.locator("audio").evaluate((a) => a.currentTime)) - 12,
+          ) < 1,
+        );
+        assert(
+          await page
+            .locator(".mini-more")
+            .evaluate((n) => n === document.activeElement),
+        );
+        await page.locator("audio").evaluate((a) => {
+          a.playbackRate = 1;
+          a.volume = 1;
+        });
+      },
+    );
+    await run(
       "new audio selection replaces the single session; no simultaneous playback",
       async () => {
         await open("/");
@@ -649,6 +716,123 @@ async function run(name, fn) {
         await page.unroute(base + "/");
       },
     );
+    await run(
+      "iOS exposes device-volume guidance rather than a nonfunctional software slider",
+      async () => {
+        const c = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+          userAgent:
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+        });
+        const p = await c.newPage();
+        await p.goto(base + "/teknoloji/dinle/");
+        await p.waitForFunction(
+          () =>
+            window.PULSE_RELEASE &&
+            !document.querySelector(".site-shell").inert,
+        );
+        assert(await p.locator(".player-volume").isHidden());
+        assert(await p.locator(".device-volume").isVisible());
+        await c.close();
+      },
+    );
+    await run(
+      "printing artwork animates paper, respects reduced motion and has a distinct offline illustration",
+      async () => {
+        const c = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+          reducedMotion: "no-preference",
+        });
+        const p = await c.newPage();
+        await p.route("**/data/publication.json*", async (r) => {
+          const response = await r.fetch();
+          await r.fulfill({
+            response,
+            headers: {
+              ...response.headers(),
+              date: "Fri, 16 Oct 2026 04:29:00 GMT",
+              "cache-control": "no-store",
+            },
+          });
+        });
+        await p.goto(base);
+        await p.locator('.pulse-printing[data-mode="printing"]').waitFor();
+        await p.waitForFunction(() =>
+          performance
+            .getEntriesByType("resource")
+            .some((r) => r.name.includes("press-machine.webp")),
+        );
+        assert.equal(
+          await p
+            .locator(".press-newspaper")
+            .evaluate((n) => getComputedStyle(n).animationName),
+          "paper-feed",
+        );
+        await p.evaluate(
+          () =>
+            (window.__paper = getComputedStyle(
+              document.querySelector(".press-newspaper"),
+            ).transform),
+        );
+        await p.waitForFunction(
+          () =>
+            getComputedStyle(document.querySelector(".press-newspaper"))
+              .transform !== window.__paper,
+        );
+        await p.screenshot({
+          path: "test-results/editor-printing-animated-mobile.png",
+          fullPage: true,
+        });
+        await p.emulateMedia({ reducedMotion: "reduce" });
+        assert.equal(
+          await p
+            .locator(".press-newspaper")
+            .evaluate((n) => getComputedStyle(n).animationName),
+          "none",
+        );
+        await p.unroute("**/data/publication.json*");
+        await p.route("**/data/publication.json*", async (r) => {
+          const response = await r.fetch();
+          const data = await response.json();
+          data.status = "preparing";
+          await r.fulfill({
+            response,
+            json: data,
+            headers: {
+              ...response.headers(),
+              date: "Fri, 16 Oct 2026 05:00:00 GMT",
+              "cache-control": "no-store",
+            },
+          });
+        });
+        await p.reload();
+        await p.locator('.pulse-printing[data-mode="delayed"]').waitFor();
+        assert.match(
+          await p.locator(".pulse-print-card h1").innerText(),
+          /devam ediyor/,
+        );
+        await p.screenshot({
+          path: "test-results/editor-delayed-mobile.png",
+          fullPage: true,
+        });
+        await p.unroute("**/data/publication.json*");
+        await p.route("**/data/publication.json*", (r) =>
+          r.fulfill({ status: 404, body: "missing" }),
+        );
+        await p.reload();
+        await p.locator('.pulse-printing[data-mode="offline"]').waitFor();
+        await p.waitForFunction(() => {
+          const i = document.querySelector(".connection-illustration");
+          return i?.complete && i.naturalWidth > 0;
+        });
+        assert.equal(await p.locator(".press-newspaper").count(), 0);
+        await p.screenshot({
+          path: "test-results/editor-connection-mobile.png",
+          fullPage: true,
+        });
+        await c.close();
+      },
+    );
     await page.clock.install();
     let serverTime = "Fri, 16 Oct 2026 04:29:59 GMT";
     await page.route("**/data/publication.json*", async (r) => {
@@ -710,10 +894,7 @@ async function run(name, fn) {
           r.fulfill({ status: 404, body: "missing" }),
         );
         await page.goto(base);
-        await page
-          .locator("#printing-status")
-          .filter({ hasText: "doğrulanamadı" })
-          .waitFor();
+        await page.locator('#pulse-printing[data-mode="offline"]').waitFor();
         assert(await page.locator(".site-shell").isHidden());
         await page.unroute("**/oyun/podcast.mp3");
       },
@@ -727,10 +908,7 @@ async function run(name, fn) {
         }),
       );
       await page.goto(base + "/oyun/");
-      await page
-        .locator("#printing-status")
-        .filter({ hasText: "doğrulanamadı" })
-        .waitFor();
+      await page.locator('#pulse-printing[data-mode="offline"]').waitFor();
       assert(await page.locator(".site-shell").isHidden());
       await page.unroute("**/releases/*/oyun.json");
     });
