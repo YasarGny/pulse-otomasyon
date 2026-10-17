@@ -53,6 +53,8 @@ def package(site, destination, *, fetch=fetch_public):
             for url, filename in image_paths.items():
                 content = content.replace(html.escape(url, quote=True), prefix + 'media/' + filename)
             content = content.replace('class="pulse-loading"', '')
+            content = re.sub(r'<script src="[^"]*install\.js(?:\?[^\"]*)?" defer></script>', '', content)
+            content = re.sub(r'<link rel="manifest"[^>]*>', '', content)
             content = re.sub(r'<script src="[^"]*printing\.js(?:\?[^\"]*)?" defer></script>', '', content)
             # Explicit filenames work with file:// and don't need a local HTTP server.
             content = re.sub(r'(href=")((?!https?:|#)[^"]*/)(")', r'\1\2index.html\3', content)

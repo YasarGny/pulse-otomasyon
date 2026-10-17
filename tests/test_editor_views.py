@@ -2,6 +2,7 @@
 
 import tempfile
 import json
+import struct
 import shutil
 import unittest
 from html.parser import HTMLParser
@@ -59,6 +60,35 @@ class EditorViewsTests(unittest.TestCase):
                 "Sayı 001</span>", (site / "teknoloji/index.html").read_text()
             )
             self.assertNotIn("Sayı 001</span>", (site / "index.html").read_text())
+
+    def test_install_manifest_and_icons_are_public_and_reachable_from_deep_routes(self):
+        from urllib.parse import urljoin
+
+        manifest = json.loads((self.site / "manifest.webmanifest").read_text())
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["id"], "./")
+        self.assertEqual(manifest["scope"], "./")
+        self.assertEqual(
+            urljoin("https://example.test/manifest.webmanifest", manifest["start_url"]),
+            "https://example.test/",
+        )
+        for size in (180, 192, 512):
+            body = (self.site / f"assets/app-{size}.png").read_bytes()
+            self.assertEqual(body[:8], b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(struct.unpack(">II", body[16:24]), (size, size))
+        self.assertTrue((self.site / "sw.js").is_file())
+        for path in self.site.rglob("*.html"):
+            if path.name == "404.html":
+                continue
+            import re
+
+            html = path.read_text()
+            href = re.search(r'<link rel="manifest" href="([^"]+)"', html).group(1)
+            self.assertEqual(
+                (path.parent / href).resolve(),
+                (self.site / "manifest.webmanifest").resolve(),
+            )
+            self.assertIn("install.js?v=1", html)
 
     def test_every_internal_article_and_navigation_link_has_a_real_destination(self):
         for page in self.site.rglob("*.html"):

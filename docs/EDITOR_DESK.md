@@ -1,8 +1,8 @@
 # Editör Masası
 
-The approved PULSE redesign lives in the source repository only. Merging this
-branch would make the next scheduled deployment use it; do not merge or deploy
-until the owner has reviewed the working result and given final live approval.
+PULSE uses the approved Editor Desk redesign. The owner authorized this rollout
+after the installation and quality checks. Future live design changes still need
+the applicable owner approval and passing release checks.
 
 ## Source and build
 
@@ -70,6 +70,35 @@ that the publisher is the photographer. Optional explicit image credits are esca
 An image transfer error retains the article and its source with a retry control;
 it does not replace the picture with unrelated artwork.
 
+## App installation and desktop media
+
+`manifest.webmanifest` supplies a stable root identity and start URL, standalone
+window, theme and 192/512px maskable icons derived from the preserved P. favicon.
+Apple touch icons use the same mark. `scripts/render_app_icons.cjs` rasterizes the
+original SVG; it is a development tool, not a runtime dependency.
+
+`install.js` shows a compact inline suggestion on the home page only after a real
+`beforeinstallprompt` eligibility event. It does not cover news or audio controls.
+Closing it suppresses automatic suggestions for 30 days; the footer remains an
+explicit entry while the browser still offers installation. Installation events,
+standalone display mode, related installed-app detection and stored confirmation
+hide the suggestion and entry. Storage denial is tolerated. Availability depends
+on the browser; detecting an install in another browser/profile is not possible.
+Safari cannot reliably report an existing home-screen install from a browser tab,
+so it gets **no automatic reminder**: a footer action opens platform-specific
+Share → Add to Home Screen or File → Add to Dock instructions. Nothing requests
+notification permission, push access or native application installation.
+
+`sw.js` handles only network navigation. It never puts HTML, daily JSON, stories
+or audio into Cache Storage. Network failure shows a self-contained offline
+message, not a cached issue. Existing 06:00/07:30 publication validation remains
+authoritative. Offline ZIPs omit installation scripts and manifest links.
+
+Media Session is shared by desktop and mobile, with metadata, cover, current
+position/rate and supported play/pause/stop/seek actions. Actual notification,
+lock-screen and desktop media widgets, and background process survival, depend
+on browser/OS policy. Browser API checks are not a physical-device UI test.
+
 ## Routes and offline backup
 
 `/`, `/haberler/`, `/podcastler/`, `/teknoloji/`, `/oyun/`, each section's
@@ -101,7 +130,10 @@ not a claim that the fixture headlines/photos are real reporting.
 Browser checks cover both themes, mobile/tablet/desktop widths, keyboard, axe,
 200% text enlargement, full-card/source separation, filter/back state, real MP3
 playback, speed/10-second seek/volume/mute, audio across reading navigation,
-image/audio errors, camera/mask alignment, stale HTML, 07:30/06:00 gates and offline extraction.
+image/audio errors, camera/mask alignment, stale HTML, 07:30/06:00 gates, offline extraction,
+installation/dismissal/standalone states, desktop Media Session and the real
+network-only service worker. Installability is checked in a fresh normal Chromium
+profile because incognito profiles deliberately disable installation.
 Managed Chromium may block `file://`; in that case the suite reports the policy
 and serves extracted files from an in-memory origin with external networking
 still offline. This is not a physical iPhone/Safari test or field performance data.

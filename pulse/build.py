@@ -23,6 +23,8 @@ PUBLIC_ROOTS = (
     "404.html",
     "robots.txt",
     "sitemap.xml",
+    "manifest.webmanifest",
+    "sw.js",
     ".nojekyll",
     "assets",
     "teknoloji",
@@ -98,6 +100,7 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
                 shutil.copytree(folder, output / "releases" / current["release_id"])
     if manifest.get("status") == "ready":
         from pulse.pages import build_views
+
         build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
     assert_public_tree(output)
@@ -111,6 +114,7 @@ def assert_public_tree(root):
         ".css",
         ".js",
         ".json",
+        ".webmanifest",
         ".svg",
         ".png",
         ".jpg",
@@ -128,7 +132,7 @@ def assert_public_tree(root):
             continue
         if path.name != ".nojekyll" and path.suffix not in allowed:
             raise ValueError("Non-public file: " + str(path))
-        if path.suffix in (".html", ".css", ".js", ".json", ".txt"):
+        if path.suffix in (".html", ".css", ".js", ".json", ".webmanifest", ".txt"):
             text = path.read_text(encoding="utf-8")
             # Prevent common credential formats and current secrets from entering artifacts.
             if re.search(

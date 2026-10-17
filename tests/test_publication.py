@@ -30,7 +30,7 @@ from pulse.publication import (
     verify_manifest,
     write_json,
 )
-from pulse.verify_site import check_site
+from pulse.verify_site import check_site, check_assets
 from scripts.state import unpack
 from scripts.sync_site import sync
 
@@ -737,6 +737,23 @@ class ReleaseTests(unittest.TestCase):
             return response
 
         return Mock(get=Mock(side_effect=get))
+
+    def test_layout_assets_are_checked_even_when_release_identity_is_unchanged(self):
+        output = self.root / "site"
+        build(ROOT / "site", output, release=self.release, at=not_before(DATE))
+        session = self.public_session(output)
+        check_assets(session, "https://example.test/", output)
+        original = session.get.side_effect
+
+        def stale(url, **kwargs):
+            response = original(url, **kwargs)
+            if url.endswith("assets/install.js"):
+                response._content = b"old deployment"
+            return response
+
+        session.get.side_effect = stale
+        with self.assertRaisesRegex(ValueError, "asset has not updated"):
+            check_assets(session, "https://example.test/", output)
 
     def test_actual_pages_ready_bytes_are_verified_not_just_the_commit(self):
         output = self.root / "site"

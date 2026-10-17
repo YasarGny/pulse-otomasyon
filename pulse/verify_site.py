@@ -4,6 +4,7 @@ import argparse
 import datetime as dt
 import hashlib
 import time
+from pathlib import Path
 from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
 
@@ -78,12 +79,39 @@ def check_site(session, base, expected):
                     raise ValueError("Deployed MP3 hash/size mismatch")
 
 
-def wait_for_site(expected, timeout=900):
+def check_assets(session, base, tree):
+    """A layout-only rollout keeps the release ID, so verify its assets separately."""
+    tree = Path(tree)
+    paths = [tree / "manifest.webmanifest", tree / "sw.js"]
+    paths.extend(sorted((tree / "assets").rglob("*")))
+    for path in paths:
+        if not path.is_file():
+            continue
+        response = session.get(
+            urljoin(base, path.relative_to(tree).as_posix()),
+            params={"pulse_check": time.time_ns()},
+            timeout=30,
+        )
+        response.raise_for_status()
+        if (
+            hashlib.sha256(response.content).digest()
+            != hashlib.sha256(path.read_bytes()).digest()
+        ):
+            raise ValueError("Pages asset has not updated: " + path.name)
+        if path.name == "sw.js" and "javascript" not in response.headers.get(
+            "Content-Type", ""
+        ):
+            raise ValueError("Service worker MIME type invalid")
+
+
+def wait_for_site(expected, timeout=900, tree=None):
     deadline = time.monotonic() + timeout
     with requests.Session() as session:
         while True:
             try:
                 check_site(session, BASE, expected)
+                if tree:
+                    check_assets(session, BASE, tree)
                 print(
                     "GitHub Pages verified:",
                     expected["status"],
@@ -105,8 +133,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--expected", default="dist/data/publication.json")
     parser.add_argument("--timeout", type=int, default=900)
+    parser.add_argument(
+        "--tree", help="Verify deployed app and design assets against this public build"
+    )
     args = parser.parse_args()
-    wait_for_site(read_json(args.expected), args.timeout)
+    wait_for_site(read_json(args.expected), args.timeout, args.tree)
 
 
 if __name__ == "__main__":

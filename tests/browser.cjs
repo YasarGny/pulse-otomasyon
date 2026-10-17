@@ -61,6 +61,7 @@ async function run(name, fn) {
       viewport: { width: 1440, height: 1000 },
       locale: "tr-TR",
       reducedMotion: "reduce",
+      serviceWorkers: "block", // Mocked gate responses; real worker is checked separately.
     });
     const tech = await fs.readFile("site/assets/covers/teknoloji-768.webp"),
       game = await fs.readFile("site/assets/covers/oyun-768.webp");
@@ -1257,6 +1258,7 @@ async function run(name, fn) {
         await c.close();
       },
     );
+    await require("./install-browser.cjs")(browser, run, base);
     await run("no browser runtime errors", async () =>
       assert.deepEqual(errors, []),
     );
