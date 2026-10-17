@@ -456,7 +456,7 @@ async function run(name, fn) {
       "speed cycle, ten-second seeks, volume and mute control actual audio",
       async () => {
         const audio = page.locator("audio");
-        for (const rate of [1.1, 1.2, 1.25, 1.5, 2, 1]) {
+        for (const rate of [1.1, 1.2, 1.25, 1.5, 2, 0.75, 1]) {
           await page.locator(".player-speed").click();
           assert.equal(await audio.evaluate((a) => a.playbackRate), rate);
         }

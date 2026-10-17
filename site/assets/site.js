@@ -118,7 +118,7 @@
   minibar.append(miniTitle, miniPlay, close);
   mini.append(minibar);
   host.append(mini);
-  const rates = [1, 1.1, 1.2, 1.25, 1.5, 2];
+  const rates = [0.75, 1, 1.1, 1.2, 1.25, 1.5, 2];
   function title() {
     return selected
       ? selected.kind === "summary"
