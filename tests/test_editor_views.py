@@ -94,7 +94,7 @@ class EditorViewsTests(unittest.TestCase):
         self.assertIn("article-text", article)
         self.assertEqual(article.count('class="source-link"'), 2)
         self.assertIn("https://example.com/teknoloji/0", article)
-        self.assertIn("Görselin kaynak sayfası", article)
+        self.assertIn("Görsel kaynağı", article)
         self.assertIn('property="og:type" content="article"', article)
         self.assertIn("https://images.example.test/article.jpg", article)
 
@@ -121,7 +121,7 @@ class EditorViewsTests(unittest.TestCase):
             "source_name": "Publisher",
         }
         text = picture(story)
-        self.assertIn("Görselin kaynak sayfası", text)
+        self.assertIn("Görsel kaynağı", text)
         self.assertNotIn("Fotoğraf: Publisher", text)
         self.assertIn('loading="lazy"', text)
 

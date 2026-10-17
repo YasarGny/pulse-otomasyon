@@ -1433,7 +1433,7 @@ html.document-hidden .press-newspaper {
     font-size: 14px;
   }
   .mini-close {
-    min-width: 36px;
+    min-width: 44px;
   }
   .mini-status {
     max-width: 130px;
@@ -1528,7 +1528,7 @@ html.document-hidden .press-newspaper {
     display: none;
   }
   .mini-close {
-    min-width: 32px;
+    min-width: 44px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

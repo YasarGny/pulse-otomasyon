@@ -57,7 +57,7 @@ def picture(story, *, eager=False, detail=False):
     caption = (
         e(credit)
         if credit
-        else f'<a href="{e(story["source_url"])}" target="_blank" rel="noopener noreferrer">Görselin kaynak sayfası ↗</a>'
+        else f'<a href="{e(story["source_url"])}" target="_blank" rel="noopener noreferrer">Görsel kaynağı ↗</a>'
     )
     return f"""<figure class="news-figure{' detail-figure' if detail else ''}"><div class="image-frame"><img class="story-image" src="{e(url)}" alt="{e(story['title'])}" loading="{'eager' if eager else 'lazy'}" decoding="async" referrerpolicy="no-referrer" width="900" height="600" {'fetchpriority="high"' if eager else ''}><div class="image-fallback" hidden><span>Görsel yüklenemedi</span><button type="button" class="image-retry">Yeniden dene</button></div></div><figcaption>{caption}</figcaption></figure>"""
 
