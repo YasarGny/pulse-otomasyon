@@ -1,347 +1,703 @@
+/* Static pages first; one persistent audio session and optional same-origin navigation. */
 (() => {
   "use strict";
-  const section = document.body.dataset.page,
-    $ = (id) => document.getElementById(id),
-    rules = window.PulsePublication;
-  const el = (tag, cls, text) => {
+  const base = new URL("../", document.currentScript.src);
+  const $ = (s, root = document) => root.querySelector(s);
+  const all = (s, root = document) => [...root.querySelectorAll(s)];
+  const make = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
     if (text !== undefined) n.textContent = text;
     return n;
   };
-  function player(target, asset, release, label) {
-    const audio = el("audio");
-    audio.preload = "none";
-    audio.src = new URL(asset.file, release.url).href;
-    audio.setAttribute("aria-label", label);
-    const box = target.closest(".audio-box");
-    const ui = el("div", "player");
-    ui.setAttribute("role", "group");
-    ui.setAttribute("aria-label", label + " oynatıcı");
-    const icons = {
-      play: '<path d="m8 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
-      pause: '<path d="M8 6v12M16 6v12" stroke-width="4"/>',
-      back: '<path d="M5 9a8 8 0 1 1-1 8M5 3v6h6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
-      forward:
-        '<path d="M19 9a8 8 0 1 0 1 8M19 3v6h-6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
-      volume:
-        '<path d="m11 5-5 4H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
-      mute: '<path d="m11 5-5 4H3v6h3l5 4ZM16 9l6 6m0-6-6 6"/>',
-    };
-    const icon = (button, name) => {
-      button.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + "</svg>";
-    };
-    const button = (cls, name, text) => {
-      const b = el("button", cls);
-      b.type = "button";
-      b.setAttribute("aria-label", label + ": " + text);
-      icon(b, name);
-      return b;
-    };
-    const play = button("player-play", "play", "Oynat");
-    const back = button("player-skip", "back", "10 saniye geri al");
-    const forward = button("player-skip", "forward", "10 saniye ileri al");
-    const rates = [1, 1.1, 1.2, 1.25, 1.5, 2];
-    const speed = el("button", "player-speed", "1×");
-    speed.type = "button";
-    let rateIndex = 0;
+  const icons = {
+    play: '<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+    pause: '<path d="M8 6v12M16 6v12" stroke-width="4"/>',
+    back: '<path d="M5 9a8 8 0 1 1-1 8M5 3v6h6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
+    forward:
+      '<path d="M19 9a8 8 0 1 0 1 8M19 3v6h-6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
+    volume:
+      '<path d="m11 5-5 4H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
+    mute: '<path d="m11 5-5 4H3v6h3l5 4ZM16 9l6 6m0-6-6 6"/>',
+    close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  };
+  const icon = (n, name) => {
+    n.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + "</svg>";
+  };
+  const button = (cls, name, label) => {
+    const n = make("button", cls);
+    n.type = "button";
+    n.setAttribute("aria-label", label);
+    icon(n, name);
+    return n;
+  };
+  const format = (s) => {
+    s = Math.max(0, Math.floor(Number.isFinite(s) ? s : 0));
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  };
+  let release = null,
+    selected = null,
+    pageEvents = null,
+    pendingNav = null,
+    listState = null;
+  let fullVisible = false,
+    selectedDuration = 0,
+    loading = false,
+    failed = false,
+    hasStarted = false;
+  const host = make("div", "audio-session");
+  const audio = make("audio");
+  audio.preload = "none";
+  host.append(audio);
+  document.body.append(host);
+  const full = make("div", "player");
+  full.hidden = true;
+  full.setAttribute("role", "group");
+  const label = make("div", "player-label");
+  const controls = make("div", "player-controls");
+  const back = button("player-skip", "back", "10 saniye geri al");
+  const play = button("player-play", "play", "Oynat");
+  const forward = button("player-skip", "forward", "10 saniye ileri al");
+  const speed = make("button", "player-speed", "1×");
+  speed.type = "button";
+  controls.append(back, play, forward, speed);
+  const seek = make("input", "player-seek");
+  seek.type = "range";
+  seek.min = "0";
+  seek.max = "1";
+  seek.step = ".1";
+  seek.value = "0";
+  seek.disabled = true;
+  seek.setAttribute("aria-label", "Ses ilerlemesi");
+  const times = make("div", "player-times");
+  const current = make("span", "", "0:00"),
+    end = make("span", "", "0:00");
+  times.append(current, end);
+  const bottom = make("div", "player-bottom");
+  const episode = make("span", "player-episode");
+  const mute = button("player-mute", "volume", "Sesi kapat");
+  mute.setAttribute("aria-pressed", "false");
+  const volume = make("input", "player-volume");
+  volume.type = "range";
+  volume.min = "0";
+  volume.max = "1";
+  volume.step = ".05";
+  volume.value = "1";
+  volume.setAttribute("aria-label", "Ses seviyesi");
+  // iOS exposes device volume rather than a writable HTMLMediaElement volume.
+  if (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  )
+    volume.hidden = true;
+  bottom.append(episode, mute, volume);
+  const status = make("p", "audio-status");
+  status.setAttribute("role", "status");
+  const retry = make("button", "retry", "Tekrar dene");
+  retry.type = "button";
+  retry.hidden = true;
+  full.append(label, seek, times, controls, bottom, status, retry);
+  host.append(full);
+  const mini = make("div", "persistent-audio");
+  mini.hidden = true;
+  mini.setAttribute("role", "region");
+  mini.setAttribute("aria-label", "Dinleme kontrolleri");
+  const minibar = make("div", "mini-bar"),
+    miniTitle = make("div", "mini-title"),
+    miniLink = make("a"),
+    miniTime = make("span", "mini-time"),
+    miniStatus = make("span", "mini-status");
+  miniTitle.append(miniLink, miniTime, miniStatus);
+  const miniPlay = button("mini-play", "play", "Oynat"),
+    close = button(
+      "mini-close",
+      "close",
+      "Dinlemeyi durdur ve oynatıcıyı kapat",
+    );
+  minibar.append(miniTitle, miniPlay, close);
+  mini.append(minibar);
+  host.append(mini);
+  const rates = [1, 1.1, 1.2, 1.25, 1.5, 2];
+  function title() {
+    return selected
+      ? selected.kind === "summary"
+        ? "Günün Özeti · " +
+          (selected.section === "teknoloji" ? "Teknoloji" : "Oyun")
+        : release.editions[selected.section].podcast.title
+      : "";
+  }
+  function update() {
+    const playing = !!selected && !audio.paused && !audio.ended && !failed;
+    for (const n of [play, miniPlay]) {
+      icon(n, playing ? "pause" : "play");
+      n.setAttribute(
+        "aria-label",
+        title() + ": " + (playing ? "Duraklat" : "Oynat"),
+      );
+      n.setAttribute("aria-busy", String(loading));
+    }
+    all(".audio-start").forEach((n) => {
+      const active =
+        selected &&
+        n.dataset.section === selected.section &&
+        n.dataset.kind === selected.kind;
+      icon(n, active && playing ? "pause" : "play");
+      n.setAttribute("aria-pressed", String(!!active && playing));
+      n.setAttribute(
+        "aria-label",
+        (n.dataset.kind === "podcast"
+          ? n.dataset.section === "teknoloji"
+            ? "Yeni Sekme"
+            : "Moradon FM"
+          : "Günün Özeti · " +
+            (n.dataset.section === "teknoloji" ? "Teknoloji" : "Oyun")) +
+          ": " +
+          (active && playing ? "Duraklat" : "Oynat"),
+      );
+    });
+    const state = failed
+      ? "Ses yüklenemedi."
+      : loading
+        ? "Ses yükleniyor…"
+        : "";
+    status.textContent = state;
+    miniStatus.textContent = state;
+    retry.hidden = !failed;
+    mini.hidden =
+      !selected ||
+      !hasStarted ||
+      fullVisible ||
+      document.documentElement.classList.contains("pulse-locked");
+    document.body.classList.toggle("has-mini", !mini.hidden);
+    const rate = audio.playbackRate;
+    speed.textContent = rate + "×";
     speed.setAttribute(
       "aria-label",
-      label + ": hız 1×, değiştirmek için basın",
+      "Hız " + rate + "×, değiştirmek için basın",
     );
-    const controls = el("div", "player-controls");
-    controls.append(play, back, forward, speed);
-    const seek = el("input", "player-seek");
-    seek.type = "range";
-    seek.min = "0";
-    seek.max = String(asset.duration);
-    seek.step = ".1";
-    seek.value = "0";
-    seek.disabled = true;
-    seek.setAttribute("aria-label", label + ": ilerleme");
-    const times = el("div", "player-times");
-    const current = el("span", "", "0:00");
-    const end = el("span");
-    times.append(current, end);
-    const format = (seconds) => {
-      seconds = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
-      return (
-        Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0")
-      );
-    };
-    let duration = asset.duration;
+  }
+  function progress() {
+    const duration = Number.isFinite(audio.duration)
+      ? audio.duration
+      : selectedDuration;
+    seek.max = String(duration || 1);
+    seek.disabled = !audio.readyState;
+    seek.value = String(audio.currentTime || 0);
+    current.textContent = format(audio.currentTime);
     end.textContent = format(duration);
-    const mute = button("player-mute", "volume", "Sesi kapat");
-    mute.setAttribute("aria-pressed", "false");
-    const volume = el("input", "player-volume");
-    volume.type = "range";
-    volume.min = "0";
-    volume.max = "1";
-    volume.step = ".05";
-    volume.value = "1";
-    volume.setAttribute("aria-label", label + ": ses seviyesi");
-    const bottom = el("div", "player-bottom");
-    const episode = el(
-      "span",
-      "player-episode",
-      "Bölüm " + String(asset.episode).padStart(3, "0"),
+    miniTime.textContent = format(audio.currentTime) + " / " + format(duration);
+    seek.setAttribute(
+      "aria-valuetext",
+      current.textContent + " / " + end.textContent,
     );
-    bottom.append(episode, mute, volume);
-    const error = el("p", "audio-error", "Ses yüklenemedi. Yeniden deneyin.");
-    error.hidden = true;
-    error.setAttribute("role", "status");
-    const retry = el("button", "retry", "Yeniden dene");
-    retry.type = "button";
-    retry.hidden = true;
-    const showError = () => {
-      error.hidden = retry.hidden = false;
-      play.removeAttribute("aria-busy");
-    };
-    const updatePlay = (playing) => {
-      icon(play, playing ? "pause" : "play");
-      play.setAttribute(
-        "aria-label",
-        label + ": " + (playing ? "Duraklat" : "Oynat"),
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      fullVisible = !full.hidden && entries.some((x) => x.isIntersecting);
+      update();
+    },
+    { threshold: 0.15 },
+  );
+  function mount(target) {
+    observer.disconnect();
+    fullVisible = false;
+    target.append(full);
+    full.hidden = false;
+    observer.observe(full);
+  }
+  function configure(section, kind, target) {
+    if (
+      !release ||
+      !release.editions[section] ||
+      !["podcast", "summary"].includes(kind)
+    )
+      return false;
+    const asset = release.editions[section][kind];
+    const changed =
+      !selected || selected.section !== section || selected.kind !== kind;
+    if (changed) {
+      audio.pause();
+      selected = { section, kind };
+      selectedDuration = asset.duration;
+      audio.src = new URL(asset.file, release.url).href;
+      audio.load();
+      loading = false;
+      failed = false;
+      hasStarted = false;
+    }
+    label.textContent = title();
+    full.setAttribute("aria-label", title() + " oynatıcı");
+    episode.textContent = "Bölüm " + String(asset.episode).padStart(3, "0");
+    miniLink.textContent = title();
+    miniLink.href = new URL(
+      section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
+      base,
+    ).href;
+    if (target) mount(target);
+    progress();
+    update();
+    return true;
+  }
+  async function toggle() {
+    if (!selected) return;
+    if (!audio.paused) {
+      audio.pause();
+      return;
+    }
+    loading = true;
+    failed = false;
+    update();
+    try {
+      await audio.play();
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        failed = true;
+        loading = false;
+      }
+    } finally {
+      update();
+    }
+  }
+  for (const n of [play, miniPlay]) n.addEventListener("click", toggle);
+  close.addEventListener("click", () => {
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    selected = null;
+    hasStarted = false;
+    full.hidden = true;
+    observer.disconnect();
+    fullVisible = false;
+    loading = failed = false;
+    update();
+  });
+  function jump(delta) {
+    if (audio.readyState)
+      audio.currentTime = Math.max(
+        0,
+        Math.min(
+          Number.isFinite(audio.duration) ? audio.duration : selectedDuration,
+          audio.currentTime + delta,
+        ),
       );
-      box?.classList.toggle("is-playing", playing);
-    };
-    play.addEventListener("click", async () => {
-      if (!audio.paused) {
-        audio.pause();
+    progress();
+  }
+  back.onclick = () => jump(-10);
+  forward.onclick = () => jump(10);
+  seek.oninput = () => {
+    if (audio.readyState) audio.currentTime = Number(seek.value);
+    progress();
+  };
+  speed.onclick = () => {
+    audio.playbackRate =
+      rates[(rates.indexOf(audio.playbackRate) + 1) % rates.length];
+    update();
+  };
+  const updateVolume = () => {
+    const silent = audio.muted || audio.volume === 0;
+    icon(mute, silent ? "mute" : "volume");
+    mute.setAttribute("aria-label", silent ? "Sesi aç" : "Sesi kapat");
+    mute.setAttribute("aria-pressed", String(silent));
+  };
+  mute.onclick = () => {
+    audio.muted = !audio.muted;
+    updateVolume();
+  };
+  volume.oninput = () => {
+    audio.volume = Number(volume.value);
+    audio.muted = audio.volume === 0;
+    updateVolume();
+  };
+  audio.addEventListener("volumechange", updateVolume);
+  retry.onclick = () => {
+    failed = false;
+    loading = false;
+    audio.load();
+    update();
+  };
+  for (const name of [
+    "timeupdate",
+    "loadedmetadata",
+    "durationchange",
+    "seeked",
+  ])
+    audio.addEventListener(name, progress);
+  audio.addEventListener("waiting", () => {
+    loading = true;
+    update();
+  });
+  for (const name of ["playing", "canplay", "pause", "ended"])
+    audio.addEventListener(name, () => {
+      loading = false;
+      update();
+    });
+  audio.addEventListener("error", () => {
+    if (selected) {
+      failed = true;
+      loading = false;
+      update();
+    }
+  });
+  audio.addEventListener("play", () => {
+    hasStarted = true;
+    all("audio").forEach((other) => {
+      if (other !== audio) other.pause();
+    });
+    if ("mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: title(),
+          artist: "Yaşar ve Necdet",
+          album: "PULSE",
+        });
+        for (const [action, handler] of Object.entries({
+          play: () => audio.play().catch(() => {}),
+          pause: () => audio.pause(),
+          seekbackward: () => jump(-10),
+          seekforward: () => jump(10),
+        }))
+          navigator.mediaSession.setActionHandler(action, handler);
+      } catch (_) {}
+    }
+    update();
+  });
+  function saveState() {
+    if (!window.PULSE_ARCHIVE)
+      try {
+        history.replaceState(
+          { ...history.state, pulse: true, scroll: scrollY, list: listState },
+          "",
+          location.href,
+        );
+      } catch (_) {}
+  }
+  function setupList(state) {
+    const stories = $("#stories");
+    if (!stories) {
+      listState = null;
+      return;
+    }
+    const articles = all(".story", stories),
+      select = $(".news-filter"),
+      buttons = all("[data-filter]");
+    let filter = state?.section || "",
+      category = state?.category || "",
+      limit = state?.limit || 8;
+    if (document.body.dataset.section) filter = document.body.dataset.section;
+    function categories() {
+      const values = [
+        ...new Set(
+          articles
+            .filter((a) => !filter || a.dataset.section === filter)
+            .map((a) => a.dataset.category),
+        ),
+      ];
+      select.replaceChildren(
+        new Option("Tüm konular", ""),
+        ...values.map((v) => new Option(v, v)),
+      );
+      if (!values.includes(category)) category = "";
+      select.value = category;
+    }
+    function refresh() {
+      let count = 0;
+      for (const a of articles) {
+        const match =
+          (!filter || a.dataset.section === filter) &&
+          (!category || a.dataset.category === category);
+        a.hidden = !match || count++ >= limit;
+      }
+      $(".news-more").hidden = count <= limit;
+      $(".empty-filter").hidden = count !== 0;
+      $("#story-count").textContent =
+        Math.min(count, limit) + " / " + count + " haber";
+      buttons.forEach((b) =>
+        b.setAttribute("aria-pressed", String(b.dataset.filter === filter)),
+      );
+      listState = { section: filter, category, limit };
+    }
+    for (const b of buttons)
+      b.addEventListener(
+        "click",
+        () => {
+          filter = b.dataset.filter;
+          category = "";
+          limit = 8;
+          categories();
+          refresh();
+          saveState();
+        },
+        { signal: pageEvents.signal },
+      );
+    select.addEventListener(
+      "change",
+      () => {
+        category = select.value;
+        limit = 8;
+        refresh();
+        saveState();
+      },
+      { signal: pageEvents.signal },
+    );
+    $(".news-more").addEventListener(
+      "click",
+      () => {
+        limit += 8;
+        refresh();
+        saveState();
+      },
+      { signal: pageEvents.signal },
+    );
+    $(".reset-filter").addEventListener(
+      "click",
+      () => {
+        filter = "";
+        category = "";
+        limit = 8;
+        categories();
+        refresh();
+        saveState();
+        buttons[0]?.focus();
+      },
+      { signal: pageEvents.signal },
+    );
+    categories();
+    refresh();
+  }
+  function hydrate(state) {
+    pageEvents?.abort();
+    pageEvents = new AbortController();
+    for (const image of all(".story-image")) {
+      const frame = image.closest(".image-frame");
+      if (!frame) continue;
+      const fallback = $(".image-fallback", frame);
+      const show = () => {
+        image.hidden = true;
+        fallback.hidden = false;
+      };
+      const hide = () => {
+        image.hidden = false;
+        fallback.hidden = true;
+      };
+      image.addEventListener("error", show, { signal: pageEvents.signal });
+      image.addEventListener("load", hide, { signal: pageEvents.signal });
+      $(".image-retry", frame)?.addEventListener(
+        "click",
+        () => {
+          const src = image.src;
+          image.removeAttribute("src");
+          image.src = src;
+        },
+        { signal: pageEvents.signal },
+      );
+      if (image.complete && !image.naturalWidth) show();
+    }
+    setupList(state?.list);
+    for (const start of all(".audio-start"))
+      start.addEventListener(
+        "click",
+        () => {
+          let target = start.closest(".audio-box").nextElementSibling;
+          if (!target?.classList.contains("inline-player")) {
+            target = make("div", "inline-player");
+            start.closest(".audio-box").after(target);
+          }
+          configure(start.dataset.section, start.dataset.kind, target);
+          toggle();
+        },
+        { signal: pageEvents.signal },
+      );
+    const listen = $(".listen-player");
+    if (listen) {
+      const section = listen.dataset.listenSection,
+        kind =
+          new URLSearchParams(location.search).get("ses") === "ozet"
+            ? "summary"
+            : "podcast";
+      // Merely visiting a program never switches or starts an existing session.
+      if (!selected || (selected.section === section && selected.kind === kind))
+        configure(section, kind, listen);
+      else {
+        const start = make("button", "retry", "Bu bölümü dinle");
+        start.type = "button";
+        start.onclick = () => {
+          configure(section, kind, listen);
+          toggle();
+        };
+        listen.replaceChildren(start);
+      }
+    }
+    update();
+    window.dispatchEvent(new Event("pulse:navigate"));
+  }
+  async function documentAt(url, signal) {
+    const response = await fetch(url, { cache: "no-store", signal });
+    if (!response.ok) throw Error("Sayfa yüklenemedi");
+    const doc = new DOMParser().parseFromString(
+      await response.text(),
+      "text/html",
+    );
+    if (
+      doc.body.dataset.design !== "editor-desk-v1" ||
+      !$("#main", doc) ||
+      $("#main", doc).dataset.release !== release?.manifest.release_id
+    )
+      throw Error("Sayfa güncel sayıyla eşleşmiyor");
+    return doc;
+  }
+  function swap(doc, state) {
+    if (full.closest("#main")) {
+      observer.disconnect();
+      host.append(full);
+      full.hidden = true;
+      fullVisible = false;
+    }
+    const main = $("#main"),
+      incoming = $("#main", doc);
+    main.replaceChildren(...incoming.childNodes);
+    main.dataset.release = incoming.dataset.release;
+    for (const key of ["page", "section", "story"])
+      document.body.dataset[key] = doc.body.dataset[key] || "";
+    document.title = doc.title;
+    $(".nav-issue").textContent = $(".nav-issue", doc)?.textContent || "";
+    for (const selector of [
+      'link[rel="canonical"]',
+      'meta[name="description"]',
+      'meta[property="og:type"]',
+      'meta[property="og:title"]',
+      'meta[property="og:description"]',
+      'meta[property="og:url"]',
+      'meta[property="og:image"]',
+    ]) {
+      const source = $(selector, doc),
+        target = $(selector);
+      if (source && target)
+        for (const key of ["content", "href"])
+          if (source.hasAttribute(key))
+            target.setAttribute(key, source.getAttribute(key));
+    }
+    all('script[type="application/ld+json"]', document.head).forEach((n) =>
+      n.remove(),
+    );
+    all('script[type="application/ld+json"]', doc.head).forEach((n) =>
+      document.head.append(n.cloneNode(true)),
+    );
+    for (const property of ["og:image:width", "og:image:height"]) {
+      const selector = 'meta[property="' + property + '"]';
+      $(selector)?.remove();
+      const incomingMeta = $(selector, doc);
+      if (incomingMeta) document.head.append(incomingMeta.cloneNode(true));
+    }
+    all(".nav nav a").forEach((a) => {
+      const incomingLink = all(".nav nav a", doc).find(
+        (n) => n.textContent === a.textContent,
+      );
+      if (incomingLink?.hasAttribute("aria-current"))
+        a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    hydrate(state);
+  }
+  async function navigate(url, { pop = false, state = null } = {}) {
+    pendingNav?.abort();
+    const controller = new AbortController();
+    pendingNav = controller;
+    $("#main").classList.add("content-transition");
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      if (!pop) saveState();
+      const doc = await documentAt(url, controller.signal);
+      if (!pop) history.pushState({ pulse: true, scroll: 0 }, "", url);
+      swap(doc, state);
+      const anchor = url.hash
+        ? document.getElementById(decodeURIComponent(url.hash.slice(1)))
+        : null;
+      $("#main").focus({ preventScroll: true });
+      if (anchor) anchor.scrollIntoView();
+      else scrollTo({ top: state?.scroll || 0, behavior: "instant" });
+    } catch (error) {
+      if (controller !== pendingNav) return;
+      // A hard navigation rechecks the manifest rather than trusting a mismatched page.
+      location.assign(url.href);
+    } finally {
+      clearTimeout(timeout);
+      if (controller === pendingNav)
+        $("#main").classList.remove("content-transition");
+    }
+  }
+  document.addEventListener("click", (event) => {
+    const a = event.target.closest("a");
+    if (
+      !a ||
+      !release ||
+      window.PULSE_ARCHIVE ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      a.target ||
+      a.hasAttribute("download")
+    )
+      return;
+    const url = new URL(a.href);
+    if (
+      url.origin !== base.origin ||
+      !url.pathname.startsWith(base.pathname) ||
+      (!url.pathname.endsWith("/") && !url.pathname.endsWith(".html"))
+    )
+      return;
+    if (
+      url.pathname.includes("/gizlilik/") ||
+      url.pathname.includes("/kosullar/")
+    )
+      return;
+    if (
+      url.pathname === location.pathname &&
+      url.search === location.search &&
+      url.hash
+    )
+      return;
+    event.preventDefault();
+    navigate(url);
+  });
+  window.addEventListener("popstate", (event) => {
+    if (release && !window.PULSE_ARCHIVE)
+      navigate(new URL(location.href), { pop: true, state: event.state });
+  });
+  async function ready(next) {
+    if (release?.manifest.release_id === next.manifest.release_id) return;
+    if (release) {
+      close.click();
+    }
+    release = next;
+    if ($("#main").dataset.release !== next.manifest.release_id) {
+      try {
+        const doc = await documentAt(location.href, AbortSignal.timeout(15000));
+        swap(doc, null);
+      } catch (_) {
+        window.dispatchEvent(new Event("pulse:render-error"));
         return;
       }
-      error.hidden = retry.hidden = true;
-      play.setAttribute("aria-busy", "true");
-      try {
-        await audio.play();
-      } catch (e) {
-        if (e.name !== "AbortError") showError();
-      } finally {
-        play.removeAttribute("aria-busy");
-      }
-    });
-    audio.addEventListener("play", () => {
-      document.querySelectorAll("audio").forEach((other) => {
-        if (other !== audio) other.pause();
-      });
-      updatePlay(true);
-    });
-    for (const event of ["pause", "ended", "error"])
-      audio.addEventListener(event, () => updatePlay(false));
-    audio.addEventListener("error", showError);
-    audio.addEventListener("loadedmetadata", () => {
-      if (Number.isFinite(audio.duration) && audio.duration > 0)
-        duration = audio.duration;
-      seek.max = String(duration);
-      seek.disabled = false;
-      end.textContent = format(duration);
-    });
-    audio.addEventListener("timeupdate", () => {
-      current.textContent = format(audio.currentTime);
-      seek.value = String(audio.currentTime);
-      seek.style.setProperty(
-        "--progress",
-        Math.min(100, (audio.currentTime / duration) * 100) + "%",
-      );
-      seek.setAttribute(
-        "aria-valuetext",
-        format(audio.currentTime) + " / " + format(duration),
-      );
-    });
-    seek.addEventListener("input", () => {
-      if (audio.readyState >= 1) audio.currentTime = Number(seek.value);
-    });
-    const jump = (delta) => {
-      if (audio.readyState >= 1)
-        audio.currentTime = Math.max(
-          0,
-          Math.min(duration, audio.currentTime + delta),
-        );
-    };
-    back.addEventListener("click", () => jump(-10));
-    forward.addEventListener("click", () => jump(10));
-    speed.addEventListener("click", () => {
-      rateIndex = (rateIndex + 1) % rates.length;
-      audio.playbackRate = rates[rateIndex];
-      speed.textContent = rates[rateIndex] + "×";
-      speed.setAttribute(
-        "aria-label",
-        label + ": hız " + rates[rateIndex] + "×, değiştirmek için basın",
-      );
-    });
-    const updateVolume = () => {
-      const silent = audio.muted || audio.volume === 0;
-      volume.style.setProperty("--progress", audio.volume * 100 + "%");
-      icon(mute, silent ? "mute" : "volume");
-      mute.setAttribute("aria-pressed", String(silent));
-      mute.setAttribute(
-        "aria-label",
-        label + ": " + (silent ? "Sesi aç" : "Sesi kapat"),
-      );
-    };
-    mute.addEventListener("click", () => {
-      audio.muted = !audio.muted;
-      updateVolume();
-    });
-    volume.addEventListener("input", () => {
-      audio.volume = Number(volume.value);
-      audio.muted = Number(volume.value) === 0;
-      updateVolume();
-    });
-    audio.addEventListener("volumechange", updateVolume);
-    retry.addEventListener("click", () => {
-      error.hidden = retry.hidden = true;
-      audio.load();
-    });
-    ui.append(controls, seek, times, bottom);
-    target.replaceChildren(audio, ui, error, retry);
-  }
-  function render(release) {
-    const data = release.editions[section];
-    if (!data) return;
-    const formatted = new Intl.DateTimeFormat("tr-TR", {
-      timeZone: "Europe/Istanbul",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(new Date(data.publish_date + "T12:00:00+03:00"));
-    $("issue").textContent =
-      `${formatted} · Sayı ${String(data.issue).padStart(3, "0")}`;
-    $("story-count").textContent = `${data.stories.length} haber`;
-    $("stories").replaceChildren();
-    document.querySelector(".news-tools")?.remove();
-    document.querySelector(".news-more")?.remove();
-    const tools = el("div", "news-tools");
-    const filter = el("select", "news-filter");
-    filter.setAttribute("aria-label", "Haber kategorisi");
-    const all = el("option", "", "Tüm kategoriler");
-    all.value = "";
-    filter.append(all);
-    for (const category of [...new Set(data.stories.map((s) => s.category))]) {
-      const option = el("option", "", category);
-      option.value = category;
-      filter.append(option);
+    } else hydrate(history.state);
+    window.dispatchEvent(
+      new CustomEvent("pulse:rendered", {
+        detail: { release_id: next.manifest.release_id },
+      }),
+    );
+    if (!window.PULSE_ARCHIVE) {
+      history.scrollRestoration = "manual";
+      if (!history.state?.pulse)
+        history.replaceState({ pulse: true, scroll: 0 }, "", location.href);
     }
-    const more = el("button", "news-more", "Daha fazla göster");
-    more.type = "button";
-    let visibleCount = 8;
-    const updateNews = () => {
-      let seen = 0;
-      for (const article of $("stories").children) {
-        const matches =
-          !filter.value || article.dataset.category === filter.value;
-        article.hidden = !matches || seen++ >= visibleCount;
-      }
-      more.hidden = seen <= visibleCount;
-      const shown = Math.min(seen, visibleCount);
-      $("story-count").textContent = `${shown} / ${seen} haber`;
-    };
-    filter.onchange = () => {
-      visibleCount = 8;
-      updateNews();
-    };
-    more.onclick = () => {
-      visibleCount += 8;
-      updateNews();
-    };
-    tools.append(filter);
-    $("stories").before(tools);
-    $("stories").after(more);
-    data.stories.forEach((s, index) => {
-      const article = el("article", "story");
-      article.dataset.category = s.category;
-      if (index >= 5) article.classList.add("story-compact");
-      const category = el("div", "category");
-      category.append(
-        el("span", "story-index", String(index + 1).padStart(2, "0")),
-        document.createTextNode(s.category),
-      );
-      if (s.image_url && rules.safeHttps(s.image_url)) {
-        const figure = el("figure"),
-          image = el("img", "story-image");
-        image.src =
-          window.PULSE_ARCHIVE &&
-          /^\.\.\/\.\.\/media\/[a-f0-9]+\.(jpg|png|webp|gif|svg)$/.test(
-            s.archive_image || "",
-          )
-            ? new URL(s.archive_image, release.url).href
-            : s.image_url;
-        image.alt = s.title;
-        image.loading = "lazy";
-        image.decoding = "async";
-        image.referrerPolicy = "no-referrer";
-        image.width = 800;
-        image.addEventListener(
-          "load",
-          () => {
-            image.width = image.naturalWidth;
-            image.height = image.naturalHeight;
-          },
-          { once: true },
-        );
-
-        image.addEventListener("error", () => figure.remove(), { once: true });
-        figure.append(
-          image,
-          el("figcaption", "", `Görsel kaynağı: ${s.source_name}`),
-        );
-        article.append(figure);
-      }
-      const heading = el("h3");
-      const detail = el("a", "story-detail-link", s.title);
-      detail.href = "haber/" + encodeURIComponent(s.id) + "/index.html";
-      heading.append(detail);
-      article.append(category, heading);
-      const link = el("a", "source-link", `${s.source_name} · Kaynağı oku →`);
-      link.href = s.source_url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      article.append(
-        el("p", "", s.brief || s.summary.split(/(?<=[.!?])\s+/)[0]),
-        link,
-      );
-      $("stories").append(article);
-    });
-    updateNews();
-    $("stories").setAttribute("aria-busy", "false");
-    $("notice").hidden = true;
-    player($("summary"), data.summary, release, "Günün sesli özeti");
-    player($("podcast"), data.podcast, release, data.podcast.title);
-    setupListening();
-    document.title = `PULSE ${section === "teknoloji" ? "Teknoloji" : "Oyun"} · Sayı ${String(data.issue).padStart(3, "0")} · ${formatted}`;
   }
-  function setupListening() {
-    const tabs = document.querySelectorAll(".listen-tab");
-    const panels = document.querySelectorAll(".listening-cards > section");
-    tabs.forEach((tab) => {
-      const activate = () => {
-        tabs.forEach((t) => {
-          t.setAttribute("aria-selected", String(t === tab));
-          t.tabIndex = t === tab ? 0 : -1;
-        });
-        panels.forEach((panel) => {
-          panel.hidden = panel.id !== tab.getAttribute("aria-controls");
-          if (panel.hidden) panel.querySelector("audio")?.pause();
-        });
-      };
-      tab.onclick = activate;
-      tab.onkeydown = (event) => {
-        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
-          return;
-        event.preventDefault();
-        const next =
-          event.key === "Home"
-            ? tabs[0]
-            : event.key === "End"
-              ? tabs[tabs.length - 1]
-              : [...tabs].find((t) => t !== tab);
-        next.click();
-        next.focus();
-      };
-    });
-    tabs[0]?.click();
-  }
-  window.addEventListener("pulse:ready", (event) => render(event.detail));
-  if (window.PULSE_RELEASE) render(window.PULSE_RELEASE);
+  window.addEventListener("pulse:ready", (event) => ready(event.detail));
+  window.addEventListener("pulse:locked", () => {
+    close.click();
+    release = null;
+    pendingNav?.abort();
+  });
+  if (window.PULSE_RELEASE) ready(window.PULSE_RELEASE);
 })();

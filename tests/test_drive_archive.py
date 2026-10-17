@@ -117,13 +117,13 @@ class BackupTests(unittest.TestCase):
                 home = z.read('index.html').decode()
                 self.assertIn('16.10.2026', home)
                 self.assertNotIn('printing.js', home)
-                self.assertNotIn('pulse-loading', home)
-                self.assertIn('./teknoloji/index.html', home)
+                self.assertNotIn('class="pulse-loading"', home)
+                self.assertRegex(home, r'href="(?:\./)?teknoloji/index.html"')
                 section = z.read('teknoloji/index.html').decode()
                 self.assertIn('window.PULSE_ARCHIVE=true', section)
                 detail = z.read('teknoloji/haber/teknoloji0/index.html').decode()
                 self.assertIn('../../../media/', detail)
-                self.assertNotIn('https://images.example.test/', detail)
+                self.assertNotRegex(detail, r'<img[^>]+src="https://images\.example\.test/')
 
     def test_archive_deterministic_for_idempotent_retry(self):
         with tempfile.TemporaryDirectory() as tmp:

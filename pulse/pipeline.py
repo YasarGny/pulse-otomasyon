@@ -114,7 +114,7 @@ def generate_audio(root, data):
         temp.replace(summary)
     data["summary"] = {
         "file": f"{section}/summary.mp3",
-        "title": "Günün sesli özeti",
+        "title": "Günün Özeti",
         "episode": data["issue"],
         **audio_info(summary, 20),
     }

@@ -27,6 +27,8 @@ PUBLIC_ROOTS = (
     "assets",
     "teknoloji",
     "oyun",
+    "haberler",
+    "podcastler",
     "gizlilik",
     "kosullar",
 )
@@ -95,8 +97,8 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
                 manifest = current
                 shutil.copytree(folder, output / "releases" / current["release_id"])
     if manifest.get("status") == "ready":
-        from pulse.details import build_details
-        build_details(output, output / "releases" / manifest["release_id"])
+        from pulse.pages import build_views
+        build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
     assert_public_tree(output)
     return manifest

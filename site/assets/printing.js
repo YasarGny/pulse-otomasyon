@@ -15,7 +15,17 @@
     if (text) n.textContent = text;
     return n;
   };
-  function lock(reason = "", mode = "printing") {
+  function lock(reason = "", mode = null) {
+    if (!mode) {
+      const at =
+        serverEpoch === null
+          ? null
+          : new Date(serverEpoch + performance.now() - observed);
+      mode =
+        at && at >= new Date(rules.expectedDate(at) + "T07:30:00+03:00")
+          ? "delayed"
+          : "printing";
+    }
     active = null;
     window.PULSE_RELEASE = null;
     shell.inert = true;
@@ -36,68 +46,99 @@
       const card = make("div", "pulse-print-card");
       const art = make("div", "press-scene");
       art.setAttribute("aria-hidden", "true");
-      art.innerHTML = `<svg class="press-illustration" viewBox="0 0 400 290" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="press-metal" x2="0" y2="1"><stop stop-color="#344356"/><stop offset="1" stop-color="#172234"/></linearGradient><linearGradient id="press-light"><stop stop-color="#f2a7cc" stop-opacity="0"/><stop offset=".5" stop-color="#f2a7cc"/><stop offset="1" stop-color="#f2a7cc" stop-opacity="0"/></linearGradient></defs>
-        <ellipse cx="200" cy="264" rx="148" ry="12" fill="#000" opacity=".25"/>
-        <rect x="67" y="64" width="266" height="130" rx="20" fill="url(#press-metal)" stroke="#526178"/>
-        <rect x="88" y="84" width="224" height="15" rx="7" fill="#0b111c"/>
-        <circle cx="300" cy="119" r="4" fill="#f2a7cc" class="press-led"/>
-        <path d="M92 147H308" stroke="#080e1a" stroke-width="13" stroke-linecap="round"/>
-        <g class="press-newspaper"><rect x="112" y="133" width="176" height="116" rx="3" fill="#eeeae5"/>
-        <text x="126" y="161" fill="#192232" font-size="22" font-family="Arial,sans-serif" font-weight="900" letter-spacing="-1">PULSE<tspan fill="#a34872">.</tspan></text>
-        <path d="M126 170H274" stroke="#192232"/>
-        <rect x="126" y="180" width="66" height="39" rx="2" fill="#658b94"/>
-        <path d="m128 213 19-22 14 13 10-8 19 18" stroke="#b6d3d4" stroke-width="2"/>
-        <path d="M204 182H273M204 190H273M204 198H273M204 206H255M126 230H274M126 237H252" stroke="#9a9ba0" stroke-width="3"/>
+      art.innerHTML = `<svg class="press-illustration" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <ellipse cx="200" cy="277" rx="123" ry="8" fill="#000" opacity=".15" stroke="none"/>
+        <path d="m91 49 14-8h202l-14 8Z" fill="#f0ece4" stroke="#a8a59f"/>
+        <path d="m293 49 14-8v203l-14 9Z" fill="#b8b5b0" stroke="#918f8c"/>
+        <rect x="91" y="49" width="202" height="17" rx="4" fill="#ece7df" stroke="#a8a59f"/>
+        <rect x="91" y="59" width="17" height="194" rx="5" fill="#e4dfd7" stroke="#aaa69f"/>
+        <rect x="276" y="59" width="17" height="194" rx="5" fill="#e4dfd7" stroke="#aaa69f"/>
+        <rect x="108" y="84" width="168" height="27" rx="13" fill="#d783a9" stroke="#9b5f7a"/>
+        <path d="M120 90h140" stroke="#efb9d1" stroke-width="3"/>
+        <rect x="108" y="127" width="168" height="22" rx="11" fill="#6d7176" stroke="#292c30"/>
+        <path d="M120 132h140" stroke="#999da2" stroke-width="2"/>
+        <rect x="92" y="238" width="201" height="15" rx="3" fill="#c9c4bc" stroke="#a8a59f"/>
+        <g class="press-newspaper" stroke="none"><rect x="131" y="144" width="122" height="121" rx="2" fill="#f0ece5"/>
+        <text x="142" y="193" fill="#202125" font-size="23" font-family="Arial,sans-serif" font-weight="800" letter-spacing="-1">PULSE<tspan fill="#ad366c">.</tspan></text>
+        <path d="M142 202h100" stroke="#4f5155"/>
+        <rect x="142" y="212" width="43" height="26" fill="#d387a7" rx="1"/>
+        <path d="M194 214h48m-48 7h48m-48 7h48m-100 18h100m-100 7h80" stroke="#acaaa7" stroke-width="3"/>
         </g>
-        <path d="M92 147H308" stroke="url(#press-light)" stroke-width="2"/>
-        <path d="M79 183v11a12 12 0 0 0 12 12h12m218-23v11a12 12 0 0 1-12 12h-12" stroke="#526178" stroke-width="2"/>
+        <rect x="108" y="146" width="168" height="23" rx="11" fill="#b5b7b9" stroke="#6c6f73"/>
+        <path d="M120 151h140" stroke="#d9d9d9" stroke-width="2"/>
+        <circle cx="99" cy="181" r="4" fill="#d783a9" stroke="#98607a"/>
+        <path d="M85 254h29m156 0h29" stroke="#8e8c89" stroke-width="5"/>
       </svg>`;
       if (mode === "offline") art.hidden = true;
       const status = make("p", "pulse-print-small");
       status.id = "printing-status";
       status.setAttribute("role", "status");
-      const retry = make("button", "retry", "Yayın durumunu kontrol et");
+      const retry = make("button", "retry", "Tekrar dene");
       retry.type = "button";
+      retry.hidden = mode === "printing";
       retry.addEventListener("click", () => check());
       card.append(
-        make("div", "pulse-print-brand", "PULSE"),
+        Object.assign(make("div", "pulse-print-brand"), {
+          innerHTML: "PULSE<span>.</span>",
+        }),
         art,
         make(
           "h1",
           "",
-          mode === "printing"
-            ? "Haberler baskıya giriyor!"
-            : "Yayına ulaşamadık.",
+          mode === "offline"
+            ? "Yayın durumu doğrulanamadı."
+            : mode === "delayed"
+              ? "Hazırlık devam ediyor."
+              : "Haberler baskıya giriyor!",
         ),
         make(
           "p",
           "",
-          mode === "printing"
-            ? "Gündemi toparlıyor, mikrofonları hazırlıyoruz."
-            : "Bağlantıyı kontrol edip yeniden deneyebilirsiniz.",
+          mode === "offline"
+            ? "Bağlantını kontrol edip yeniden deneyebilirsin."
+            : mode === "delayed"
+              ? "İki yayın tamamlandığında burada olacak."
+              : "Teknoloji ve oyun gündemi hazırlanıyor.",
         ),
         make(
           "div",
           "pulse-print-clock",
           mode === "printing"
-            ? "Yeni sayı 07:30’da, her şey hazır olduğunda."
-            : "",
+            ? "Yeni sayı hedefi 07:30."
+            : mode === "delayed"
+              ? "07:30 hedef saati aşıldı."
+              : "",
         ),
         status,
         retry,
       );
       overlay.append(card);
       document.body.append(overlay);
-      if (shell.contains(document.activeElement)) retry.focus();
+      if (shell.contains(document.activeElement)) {
+        const focusTarget = retry.hidden ? overlay.querySelector("h1") : retry;
+        focusTarget.tabIndex = -1;
+        focusTarget.focus();
+      }
     }
     document.getElementById("printing-status").textContent = reason;
     window.dispatchEvent(new CustomEvent("pulse:locked"));
   }
-  function unlock(manifest, editions, url) {
-    const changed = active !== manifest.release_id;
-    active = manifest.release_id;
-    window.PULSE_RELEASE = { manifest, editions, url };
+  function reveal() {
+    if (
+      !window.PULSE_RELEASE ||
+      document.getElementById("main")?.dataset.release !== active
+    )
+      return;
+    if (
+      serverEpoch !== null &&
+      !rules.isReady(
+        window.PULSE_RELEASE.manifest,
+        new Date(serverEpoch + performance.now() - observed),
+      )
+    ) {
+      lock();
+      return;
+    }
     const overlay = document.getElementById("pulse-printing");
     const hadFocus = overlay?.contains(document.activeElement);
     overlay?.remove();
@@ -105,16 +146,27 @@
     shell.removeAttribute("aria-hidden");
     document.documentElement.classList.remove("pulse-locked", "pulse-loading");
     document.getElementById("publication-loading")?.remove();
-    if (hadFocus) {
-      const main = document.getElementById("main");
-      main.tabIndex = -1;
-      main.focus();
-    }
+    if (hadFocus) document.getElementById("main").focus();
+  }
+  function unlock(manifest, editions, url) {
+    const changed = active !== manifest.release_id;
+    active = manifest.release_id;
+    window.PULSE_RELEASE = { manifest, editions, url };
+    // Verified JSON must not expose a cached HTML page from another release.
     if (changed)
       window.dispatchEvent(
         new CustomEvent("pulse:ready", { detail: window.PULSE_RELEASE }),
       );
   }
+  window.addEventListener("pulse:rendered", (event) => {
+    if (event.detail?.release_id === active) reveal();
+  });
+  window.addEventListener("pulse:render-error", () =>
+    lock(
+      "Sayfa güncel yayınla eşleşmedi. Yeniden kontrol edeceğiz.",
+      "offline",
+    ),
+  );
   async function get(url) {
     const response = await fetch(url, {
       cache: "no-store",
@@ -219,6 +271,10 @@
       lock();
   }, 1000);
   document.addEventListener("visibilitychange", () => {
+    document.documentElement.classList.toggle(
+      "document-hidden",
+      document.hidden,
+    );
     if (!document.hidden) {
       if (
         active &&
