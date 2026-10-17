@@ -1087,7 +1087,7 @@ html.document-hidden .press-newspaper {
     transform: translateY(0);
   }
   to {
-    transform: translateY(360px);
+    transform: translateY(320px);
   }
 }
 @media (min-width: 961px) {
@@ -2142,16 +2142,23 @@ body.has-mini {
 .site-shell :is(a, button, input, select) {
   scroll-margin-bottom: 96px;
 }
-.press-gear {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: press-drive 6s linear infinite;
+
+/* Match the approved print-room cards, with room for the full isometric newspaper. */
+.pulse-print-card {
+  max-width: 420px;
+  padding: 28px 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
 }
-@keyframes press-drive {
-  to {
-    transform: rotate(360deg);
+.press-scene {
+  width: min(360px, 100%);
+}
+@media (max-width: 640px) {
+  .pulse-print-card {
+    max-width: 380px;
+    padding: 24px 18px;
   }
-}
-html.document-hidden .press-gear {
-  animation-play-state: paused;
+  .press-scene {
+    width: 100%;
+  }
 }

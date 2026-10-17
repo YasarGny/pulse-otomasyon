@@ -29,12 +29,22 @@ until the owner has reviewed the working result and given final live approval.
   Speed cycles through 0.75 / 1 / 1.1 / 1.2 / 1.25 / 1.5 / 2. iOS uses device
   volume controls, explicitly labelled instead of a nonfunctional range slider.
   Legal pages use ordinary navigation.
-- The print room is a fully vector illustration. The back roller, clipped paper
-  path and front roller share one affine perspective; the front roller occludes
-  the paper at its exit. Paper advances continuously in a 12-second loop.
-  Reduced motion disables paper/gear movement; hidden tabs pause both. Connection
-  failure has a separate local newspaper illustration. A neutral checking skeleton
-  never claims printing before the manifest is known.
+- The print room uses an actual isometric 3D press model. The pink ink roll,
+  front ivory blanket roll and hidden impression roll share one scene; the
+  newspaper passes through the blanket/impression nip. The rendered paper mask
+  and SVG print projection come from that same camera, so ink cannot cross the
+  rollers or body. The browser animates only the projected print, with no WebGL
+  dependency or frame-by-frame video download. Reduced motion freezes the print;
+  hidden tabs pause it. Normal and delayed states share the model, connection
+  failure has its separate newspaper illustration. Only connection failure has
+  a manual retry button; normal preparation/delay keep polling automatically.
+- `scripts/render_press_scene.py` rebuilds the assets and the marked camera
+  projection in `printing.js` together. Use Blender 4.3+ and ffmpeg from the repo
+  root: `blender -b -t 5 --python scripts/render_press_scene.py`, then format
+  `site/assets/printing.js` with Prettier. The native scene and intermediate PNGs
+  stay in ignored `test-results/press-render`; only a small WebP and grayscale
+  occlusion mask ship to readers. Blender is an optional artwork tool, not a
+  production/CI Python dependency.
 - The manifest gate waits for both verified editions, all four MP3s **and HTML
   from the matching release**. Cached HTML is refreshed before the site is shown.
   A missing or mismatched page fails closed. No client-clock opening shortcut.
@@ -82,7 +92,7 @@ not a claim that the fixture headlines/photos are real reporting.
 Browser checks cover both themes, mobile/tablet/desktop widths, keyboard, axe,
 200% text enlargement, full-card/source separation, filter/back state, real MP3
 playback, speed/10-second seek/volume/mute, audio across reading navigation,
-image/audio errors, stale HTML, 07:30/06:00 gates and offline extraction.
+image/audio errors, camera/mask alignment, stale HTML, 07:30/06:00 gates and offline extraction.
 Managed Chromium may block `file://`; in that case the suite reports the policy
 and serves extracted files from an in-memory origin with external networking
 still offline. This is not a physical iPhone/Safari test or field performance data.

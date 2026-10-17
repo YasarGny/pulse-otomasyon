@@ -840,29 +840,52 @@ async function run(name, fn) {
         });
         await p.goto(base);
         await p.locator('.pulse-printing[data-mode="printing"]').waitFor();
-        assert(
-          await p
-            .locator(".press-paper-path")
-            .evaluate(
-              (n) =>
-                !!(
-                  n.compareDocumentPosition(
-                    document.querySelector(".press-front-roller"),
-                  ) & Node.DOCUMENT_POSITION_FOLLOWING
-                ),
-            ),
+        await p.waitForFunction(
+          () =>
+            performance
+              .getEntriesByType("resource")
+              .filter((r) => /press-(model|mask)/.test(r.name)).length === 2,
         );
-        assert(
-          await p
-            .locator(".press-back-roller")
-            .evaluate(
-              (n) =>
-                !!(
-                  n.compareDocumentPosition(
-                    document.querySelector(".press-paper-path"),
-                  ) & Node.DOCUMENT_POSITION_FOLLOWING
-                ),
-            ),
+        const maskCheck = await p.evaluate(async () => {
+          const shape = document.querySelector(".press-paper-path > g");
+          const projection = shape.transform.baseVal.consolidate().matrix;
+          const inverse = new DOMMatrix([
+            projection.a,
+            projection.b,
+            projection.c,
+            projection.d,
+            projection.e,
+            projection.f,
+          ]).inverse();
+          const image = new Image();
+          image.src = document
+            .querySelector(".press-occlusion-mask")
+            .getAttribute("href");
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = canvas.height = 640;
+          const context = canvas.getContext("2d");
+          context.drawImage(image, 0, 0, 640, 640);
+          const pixels = context.getImageData(0, 0, 640, 640).data;
+          let visible = 0,
+            outside = 0;
+          for (let y = 0; y < 640; y++)
+            for (let x = 0; x < 640; x++)
+              if (pixels[(y * 640 + x) * 4] > 200) {
+                visible++;
+                const uv = new DOMPoint(x + 0.5, y + 0.5).matrixTransform(
+                  inverse,
+                );
+                if (uv.x < -2 || uv.x > 242 || uv.y < -2 || uv.y > 322)
+                  outside++;
+              }
+          return { visible, outside };
+        });
+        assert(maskCheck.visible > 10000, "Rendered paper mask missing");
+        assert.equal(
+          maskCheck.outside,
+          0,
+          "Printed surface does not match the rendered camera",
         );
         assert.equal(
           await p
@@ -945,6 +968,7 @@ async function run(name, fn) {
           await p.locator(".pulse-print-card h1").innerText(),
           /devam ediyor/,
         );
+        assert(await p.locator(".pulse-print-card .retry").isHidden());
         await p.screenshot({
           path: "test-results/editor-delayed-mobile.png",
           fullPage: true,
