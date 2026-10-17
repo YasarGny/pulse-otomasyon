@@ -2,6 +2,16 @@
 (() => {
   "use strict";
   const base = new URL("../", document.currentScript.src);
+  const readingShell = document.querySelector(".site-shell");
+  const readingScroll = () =>
+    document.body.classList.contains("has-mini")
+      ? readingShell.scrollTop
+      : window.scrollY;
+  const scrollReadingTo = (top) =>
+    (document.body.classList.contains("has-mini")
+      ? readingShell
+      : window
+    ).scrollTo({ top, behavior: "instant" });
   const $ = (s, root = document) => root.querySelector(s);
   const all = (s, root = document) => [...root.querySelectorAll(s)];
   const make = (tag, cls, text) => {
@@ -148,6 +158,22 @@
   minibar.append(miniCover, miniTitle, miniPlay, miniMore, close);
   mini.append(minibar, miniSeek, miniDetails);
   host.append(mini);
+  new ResizeObserver(() => {
+    if (!mini.hidden)
+      document.documentElement.style.setProperty(
+        "--dock-space",
+        Math.ceil(window.innerHeight - mini.getBoundingClientRect().top + 12) +
+          "px",
+      );
+  }).observe(mini);
+  window.addEventListener("resize", () => {
+    if (!mini.hidden)
+      document.documentElement.style.setProperty(
+        "--dock-space",
+        Math.ceil(window.innerHeight - mini.getBoundingClientRect().top + 12) +
+          "px",
+      );
+  });
   const rates = [0.75, 1, 1.1, 1.2, 1.25, 1.5, 2];
   function title() {
     return selected
@@ -201,7 +227,21 @@
       !hasStarted ||
       (fullVisible && !mini.contains(full)) ||
       document.documentElement.classList.contains("pulse-locked");
-    document.body.classList.toggle("has-mini", !mini.hidden);
+    const docked = document.body.classList.contains("has-mini");
+    if (docked !== !mini.hidden) {
+      const top = readingScroll();
+      document.body.classList.toggle("has-mini", !mini.hidden);
+      if (!mini.hidden) {
+        document.documentElement.style.setProperty(
+          "--dock-space",
+          Math.ceil(
+            window.innerHeight - mini.getBoundingClientRect().top + 12,
+          ) + "px",
+        );
+        readingShell.scrollTop = top;
+        window.scrollTo({ top: 0, behavior: "instant" });
+      } else window.scrollTo({ top, behavior: "instant" });
+    }
     const rate = audio.playbackRate;
     speed.textContent = rate + "×";
     speed.setAttribute(
@@ -468,7 +508,12 @@
     if (!window.PULSE_ARCHIVE)
       try {
         history.replaceState(
-          { ...history.state, pulse: true, scroll: scrollY, list: listState },
+          {
+            ...history.state,
+            pulse: true,
+            scroll: readingScroll(),
+            list: listState,
+          },
           "",
           location.href,
         );
@@ -734,7 +779,7 @@
         : null;
       $("#main").focus({ preventScroll: true });
       if (anchor) anchor.scrollIntoView();
-      else scrollTo({ top: state?.scroll || 0, behavior: "instant" });
+      else scrollReadingTo(state?.scroll || 0);
     } catch (error) {
       if (controller !== pendingNav) return;
       // A hard navigation rechecks the manifest rather than trusting a mismatched page.

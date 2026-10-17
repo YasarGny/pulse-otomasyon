@@ -21,12 +21,17 @@ until the owner has reviewed the working result and given final live approval.
   publication navigation keeps audio alive, ordinary links and static full text
   remain usable without the enhancement. The mini player has seeking and an
   expandable panel with the same full controls (not a second audio element).
+  While the dock is visible, the reading pane reserves its measured height
+  (including the safe-area bottom gap); controls never cover text or links.
+  Scroll position and history restoration use the active reading pane.
   Speed cycles through 0.75 / 1 / 1.1 / 1.2 / 1.25 / 1.5 / 2. iOS uses device
   volume controls, explicitly labelled instead of a nonfunctional range slider.
   Legal pages use ordinary navigation.
 - The print room uses a local transparent 3D press asset with an independently
   animated SVG newspaper; connection failure uses its own newspaper illustration.
-  Reduced motion disables movement; hidden tabs pause the paper animation. A
+  Paper advances in one direction through a clipped output slot with a seamless
+  14-second feed, rather than reversing direction. Reduced motion disables
+  movement; hidden tabs pause the paper animation. A
   neutral checking skeleton never claims printing before the manifest is known.
 - The manifest gate waits for both verified editions, all four MP3s **and HTML
   from the matching release**. Cached HTML is refreshed before the site is shown.

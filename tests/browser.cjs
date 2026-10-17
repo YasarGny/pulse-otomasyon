@@ -519,6 +519,53 @@ async function run(name, fn) {
       },
     );
     await run(
+      "reading viewport and dock never overlap, including expanded controls and short phones",
+      async () => {
+        for (const width of [320, 390, 768, 1440]) {
+          await page.setViewportSize({ width, height: 568 });
+          for (const expanded of [false, true]) {
+            if (
+              ((await page
+                .locator(".mini-more")
+                .getAttribute("aria-expanded")) ===
+                "true") !==
+              expanded
+            )
+              await page.locator(".mini-more").click();
+            await page.waitForFunction(() => {
+              const content = document
+                .querySelector(".site-shell")
+                .getBoundingClientRect();
+              const dock = document
+                .querySelector(".persistent-audio")
+                .getBoundingClientRect();
+              return content.bottom <= dock.top && content.height >= 120;
+            });
+            const content = page.locator(".site-shell");
+            await content.evaluate((el) => (el.scrollTop = el.scrollHeight));
+            const footer = await page.locator(".foot a").last().boundingBox();
+            const dock = await page.locator(".persistent-audio").boundingBox();
+            assert(
+              footer.y + footer.height <= dock.y,
+              "Footer link obscured by player",
+            );
+            assert(
+              await content.evaluate((el) => el.scrollWidth <= el.clientWidth),
+              "Reading viewport horizontal overflow",
+            );
+            await noOverflow();
+          }
+        }
+        await page.locator(".mini-more").click();
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.locator(".site-shell").evaluate((el) => (el.scrollTop = 0));
+        await page.screenshot({
+          path: "test-results/editor-reading-reserved-mobile.png",
+          fullPage: true,
+        });
+      },
+    );
+    await run(
       "new audio selection replaces the single session; no simultaneous playback",
       async () => {
         await open("/");
@@ -806,6 +853,38 @@ async function run(name, fn) {
             getComputedStyle(document.querySelector(".press-newspaper"))
               .transform !== window.__paper,
         );
+        const animation = await p
+          .locator(".press-newspaper")
+          .evaluateHandle((n) => n.getAnimations()[0]);
+        await animation.evaluate((a) => a.pause());
+        const offsets = [];
+        for (let frame = 0; frame < 14; frame++) {
+          await animation.evaluate(
+            (a, ms) => (a.currentTime = ms),
+            frame * 1000,
+          );
+          offsets.push(
+            await p
+              .locator(".press-newspaper")
+              .evaluate(
+                (n) => new DOMMatrix(getComputedStyle(n).transform).m42,
+              ),
+          );
+          await p.screenshot({
+            path:
+              "test-results/printing-frame-" +
+              String(frame).padStart(2, "0") +
+              ".png",
+          });
+        }
+        assert(
+          offsets.every((value, i) => i === 0 || value > offsets[i - 1]),
+          "Paper must advance without reversing",
+        );
+        await animation.evaluate((a) => {
+          a.currentTime = 0;
+          a.play();
+        });
         await p.screenshot({
           path: "test-results/editor-printing-animated-mobile.png",
           fullPage: true,

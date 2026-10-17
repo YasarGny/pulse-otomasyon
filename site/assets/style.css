@@ -1019,7 +1019,7 @@ body.has-mini {
   height: auto;
 }
 .press-newspaper {
-  animation: paper-feed 5s ease-in-out infinite;
+  animation: paper-feed 14s linear infinite;
   transform-origin: center;
 }
 .pulse-print-card h1 {
@@ -1083,12 +1083,11 @@ html.document-hidden .press-newspaper {
   color: var(--muted);
 }
 @keyframes paper-feed {
-  0%,
-  100% {
-    transform: translateY(-10px);
+  from {
+    transform: translateY(0);
   }
-  50% {
-    transform: translateY(28px);
+  to {
+    transform: translateY(540px);
   }
 }
 @media (min-width: 961px) {
@@ -2003,4 +2002,31 @@ body.has-mini {
     width: 72px;
     height: 72px;
   }
+}
+
+/* Reserve a separate listening strip: the dock cannot cover article text or links. */
+body.has-mini {
+  height: 100dvh;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+body.has-mini .site-shell {
+  height: calc(100dvh - var(--dock-space, 140px));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 20px;
+}
+.persistent-audio {
+  max-height: calc(100dvh - 172px - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+body.has-mini .site-shell:focus-visible {
+  outline-offset: -4px;
+}
+
+.pulse-print-card h1 {
+  max-width: 310px;
+  font-size: clamp(32px, 5vw, 36px);
 }

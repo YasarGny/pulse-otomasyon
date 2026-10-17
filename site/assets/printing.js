@@ -57,14 +57,15 @@
         art.innerHTML = `<svg class="press-illustration" viewBox="0 0 1280 1280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs><linearGradient id="paper-shade" x2="0.2" y2="1"><stop stop-color="#f2eee6"/><stop offset="1" stop-color="#d8d3c9"/></linearGradient></defs>
           <image href="${new URL("assets/press-machine.webp", base).href}" width="1280" height="1280"/>
-          <g transform="matrix(.76 -.25 .38 .54 390 610)">
-            <g class="press-newspaper">
-              <rect x="0" y="0" width="720" height="500" rx="5" fill="url(#paper-shade)" stroke="#c2bbb0" stroke-width="4"/>
+          <defs><g id="press-sheet">
+              <rect x="0" y="0" width="720" height="540" rx="5" fill="url(#paper-shade)" stroke="#c2bbb0" stroke-width="4"/>
               <text x="42" y="105" fill="#202125" font-size="82" font-family="Arial,sans-serif" font-weight="900" letter-spacing="-4">PULSE<tspan fill="#ed3477">.</tspan></text>
               <path d="M42 135h636" stroke="#7c7b78" stroke-width="4"/>
               <rect x="42" y="164" width="266" height="150" fill="#d783a9"/>
               <path d="M342 176h336m-336 28h336m-336 28h336m-336 28h336m-336 28h336M42 350h636m-636 28h636m-636 28h636m-636 28h480" stroke="#a9a69f" stroke-width="13"/>
-            </g>
+          </g><clipPath id="press-output"><rect width="720" height="500"/></clipPath></defs>
+          <g transform="matrix(.76 -.25 .38 .54 390 610)">
+            <g clip-path="url(#press-output)"><g class="press-newspaper"><use href="#press-sheet"/><use href="#press-sheet" y="-540"/></g></g>
           </g>
         </svg>`;
       }
