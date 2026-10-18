@@ -52,6 +52,18 @@ module.exports = async (browser, run, base) => {
           await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
           assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           assert(await page.locator(".install-entry").evaluate(n => n.getBoundingClientRect().height >= 44));
+          const baselines = await page.evaluate(() =>
+            [".foot .brand", ".install-entry", ".foot-actions a"].map(selector => {
+              const node = document.querySelector(selector), style = getComputedStyle(node);
+              const range = document.createRange();
+              range.selectNodeContents(node.firstChild);
+              const canvas = document.createElement("canvas").getContext("2d");
+              canvas.font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
+              return range.getBoundingClientRect().bottom -
+                canvas.measureText(node.firstChild.textContent).fontBoundingBoxDescent;
+            }),
+          );
+          assert(Math.max(...baselines) - Math.min(...baselines) < 1);
           const report = await new AxeBuilder({ page }).include(".foot").analyze();
           assert.deepEqual(report.violations.map(v => v.id), []);
           await page.screenshot({path: `test-results/install-footer-${width}-${theme}.png`});
