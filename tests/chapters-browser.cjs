@@ -89,6 +89,46 @@ module.exports = async function(browser, run, base) {
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     }
   });
+  await run('historical playback retains its date and never activates today’s cards or chapters',async()=>{
+    await open('/teknoloji/dinle/');
+    const snapshot = await page.evaluate(()=>({asset:window.PULSE_RELEASE.editions.teknoloji.podcast,url:window.PULSE_RELEASE.url.href}));
+    const body = await (await context.request.get(new URL(snapshot.asset.file,snapshot.url).href)).body();
+    const oldId = '2026-10-15-' + 'a'.repeat(16);
+    await context.route('**/assets/episodes/index.json',route=>route.fulfill({json:{schema_version:1,episodes:[
+      {section:'teknoloji',publish_date:'2026-10-15',release_id:oldId,podcast:snapshot.asset}]
+    }}));
+    await context.route('**/releases/'+oldId+'/**',route=>route.fulfill({status:200,
+      headers:{'Content-Type':'audio/mpeg','Content-Length':String(body.length)},
+      body:route.request().method()==='HEAD'?Buffer.alloc(0):body}));
+    await open('/teknoloji/dinle/');
+    await page.locator('.history-start').click();
+    await page.waitForFunction(()=>!document.querySelector('audio').paused);
+    assert((await page.locator('audio').getAttribute('src')).includes(oldId));
+    assert.equal(await page.locator('.listen-player .audio-start').getAttribute('aria-pressed'),'false');
+    assert.equal(await page.locator('.episode-chapters [aria-current="true"]').count(),0);
+    await page.locator('.mini-more').click();
+    assert((await page.locator('.mini-subtitle').innerText()).includes('15.10.2026'));
+    await page.keyboard.press('Escape');
+    await page.locator('.episode-chapters [data-start="12"]').click();
+    await page.waitForFunction(()=>document.querySelector('audio').currentTime>=12);
+    assert(!(await page.locator('audio').getAttribute('src')).includes(oldId));
+    await context.unroute('**/assets/episodes/index.json');
+    await context.unroute('**/releases/'+oldId+'/**');
+  });
+  await run('daily gate locks news without stranding an already playing recording',async()=>{
+    await page.evaluate(()=>{
+      document.documentElement.classList.add('pulse-locked');
+      const overlay=document.createElement('div');overlay.className='pulse-printing';overlay.textContent='Haberler baskıya giriyor!';document.body.append(overlay);
+      window.dispatchEvent(new Event('pulse:locked'));
+    });
+    assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
+    await page.locator('.mini-more').click();
+    assert(await page.locator('.player-play').isVisible());
+    await page.locator('.player-play').click();
+    assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+    await page.locator('.mini-close').click();
+    assert(await page.locator('.persistent-audio').isHidden());
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };
