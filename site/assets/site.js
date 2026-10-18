@@ -2,6 +2,13 @@
 (() => {
   "use strict";
   const base = new URL("../", document.currentScript.src);
+  // Header/footer and app identity survive main-content swaps. Freeze their
+  // original targets before pushState changes the relative-URL base.
+  if (!window.PULSE_ARCHIVE)
+    for (const link of document.querySelectorAll(
+      '.nav a[href], .foot a[href], link[rel="manifest"], link[rel="icon"], link[rel="apple-touch-icon"]',
+    ))
+      link.href = new URL(link.getAttribute("href"), location.href).href;
   const readingScroll = () => window.scrollY;
   const scrollReadingTo = (top) =>
     window.scrollTo({ top, behavior: "instant" });
