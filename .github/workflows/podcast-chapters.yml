@@ -34,7 +34,9 @@ jobs:
           except Exception:
               import traceback
               Path('chapter-review').mkdir(exist_ok=True)
-              Path('chapter-review/error.txt').write_text(traceback.format_exc())
+              detail = traceback.format_exc()
+              Path('chapter-review/error.txt').write_text(detail)
+              print('::error::' + detail[-2500:].replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
               raise
           PY
       - uses: actions/upload-artifact@v4
