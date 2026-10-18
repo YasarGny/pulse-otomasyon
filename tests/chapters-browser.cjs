@@ -29,7 +29,11 @@ module.exports = async function(browser, run, base) {
     assert.equal(await page.locator('audio').count(),1);
     assert.equal(await page.locator('.player-chapters [data-start="28"]').getAttribute('aria-current'),'true');
     assert(await page.locator('.player-play').isVisible());
-    await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('error')));
+    const failedMedia = '**/releases/*/teknoloji/podcast.mp3';
+    await context.route(failedMedia,route=>route.abort('failed'));
+    await page.locator('audio').evaluate(a=>a.load());
+    await page.waitForFunction(()=>!!document.querySelector('audio').error);
+    await context.unroute(failedMedia);
     await page.locator('.player-chapters [data-start="12"]').click();
     await page.waitForFunction(()=>document.querySelector('audio').currentTime>=12 && !document.querySelector('audio').paused);
     assert(await page.locator('.player .retry').isHidden());
