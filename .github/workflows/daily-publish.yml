@@ -174,7 +174,8 @@ jobs:
             echo "release_path=$media_path" >> "$GITHUB_OUTPUT"
           elif [ "$REFRESH_AUDIO" = 'true' ]; then
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published --refresh-audio
-            echo "release_path=.pulse-work/$PULSE_DATE/audio-v4" >> "$GITHUB_OUTPUT"
+            audio_revision=$(python -c "from pulse.pipeline import AUDIO_REVISION; print(AUDIO_REVISION)")
+            echo "release_path=.pulse-work/$PULSE_DATE/audio-v$audio_revision" >> "$GITHUB_OUTPUT"
           else
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published
             echo "release_path=.pulse-work/$PULSE_DATE" >> "$GITHUB_OUTPUT"

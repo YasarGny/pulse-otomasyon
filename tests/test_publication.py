@@ -337,6 +337,10 @@ class ReleaseTests(unittest.TestCase):
             result = read_json(work / DATE / (section + ".json"))
             self.assertEqual(result["issue"], 1)
             self.assertEqual(
+                result.get("content_revision"),
+                read_json(self.release / (section + ".json")).get("content_revision"),
+            )
+            self.assertEqual(
                 result["stories"],
                 read_json(self.release / (section + ".json"))["stories"],
             )
@@ -352,7 +356,7 @@ class ReleaseTests(unittest.TestCase):
         turns = [
             {
                 "speaker": "Yaşar" if i % 2 == 0 else "Necdet",
-                "text": "Doğrulanmış notlar üzerine bir test sohbeti.",
+                "text": "PULSE ve OpenAI üzerine doğrulanmış bir test sohbeti.",
             }
             for i in range(12)
         ]
@@ -393,6 +397,15 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(edge.call_count, 1)
             self.assertEqual(edge.call_args.kwargs["voice"], "tr-TR-EmelNeural")
             self.assertEqual(two["podcast"]["title"], "Yeni Sekme")
+            from pulse.speech import pronunciation
+
+            self.assertEqual(
+                tts.call_args.args[0][0]["text"], pronunciation(turns[0]["text"])
+            )
+            self.assertNotEqual(tts.call_args.args[0], turns)
+            self.assertEqual(read_json(root / "teknoloji/turns.json")["turns"], turns)
+            self.assertIn("Pals", edge.call_args.kwargs["text"])
+            self.assertTrue((root / "teknoloji/podcast-spoken.json").exists())
         data["stories"][0]["title"] = "Changed after synthesis"
         with self.assertRaises(ValueError):
             generate_audio(root, data)
@@ -663,7 +676,8 @@ class ReleaseTests(unittest.TestCase):
         ]
         self.assertIn("Moradon FM", system)
         self.assertNotIn("Yeni Sekme", system)
-        self.assertIn("001", system)
+        self.assertNotIn("001", system)
+        self.assertIn("Sayı, bölüm", system)
 
     def test_published_site_restores_day_after_artifact_deletion(self):
         site = self.root / "published"

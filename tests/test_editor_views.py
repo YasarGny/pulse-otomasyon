@@ -45,7 +45,9 @@ class EditorViewsTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.temp.cleanup()
 
-    def test_section_stamp_uses_own_issue_when_numbers_differ(self):
+    def test_public_identity_is_date_based_even_when_internal_issue_numbers_differ(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             site = Path(tmp) / "site"
             shutil.copytree(self.site, site)
@@ -55,11 +57,35 @@ class EditorViewsTests(unittest.TestCase):
             data["issue"] = 7
             game.write_text(json.dumps(data))
             build_views(site, manifest)
-            self.assertIn("Sayı 007</span>", (site / "oyun/index.html").read_text())
-            self.assertIn(
-                "Sayı 001</span>", (site / "teknoloji/index.html").read_text()
+            for route in (
+                "oyun/index.html",
+                "teknoloji/index.html",
+                "index.html",
+                "teknoloji/dinle/index.html",
+            ):
+                text = (site / route).read_text()
+                self.assertNotIn("Sayı 007", text)
+                self.assertNotIn("Sayı 001", text)
+                self.assertIn("16.10.2026", text)
+
+    def test_navigation_exposes_both_categories_and_category_audio_is_not_mixed(self):
+        for section in ("teknoloji", "oyun"):
+            text = (self.site / section / "index.html").read_text()
+            from pulse.pages import navigation
+
+            self.assertIn(navigation("../", "news", section), text)
+            self.assertEqual(text.count('data-audio-section="' + section + '"'), 2)
+            self.assertNotIn(
+                'data-audio-section="'
+                + ("oyun" if section == "teknoloji" else "teknoloji")
+                + '"',
+                text,
             )
-            self.assertNotIn("Sayı 001</span>", (site / "index.html").read_text())
+        podcasts = (self.site / "podcastler/index.html").read_text()
+        self.assertEqual(podcasts.count('class="program-card"'), 2)
+        self.assertEqual(podcasts.count('class="program-cover-link"'), 2)
+        self.assertIn("400px", podcasts)
+        self.assertIn("Moradon FM", podcasts)
 
     def test_install_manifest_and_icons_are_public_and_reachable_from_deep_routes(self):
         from urllib.parse import urljoin

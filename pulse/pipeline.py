@@ -14,12 +14,12 @@ from pathlib import Path
 
 from pulse.editorial import create_edition, research, summary_script
 from pulse.history import exclude_published, restore_published
+from pulse.speech import pronunciation, spoken_turns, LEXICON_SHA256
 from pulse.publication import (
     SECTIONS,
     expected_date,
     TZ,
     audio_info,
-    category_allowed,
     issue_number,
     now,
     read_json,
@@ -29,7 +29,7 @@ from pulse.publication import (
     write_json,
 )
 
-AUDIO_REVISION = 4
+AUDIO_REVISION = 5
 
 
 def configure_transport():
@@ -55,20 +55,6 @@ def wait_for(date, clock):
         )
 
 
-def pronunciation(text):
-    # Established Edge TTS narrator and pronunciation rules, retained after migration.
-    for word, spoken in {
-        "PULSE": "Pals",
-        "AI": "yapay zeka",
-        "DeepMind": "Diip Maynd",
-        "AlphaFold": "Alfa Fold",
-        "Google": "Gugıl",
-        "Cloud": "Klaud",
-    }.items():
-        text = re.sub(r"\b" + re.escape(word) + r"\b", spoken, text, flags=re.I)
-    return text
-
-
 def generate_audio(root, data):
     import edge_tts
 
@@ -88,6 +74,7 @@ def generate_audio(root, data):
                 "issue": data["issue"],
                 "stories": data["stories"],
                 "audio_revision": AUDIO_REVISION,
+                "pronunciation_sha256": LEXICON_SHA256,
             },
             sort_keys=True,
             ensure_ascii=False,
@@ -99,6 +86,7 @@ def generate_audio(root, data):
     write_json(checkpoint, {"sha256": identity})
     script = summary_script(data)
     (folder / "summary.txt").write_text(script, encoding="utf-8")
+    (folder / "summary-spoken.txt").write_text(pronunciation(script), encoding="utf-8")
     summary = folder / "summary.mp3"
     if not valid_audio(summary, 20):
         temp = folder / "summary.partial.mp3"
@@ -152,11 +140,13 @@ def generate_audio(root, data):
         raise ValueError("Podcast dialogue differs from its approved review")
     if turns[0]["speaker"] != "Yaşar":
         raise ValueError("The main host must open the episode")
+    speech = spoken_turns(turns)
+    write_json(folder / "podcast-spoken.json", {"lexicon_sha256": LEXICON_SHA256, "canonical_turns_sha256": pulse_podcast_writer.dialogue_digest(turns), "turns": speech})
     podcast = folder / "podcast.mp3"
     if not valid_audio(podcast, minimum_podcast):
         temp = folder / "podcast.partial.mp3"
         pulse_podcast_audio.render(
-            turns, temp, strict_audio=True,
+            speech, temp, strict_audio=True,
             **({"checkpoint_dir": folder / "tts-parts"} if expanded(data) else {})
         )  # Existing Gemini Interactions API and custom voices.
         audio_info(temp, minimum_podcast)
@@ -203,7 +193,7 @@ def refresh_audio_release(work, date, game_start, previous):
         for section in SECTIONS:
             names.append(section + ".json")
             names.extend(section + "/" + name for name in (
-                "summary.mp3", "podcast.mp3", "input.json", "turns.json", "podcast-review.json", "summary.txt"
+                "summary.mp3", "podcast.mp3", "input.json", "turns.json", "podcast-review.json", "summary.txt", "summary-spoken.txt", "podcast-spoken.json"
             ))
         for name in names:
             origin, destination = root / name, root.parent / name
@@ -218,8 +208,6 @@ def refresh_audio_release(work, date, game_start, previous):
         restore_published(root, previous, date, game_start)
         return finish(verify_manifest(root, read_json(root / "release.json")))
     for section, data in editions.items():
-        data["stories"] = [s for s in data["stories"] if category_allowed(section, s["category"])]
-        data["content_revision"] = 2
         validate_content(data, section, date, game_start)
         path = root / (section + ".json")
         if not path.exists():

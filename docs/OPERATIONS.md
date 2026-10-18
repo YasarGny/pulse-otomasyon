@@ -338,3 +338,17 @@ Atomik yayın commit’inden sonra Pages üzerindeki HTML, JSON, dört MP3 ve ay
 uygulama/tasarım varlıklarının hash’leri denetlenir. Tarihi geçmiş veya hazırlık
 halindeki yayınla bu akış çalışmaz; yeni eksiksiz günlük sayıyı beklemek gerekir.
 Uygulama ekleme desteği yeni Secrets veya ek GitHub izni gerektirmez.
+
+## Telaffuz ve ses revizyonu
+
+`pulse/pronunciations.json`, iki ses üretim yolunun ortak ve gözden geçirilebilir
+telaffuz sözlüğüdür. PULSE için İngilizce **Pals** okunuşu kullanılır. Haber metni
+ve bağımsız denetimden geçmiş podcast metni değiştirilmez; yalnız sentez kopyası
+dönüştürülür. Bilinmeyen özel adlar tahmin edilmez. Sözlük değişince `AUDIO_REVISION`
+yükseltilmeli; özel sunucu sesleri ve çalışan Edge/Gemini yöntemleri korunmalıdır.
+
+Günlük workflow’un `refresh_audio=true` seçeneği yalnız güncel eksiksiz yayının
+seslerini yeni değişmez bir sürümde üretir. Tarih, dahili sayı ve haber seçkisi
+korunur; `audio-vN` yolu sabitten hesaplanır. İki özet ve iki podcast tam doğrulanmadan
+yeni sürüm açılmaz. Başarısız sentez mevcut sesleri değiştirmez. Sentez kopyaları
+ve sözlük/diyalog hash’leri private Actions kontrol noktasında kalır.

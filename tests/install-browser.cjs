@@ -219,6 +219,7 @@ module.exports = async (browser, run, base) => {
         await page.evaluate(() => navigator.mediaSession.playbackState),
         "playing",
       );
+      await page.locator(".mini-more").click();
       await page.locator(".player-speed").click();
       await page.waitForFunction(() => window.__position?.playbackRate === 1.1);
       await page.evaluate(() => window.__actions.pause());

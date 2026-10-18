@@ -74,9 +74,14 @@ def duration(value):
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def podcast_art(section, root):
+def podcast_art(section, root, *, large=False):
     name = "yeni-sekme" if section == "teknoloji" else "moradon-fm"
-    return f'<img class="program-art" src="{root}assets/covers/{name}-192.webp" srcset="{root}assets/covers/{name}-192.webp 192w, {root}assets/covers/{name}-768.webp 768w" sizes="(max-width: 640px) 88px, 120px" width="192" height="192" alt="" decoding="async">'
+    sizes = (
+        "(max-width: 640px) calc(100vw - 72px), 400px"
+        if large
+        else "(max-width: 640px) 88px, 120px"
+    )
+    return f'<img class="program-art" src="{root}assets/covers/{name}-192.webp" srcset="{root}assets/covers/{name}-192.webp 192w, {root}assets/covers/{name}-768.webp 768w" sizes="{sizes}" width="192" height="192" alt="" decoding="async">'
 
 
 def audio_card(section, kind, data, root):
@@ -91,7 +96,7 @@ def audio_card(section, kind, data, root):
         if kind == "podcast"
         else '<span class="summary-mark" aria-hidden="true">≡</span>'
     )
-    return f"""<section class="audio-box {kind}-box" data-audio-section="{section}" data-audio-kind="{kind}">{artwork}<div class="audio-copy"><h3><a href="{route}">{e(name)}</a></h3><p>{LABELS[section] + ' podcast’i · ' if kind == 'podcast' else ''}{duration(asset['duration'])}</p></div><button type="button" class="audio-start" data-section="{section}" data-kind="{kind}" aria-label="{e(title)}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7Z" fill="currentColor"/></svg></button></section>"""
+    return f"""<section class="audio-box {kind}-box" data-audio-section="{section}" data-audio-kind="{kind}">{artwork}<div class="audio-copy"><h3><a href="{route}">{e(name)}</a></h3><p>{LABELS[section] + ' podcast’i · ' if kind == 'podcast' else ''}{duration(asset['duration'])}</p></div><button type="button" class="audio-start" data-section="{section}" data-kind="{kind}" aria-label="{e(title)}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor"/></svg></button></section>"""
 
 
 def listening(editions, root, *, only=None):
@@ -105,6 +110,40 @@ def listening(editions, root, *, only=None):
     )
 
 
+def category_audio(section, data, root):
+    return f'<section class="section-audio" aria-label="{LABELS[section]} sesleri"><div><h2>Podcast</h2>{audio_card(section, "podcast", data, root)}</div><div><h2>Günün Özeti</h2>{audio_card(section, "summary", data, root)}</div></section>'
+
+
+def program_card(section, data, root):
+    title = NAMES[section]
+    route = root + section + "/dinle/index.html"
+    return f"""<section class="program-card" aria-labelledby="program-{section}"><a class="program-cover-link" href="{route}" aria-label="{title}: Bölüm ayrıntıları">{podcast_art(section, root, large=True)}</a><div class="program-body"><p class="eyebrow">{LABELS[section]} podcast’i</p><div class="program-title-row"><h2 id="program-{section}"><a href="{route}">{title}</a></h2><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{title}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button></div><p>Yaşar ve Necdet</p><p class="program-meta">{display_date(data['publish_date'])} · {duration(data['podcast']['duration'])}</p><a class="program-detail" href="{route}">Bölümü incele →</a></div></section>"""
+
+
+def navigation(root, page="", section=""):
+    active = (
+        "podcasts"
+        if page in ("podcasts", "listen")
+        else (section or ("home" if page == "home" else ""))
+    )
+    entries = [
+        ("home", "index.html", "Günün seçkisi"),
+        ("teknoloji", "teknoloji/index.html", "Teknoloji"),
+        ("oyun", "oyun/index.html", "Oyun"),
+        ("podcasts", "podcastler/index.html", "Podcast’ler"),
+    ]
+    return (
+        '<nav aria-label="Ana menü">'
+        + "".join(
+            f'<a href="{root}{route}"'
+            + (' aria-current="page"' if key == active else "")
+            + f">{label}</a>"
+            for key, route, label in entries
+        )
+        + "</nav>"
+    )
+
+
 def selection(editions):
     # Preserve each edition's verified editorial order. Represent both publications;
     # do not invent importance scores or a new AI news ranking in the web layer.
@@ -114,15 +153,7 @@ def selection(editions):
 
 def list_controls(section=None):
     if section:
-        links = '<a href="../haberler/index.html">Tümü</a>'
-        for key, label in LABELS.items():
-            current = ' aria-current="page"' if key == section else ""
-            links += f'<a href="../{key}/index.html"{current}>{label}</a>'
-        return (
-            '<div class="news-tools"><nav class="section-filters" aria-label="Yayınlar">'
-            + links
-            + '</nav><label class="category-filter">Konu<select class="news-filter"><option value="">Tüm konular</option></select></label><span class="story-count" id="story-count" role="status"></span></div>'
-        )
+        return '<div class="news-tools"><a class="all-news-link" href="../haberler/index.html">Tüm haberler ↗</a><label class="category-filter">Konu<select class="news-filter"><option value="">Tüm konular</option></select></label><span class="story-count" id="story-count" role="status"></span></div>'
     return """<div class="news-tools"><div class="section-filters" role="group" aria-label="Yayın filtresi"><button type="button" data-filter="" aria-pressed="true">Tümü</button><button type="button" data-filter="teknoloji" aria-pressed="false">Teknoloji</button><button type="button" data-filter="oyun" aria-pressed="false">Oyun</button></div><label class="category-filter">Konu<select class="news-filter"><option value="">Tüm konular</option></select></label><span class="story-count" id="story-count" role="status"></span></div>"""
 
 
@@ -161,8 +192,8 @@ def shell(
     attrs = f'data-page="{page}" data-section="{section}" data-story="{e(story_id)}"'
     return symbols(
         f"""<!doctype html>
-<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=11"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=7" defer></script><script src="{root}assets/site.js?v=11" defer></script><script src="{root}assets/install.js?v=1" defer></script></head>
-<body data-design="{DESIGN}" {attrs}><noscript><style>.pulse-loading .site-shell{{visibility:visible!important}}.site-shell{{display:block!important}}[data-audio-section],.theme-toggle{{display:none!important}}</style><p class="nojs-note">Bu kayıt {e(stamp)} tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak için JavaScript’i etkinleştirin.</p></noscript><div class="site-shell"><a class="skip" href="#main">İçeriğe geç</a><header class="nav"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><span class="nav-issue">{e(stamp)}</span><nav aria-label="Ana menü"><a href="{root}haberler/index.html" {'aria-current="page"' if page == 'news' else ''}>Haberler</a><a href="{root}podcastler/index.html" {'aria-current="page"' if page in ('podcasts', 'listen') else ''}>Podcast’ler</a></nav><button type="button" class="theme-toggle" aria-label="Açık temaya geç"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></header><main id="main" tabindex="-1" data-release="{e(release_id)}">{main}</main><footer class="foot"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><a href="{root}gizlilik/index.html">Gizlilik</a></footer></div></body></html>"""
+<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=12"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=7" defer></script><script src="{root}assets/site.js?v=12" defer></script><script src="{root}assets/install.js?v=1" defer></script></head>
+<body data-design="{DESIGN}" {attrs}><noscript><style>.pulse-loading .site-shell{{visibility:visible!important}}.site-shell{{display:block!important}}[data-audio-section],.audio-start,.listen-player,.theme-toggle{{display:none!important}}</style><p class="nojs-note">Bu kayıt {e(stamp)} tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak için JavaScript’i etkinleştirin.</p></noscript><div class="site-shell"><a class="skip" href="#main">İçeriğe geç</a><header class="nav"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><span class="nav-issue">{e(stamp)}</span>{navigation(root, page, section)}<button type="button" class="theme-toggle" aria-label="Açık temaya geç"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></header><main id="main" tabindex="-1" data-release="{e(release_id)}">{main}</main><footer class="foot"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><a href="{root}gizlilik/index.html">Gizlilik</a></footer></div></body></html>"""
     )
 
 
@@ -173,11 +204,7 @@ def build_views(output, manifest):
     release = output / "releases" / manifest["release_id"]
     editions = {s: read_json(release / f"{s}.json") for s in SECTIONS}
     date = display_date(manifest["publish_date"])
-    stamp = (
-        f'{date} · Sayı {editions["teknoloji"]["issue"]:03d}'
-        if editions["teknoloji"]["issue"] == editions["oyun"]["issue"]
-        else date
-    )
+    stamp = date
 
     def save(route, main, **kwargs):
         path = output / route / "index.html"
@@ -187,11 +214,7 @@ def build_views(output, manifest):
             main,
             route=route,
             release_id=manifest["release_id"],
-            stamp=(
-                f'{date} · Sayı {editions[kwargs["section"]]["issue"]:03d}'
-                if kwargs.get("section") in editions
-                else stamp
-            ),
+            stamp=stamp,
             **kwargs,
         )
         if structured:
@@ -229,18 +252,27 @@ def build_views(output, manifest):
             f'{LABELS[s]} {len(editions[s]["stories"])}'
             for s in ([section] if section else SECTIONS)
         )
-        main = f'<a class="back" href="../index.html">← Günün seçkisi</a><header class="page-heading"><h1>{title}</h1><p>{count}</p></header>{listing(editions, root, section=section)}{listening(editions, root, only=section)}'
+        audio = category_audio(section, editions[section], root) if section else ""
+        main = f'<header class="page-heading"><h1>{title}</h1><p>{count}</p></header>{audio}{listing(editions, root, section=section)}'
         save(route, main, title=f"{title} · PULSE", page="news", section=section or "")
     save(
         "podcastler/",
-        '<header class="page-heading"><h1>Bugünün sesleri</h1><p>Yaşar ve Necdet ile.</p></header>'
-        + listening(editions, "../"),
+        '<header class="page-heading"><h1>Podcast’ler</h1></header><div class="program-grid">'
+        + "".join(
+            program_card(section, editions[section], "../") for section in SECTIONS
+        )
+        + '</div><section class="podcast-summaries" aria-labelledby="summary-title"><h2 id="summary-title">Günün Özeti</h2><div class="summary-cards">'
+        + "".join(
+            audio_card(section, "summary", editions[section], "../")
+            for section in SECTIONS
+        )
+        + "</div></section>",
         page="podcasts",
-        title="Podcast’ler ve Günün Özeti · PULSE",
+        title="Podcast’ler · PULSE",
     )
     for section in SECTIONS:
         data = editions[section]
-        main = f"""<a class="back" href="../../{section}/index.html">← {LABELS[section]} yayını</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p class="episode-hosts">Yaşar ve Necdet</p><p class="detail-meta">{date} · Sayı {data['issue']:03d} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
+        main = f"""<a class="back" href="../../{section}/index.html">← {LABELS[section]} yayını</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p class="episode-hosts">Yaşar ve Necdet</p><p class="detail-meta">{date} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{NAMES[section]}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button><span>Dinle</span></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
         save(
             section + "/dinle/",
             main,
