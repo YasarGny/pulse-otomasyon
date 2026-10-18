@@ -1,6 +1,7 @@
 """Optional final-audio transcription + independent topic review; no synthesis."""
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -96,4 +97,5 @@ if __name__ == '__main__':
     parser.add_argument('--release', required=True)
     parser.add_argument('--previous')
     args = parser.parse_args()
+    os.environ["PULSE_USAGE_LOG"] = str(Path(args.release) / "api-usage.jsonl")
     prepare(args.release, args.previous)
