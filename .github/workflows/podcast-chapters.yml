@@ -95,6 +95,7 @@ jobs:
               manifest = json.loads(Path('.published/data/publication.json').read_text())
               edition = json.loads((Path('.published/releases') / manifest['release_id'] / (section + '.json')).read_text())
               asset = edition['podcast']
+              transcript['canonical_headlines'] = [story['title'] for story in edition['stories']]
               try:
                   result = propose(transcript, asset, gemini)
               except Exception as error:
