@@ -17,6 +17,7 @@ class SpeechTests(unittest.TestCase):
         self.assertEqual(len(LEXICON_SHA256), 64)
 
     def test_longest_match_word_boundaries_and_apostrophes(self):
+        self.assertEqual(pronunciation("Pulse pulse PULSE"), "Pals Pals Pals")
         self.assertEqual(
             pronunciation("OpenAI'ın ChatGPT'si; STEAM DECK. PULSE'ta."),
             "Oupın Ey Ay'ın Çet Ci Pi Ti'si; Stim Dek. Pals'ta.",

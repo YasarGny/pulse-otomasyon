@@ -1,5 +1,15 @@
 # PULSE işletim ve güvenli geçiş rehberi
 
+## Manuel ses üretimi için onay
+
+Arayüz düzeltmesi veya dağıtım onayı, yeniden ses üretimi onayı değildir.
+Manuel gerçek ses üretimi, `refresh_audio`, `expanded_issue` veya günlük üretim
+işini elle başlatmadan önce kullanıcıdan açık onay alınır. Arayüz değişiklikleri
+`refresh-website.yml` ile mevcut dört ses dosyasını koruyarak yayımlanır.
+Mevcut onaylı günlük otomasyon bu manuel müdahalelerden ayrıdır.
+PULSE seslendirmesi **Pals** olmalıdır; özet ve podcast ortak telaffuz kopyasını
+kullanır, özgün haber ve onaylı konuşma metinlerindeki adlar değiştirilmez.
+
 Kullanıcı 16 Ekim 2026'da canlı geçişi ve ardından eski Notion sisteminin
 temizlenmesini açıkça onayladı. `live_enabled` kod kapısı açıktır; canlı işler ayrıca
 `PULSE_LIVE_APPROVED=true` gerektirir. Günlük cron varsayılan olarak açıktır;

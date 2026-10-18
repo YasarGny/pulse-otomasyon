@@ -136,6 +136,16 @@ on browser/OS policy. Browser API checks are not a physical-device UI test.
 
 ## Routes and offline backup
 
+Section lists never link to the mixed list under a misleading "Tüm haberler"
+label. "Daha fazla haber" expands the current section only; resetting the topic
+filter retains that section and returns keyboard focus to an available control.
+Opening an article records its originating selection/list, topic filter, revealed
+count, scroll position and focused story in the browser history. "Haberlere dön"
+uses that history entry rather than pushing a fresh category page; browser back
+and forward retain the same behavior. The context survives an article reload and
+is scoped to the verified release. A directly opened article without that context
+falls back to its own category. Hash anchors do not override restored back-scroll.
+
 `/`, `/haberler/`, `/podcastler/`, `/teknoloji/`, `/oyun/`, each section's
 `/dinle/` and `/haber/<id>/` are built from the same validated daily data.
 The offline ZIP includes those pages, local images and the original four MP3s.

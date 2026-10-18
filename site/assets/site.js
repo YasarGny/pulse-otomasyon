@@ -52,6 +52,7 @@
     pageEvents = null,
     pendingNav = null,
     listState = null;
+  let renderedURL = new URL(location.href);
   let selectedDuration = 0,
     loading = false,
     failed = false,
@@ -561,19 +562,48 @@
     update();
   });
   function saveState() {
-    if (!window.PULSE_ARCHIVE)
+    if (
+      release && !window.PULSE_ARCHIVE &&
+      renderedURL.pathname === location.pathname &&
+      renderedURL.search === location.search
+    )
       try {
         history.replaceState(
           {
             ...history.state,
             pulse: true,
+            releaseId: release?.manifest.release_id,
             scroll: readingScroll(),
             list: listState,
+            focusStory:
+              document.activeElement?.closest(".story")?.dataset.story || null,
           },
           "",
           location.href,
         );
       } catch (_) {}
+  }
+  window.addEventListener("pagehide", saveState);
+  document.addEventListener("scrollend", () => {
+    if (release) saveState();
+  });
+  function readerReturn(state = history.state) {
+    const origin = state?.readerReturn;
+    if (!origin || origin.state?.releaseId !== release?.manifest.release_id)
+      return null;
+    try {
+      const url = new URL(origin.url);
+      const routes = [
+        "", "index.html", "haberler/", "haberler/index.html",
+        "teknoloji/", "teknoloji/index.html", "oyun/", "oyun/index.html",
+      ];
+      if (
+        url.origin === base.origin &&
+        routes.some((route) => url.pathname === new URL(route, base).pathname)
+      )
+        return origin;
+    } catch (_) {}
+    return null;
   }
   function setupList(state) {
     const stories = $("#stories");
@@ -655,13 +685,13 @@
     $(".reset-filter").addEventListener(
       "click",
       () => {
-        filter = "";
+        filter = document.body.dataset.section || "";
         category = "";
         limit = 8;
         categories();
         refresh();
         saveState();
-        buttons[0]?.focus();
+        (buttons[0] || select).focus();
       },
       { signal: pageEvents.signal },
     );
@@ -671,6 +701,9 @@
   function hydrate(state) {
     pageEvents?.abort();
     pageEvents = new AbortController();
+    const articleBack = $(".article-reader .back");
+    const origin = readerReturn(state);
+    if (articleBack && origin) articleBack.href = origin.url;
     for (const image of all(".story-image")) {
       const frame = image.closest(".image-frame");
       if (!frame) continue;
@@ -781,6 +814,7 @@
     return doc;
   }
   function swap(doc, state) {
+    renderedURL = new URL(location.href);
     const main = $("#main"),
       incoming = $("#main", doc);
     main.className = incoming.className;
@@ -837,13 +871,32 @@
     try {
       if (!pop) saveState();
       const doc = await documentAt(url, controller.signal);
-      if (!pop) history.pushState({ pulse: true, scroll: 0 }, "", url);
+      if (controller !== pendingNav) return;
+      if (pop && state?.releaseId !== release.manifest.release_id) state = null;
+      if (!pop) {
+        const origin =
+          ["home", "news"].includes(document.body.dataset.page) &&
+          doc.body.dataset.page === "article"
+            ? { url: location.href, state: history.state }
+            : null;
+        state = {
+          pulse: true, releaseId: release.manifest.release_id,
+          scroll: 0, readerReturn: origin,
+        };
+        history.pushState(state, "", url);
+      }
       swap(doc, state);
       const anchor = url.hash
         ? document.getElementById(decodeURIComponent(url.hash.slice(1)))
         : null;
       $("#main").focus({ preventScroll: true });
-      if (anchor) anchor.scrollIntoView();
+      if (pop && state?.focusStory)
+        all(".story")
+          .find((story) => story.dataset.story === state.focusStory)
+          ?.querySelector(".story-detail-link")
+          ?.focus({ preventScroll: true });
+      if (pop && state?.pulse) scrollReadingTo(state.scroll || 0);
+      else if (anchor) anchor.scrollIntoView();
       else scrollReadingTo(state?.scroll || 0);
     } catch (error) {
       if (controller !== pendingNav) return;
@@ -885,6 +938,10 @@
     )
       return;
     event.preventDefault();
+    if (a.matches(".article-reader .back") && readerReturn()) {
+      history.back();
+      return;
+    }
     navigate(url);
   });
   window.addEventListener("popstate", (event) => {
@@ -905,7 +962,9 @@
         window.dispatchEvent(new Event("pulse:render-error"));
         return;
       }
-    } else hydrate(history.state);
+    } else hydrate(
+      history.state?.releaseId === next.manifest.release_id ? history.state : null,
+    );
     window.dispatchEvent(
       new CustomEvent("pulse:rendered", {
         detail: { release_id: next.manifest.release_id },
@@ -914,7 +973,12 @@
     if (!window.PULSE_ARCHIVE) {
       history.scrollRestoration = "manual";
       if (!history.state?.pulse)
-        history.replaceState({ pulse: true, scroll: 0 }, "", location.href);
+        history.replaceState(
+          { pulse: true, releaseId: next.manifest.release_id, scroll: 0 },
+          "", location.href,
+        );
+      else if (history.state.releaseId === next.manifest.release_id)
+        scrollReadingTo(history.state.scroll || 0);
     }
   }
   window.addEventListener("pulse:ready", (event) => ready(event.detail));

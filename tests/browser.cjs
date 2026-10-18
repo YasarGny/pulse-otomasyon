@@ -388,10 +388,10 @@ async function run(name, fn) {
         await open("/expanded/haberler/");
         await page.locator('[data-filter="oyun"]').click();
         await page.locator(".news-more").click();
-        await page
-          .locator("#stories .story:visible .story-detail-link")
-          .last()
-          .click();
+        const link = page.locator("#stories .story:visible .story-detail-link").last();
+        await link.scrollIntoViewIfNeeded();
+        const position = await page.evaluate(() => scrollY);
+        await link.click();
         await page.waitForURL("**/haber/**");
         await page.goBack();
         await page.waitForSelector("#stories");
@@ -402,6 +402,86 @@ async function run(name, fn) {
           "true",
         );
         assert.equal(await page.locator("#stories .story:visible").count(), 16);
+        assert(Math.abs(await page.evaluate(() => scrollY) - position) <= 2);
+      },
+    );
+    await run(
+      "article return link restores its exact origin, filters, pagination and reading position",
+      async () => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        for (const route of ["/expanded/teknoloji/", "/expanded/oyun/", "/expanded/haberler/#main"]) {
+          await open(route);
+          if (route.includes("haberler"))
+            await page.locator('[data-filter="oyun"]').click();
+          await page.locator(".news-filter").selectOption("BİLİM");
+          await page.locator(".news-more").click();
+          const link = page.locator("#stories .story:visible .story-detail-link").last();
+          await link.scrollIntoViewIfNeeded();
+          const origin = page.url();
+          const position = await page.evaluate(() => scrollY);
+          const story = await link.innerText();
+          await link.click();
+          await page.waitForSelector(".article-reader");
+          // Return context also survives reloading a shared article tab.
+          await page.reload();
+          await page.waitForFunction(() => !!window.PULSE_RELEASE);
+          const historyLength = await page.evaluate(() => history.length);
+          assert.equal(await page.locator(".article-reader .back").getAttribute("href"), origin);
+          await page.locator(".article-reader .back").click();
+          await page.waitForSelector("#stories");
+          assert.equal(page.url(), origin);
+          assert.equal(await page.locator(".news-filter").inputValue(), "BİLİM");
+          assert.equal(await page.locator("#stories .story:visible").count(), 10);
+          assert.equal(await page.locator(":focus").innerText(), story);
+          assert(Math.abs(await page.evaluate(() => scrollY) - position) <= 2);
+          assert.equal(await page.evaluate(() => history.length), historyLength);
+          await page.goForward();
+          await page.waitForSelector(".article-reader");
+          assert.equal(await page.locator("h1").innerText(), story);
+          await page.goBack();
+          await page.waitForSelector("#stories");
+        }
+      },
+    );
+    await run(
+      "selection return stays on selection and direct article links fall back to their category",
+      async () => {
+        await open("/expanded/");
+        const link = page.locator(".home-news .story-detail-link").last();
+        await link.scrollIntoViewIfNeeded();
+        const position = await page.evaluate(() => scrollY);
+        const direct = await link.getAttribute("href");
+        await link.click();
+        await page.waitForSelector(".article-reader");
+        await page.locator(".back").click();
+        await page.waitForSelector(".daily-selection");
+        assert.equal(new URL(page.url()).pathname, "/expanded/");
+        assert(Math.abs(await page.evaluate(() => scrollY) - position) <= 2);
+        await open(new URL(direct, base + "/expanded/").pathname);
+        await page.locator(".back").click();
+        await page.waitForSelector("#stories");
+        assert(["teknoloji", "oyun"].includes(await page.locator("body").getAttribute("data-section")));
+      },
+    );
+    await run(
+      "category lists have no misleading combined-list shortcut and reset keeps their section",
+      async () => {
+        for (const section of ["teknoloji", "oyun"]) {
+          await open("/expanded/" + section + "/");
+          assert.equal(await page.locator(".all-news-link").count(), 0);
+          await page.locator(".news-filter").evaluate((select) => {
+            select.add(new Option("Missing test topic", "missing"));
+            select.value = "missing";
+            select.dispatchEvent(new Event("change"));
+          });
+          await page.locator(".reset-filter").click();
+          assert(await page.locator(".news-filter").evaluate((select) => select === document.activeElement));
+          await page.locator(".news-more").click();
+          for (const story of await page.locator("#stories .story:visible").all())
+            assert.equal(await story.getAttribute("data-section"), section);
+          await noOverflow();
+        }
+        await page.setViewportSize({ width: 1440, height: 1000 });
       },
     );
     await run(
