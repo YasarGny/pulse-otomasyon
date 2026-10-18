@@ -950,7 +950,10 @@
       query = search.value.slice(0, 160); limit = 8; refresh();
       clearTimeout(timer); timer = setTimeout(saveState, 300);
     }, { signal: pageEvents.signal });
-    clearSearch.onclick = () => { query = search.value = ""; limit = 8; save(); search.focus(); };
+    clearSearch.onclick = () => {
+      query = search.value = ""; limit = 8;
+      searchToggle.setAttribute("aria-expanded","true"); save(); search.focus();
+    };
     topicToggle.onclick = () => {
       options.replaceChildren(...available().map(category => {
         const label = make("label", "topic-option");
@@ -977,7 +980,8 @@
     $(".news-more").onclick = () => { limit += 8; save(); };
     $(".reset-filter").onclick = () => {
       filter = document.body.dataset.section || ""; categories = []; query = search.value = "";
-      limit = 8; save(); (topicToggle.hidden ? searchToggle : topicToggle).focus();
+      limit = 8; save();
+      (topicToggle.hidden ? (search.getClientRects().length ? search : searchToggle) : topicToggle).focus();
     };
     refresh();
   }

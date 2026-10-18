@@ -80,7 +80,10 @@ module.exports = async function(browser, run, base) {
     await page.locator('.search-toggle').click();
     await page.locator('.news-search').fill('no-match');
     assert(await page.locator('.empty-filter').isVisible());
+    await page.locator('.search-toggle').click();
     await page.locator('.search-clear').click();
+    assert(await page.locator('.news-search').isVisible());
+    assert(await page.locator('.news-search').evaluate(input=>input===document.activeElement));
     assert.equal(await page.locator('.filter-chip').count(),1);
     for(const story of await page.locator('#stories .story:visible').all())
       assert.equal(await story.getAttribute('data-section'),'teknoloji');
