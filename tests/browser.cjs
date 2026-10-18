@@ -660,6 +660,70 @@ async function run(name, fn) {
       },
     );
     await run(
+      "persistent shell links retain root targets across articles, legal pages and home",
+      async () => {
+        await open("/");
+        const articleURL = await page
+          .locator(".selection-grid .story-detail-link")
+          .first()
+          .getAttribute("href");
+        const deepURL = new URL(articleURL, base + "/").pathname;
+        await page.locator(".podcast-box .audio-start").first().click();
+        await page.waitForFunction(
+          () => document.querySelector("audio").currentTime > 0.1,
+        );
+        await page
+          .locator("audio")
+          .evaluate((a) => (a.dataset.continuity = "shell-links"));
+        await page
+          .locator(".selection-grid .story-detail-link")
+          .first()
+          .click();
+        await page.waitForFunction(
+          () => document.body.dataset.page === "article",
+        );
+        for (const [selector, route, identity] of [
+          ['.foot a[href*="gizlilik"]', "/gizlilik/index.html", "legal"],
+          ['.nav nav a[href*="haberler"]', "/haberler/index.html", "news"],
+          [
+            '.nav nav a[href*="podcastler"]',
+            "/podcastler/index.html",
+            "podcasts",
+          ],
+          [".nav .brand", "/index.html", "home"],
+        ]) {
+          await page.locator(selector).click();
+          await page.waitForFunction(
+            (identity) => document.body?.dataset.page === identity,
+            identity,
+          );
+          assert.equal(new URL(page.url()).pathname, route);
+          assert.equal(
+            await page.locator("audio").evaluate((a) => a.dataset.continuity),
+            "shell-links",
+          );
+          assert.equal(
+            await page.locator("audio").evaluate((a) => a.paused),
+            false,
+          );
+          assert.equal(
+            await page.locator('link[rel="manifest"]').getAttribute("href"),
+            base + "/manifest.webmanifest",
+          );
+        }
+        await open(deepURL);
+        assert.equal(
+          await page.locator('.foot a[href*="gizlilik"]').getAttribute("href"),
+          base + "/gizlilik/index.html",
+        );
+        await page.locator(".nav .brand").click();
+        await page.waitForFunction(
+          () => document.body?.dataset.page === "home",
+        );
+        assert.equal(new URL(page.url()).pathname, "/index.html");
+      },
+    );
+    await run(
       "program visit never auto-plays or shows an unstarted mini-player",
       async () => {
         await open("/teknoloji/dinle/");

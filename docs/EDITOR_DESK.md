@@ -18,7 +18,9 @@ the applicable owner approval and passing release checks.
   artwork, not a game screenshot. The covers also appear in the full/mini player
   and supported browser media controls.
 - `site.js`: progressive list filtering and one persistent audio element. Internal
-  publication navigation keeps audio alive, ordinary links and static full text
+  publication navigation keeps audio alive. Persistent header/footer and app-icon/
+  manifest links retain their initial absolute targets across history changes;
+  their URLs cannot drift into a nested article directory. Ordinary links and static full text
   remain usable without the enhancement. The mini player has seeking and an
   expandable panel with the same full controls (not a second audio element).
   The compact player is a 60px floating launcher, not a second scroll frame.
