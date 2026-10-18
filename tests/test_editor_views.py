@@ -166,7 +166,8 @@ class EditorViewsTests(unittest.TestCase):
     def test_article_source_and_complete_body_are_in_html_without_a_fetch(self):
         article = (self.site / "teknoloji/haber/teknoloji0/index.html").read_text()
         self.assertIn("article-text", article)
-        self.assertEqual(article.count('class="source-link"'), 2)
+        self.assertEqual(article.count('class="source-link"'), 1)
+        self.assertNotIn('class="article-source"', article)
         self.assertIn("https://example.com/teknoloji/0", article)
         self.assertIn("Görsel kaynağı", article)
         self.assertIn('property="og:type" content="article"', article)
