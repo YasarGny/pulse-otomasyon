@@ -52,18 +52,24 @@ module.exports = async (browser, run, base) => {
           await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
           assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
           assert(await page.locator(".install-entry").evaluate(n => n.getBoundingClientRect().height >= 44));
-          const baselines = await page.evaluate(() =>
-            [".foot .brand", ".install-entry", ".foot-actions a"].map(selector => {
-              const node = document.querySelector(selector), style = getComputedStyle(node);
-              const range = document.createRange();
-              range.selectNodeContents(node.firstChild);
-              const canvas = document.createElement("canvas").getContext("2d");
-              canvas.font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
-              return range.getBoundingClientRect().bottom -
-                canvas.measureText(node.firstChild.textContent).fontBoundingBoxDescent;
-            }),
-          );
-          assert(Math.max(...baselines) - Math.min(...baselines) < 1);
+          const alignment = await page.evaluate(() => {
+            const baselines = [".foot .brand", ".install-entry", ".foot-actions a"].map(selector => {
+              const node = document.querySelector(selector), text = node.firstChild;
+              const wrapper = document.createElement("span"), marker = document.createElement("span");
+              marker.style.cssText = "display:inline-block;width:0;height:0;padding:0;margin:0;border:0;vertical-align:baseline";
+              node.insertBefore(wrapper, text);
+              wrapper.append(text, marker);
+              const baseline = marker.getBoundingClientRect().top;
+              wrapper.replaceWith(text);
+              return baseline;
+            });
+            const logo = document.querySelector(".foot .brand").getBoundingClientRect();
+            const actions = document.querySelector(".foot-actions").getBoundingClientRect();
+            return { baselines, wrapped: actions.top >= logo.bottom - 1, gap: actions.top - logo.bottom };
+          });
+          const sameRow = alignment.wrapped ? alignment.baselines.slice(1) : alignment.baselines;
+          assert(Math.max(...sameRow) - Math.min(...sameRow) < 1, JSON.stringify(alignment));
+          if (alignment.wrapped) assert(alignment.gap >= 7, JSON.stringify(alignment));
           const report = await new AxeBuilder({ page }).include(".foot").analyze();
           assert.deepEqual(report.violations.map(v => v.id), []);
           await page.screenshot({path: `test-results/install-footer-${width}-${theme}.png`});
