@@ -380,3 +380,45 @@ seslerini yeni değişmez bir sürümde üretir. Tarih, dahili sayı ve haber se
 korunur; `audio-vN` yolu sabitten hesaplanır. İki özet ve iki podcast tam doğrulanmadan
 yeni sürüm açılmaz. Başarısız sentez mevcut sesleri değiştirmez. Sentez kopyaları
 ve sözlük/diyalog hash’leri private Actions kontrol noktasında kalır.
+
+## Kalıcı oynatıcı, konu işaretleri ve sınırlı geçmiş yayınlar
+
+`assets/listening.js` opsiyonel konu verisini son MP3 SHA-256 kimliğine bağlar.
+`site/assets/chapters/<mp3-sha256>.json` yalnız denetlenmiş kamuya açık başlıkları
+ve gerçek başlangıç saniyelerini içerir; döküm, API yanıtı ve anahtar içermez.
+`pulse.chapters` ve tarayıcı aynı sıralama/süre/başlık koşullarını denetler.
+Hatalı/eksik veri podcast'i engellemez, yalnız konu sekmesi gösterilmez.
+Derleme yalnız güncel seslerle eşleşen veriyi `assets/chapters/index.json` içine
+alır; mevcut bölüm JSON'u, manifest ve MP3 hash'leri değişmez. Taşınabilir Drive
+ZIP'i de konu verisini içerir ve ağ gerektirmeden kullanır.
+
+Mevcut sesleri değiştirmeden incelemek için `podcast-chapters.yml` elle
+çalıştırılır. Sadece mevcut kayıtları okur; sentez veya dağıtım yapmaz. Dökümler
+üç günlük özel artifact olarak saklanır. İsteğe bağlı çözümleme bağımlılıkları
+`requirements-chapters.txt` içindedir; çalışan Edge/Gemini sentez ortamına zorunlu
+eklenmez. PyAV 19, faster-whisper 1.2.1 ile uyumsuz olduğundan 16.0.1 sabittir.
+
+Gelecek yayınlarda `PULSE_CHAPTERS_ENABLED=true` isteğe bağlı son-ses çözümlemesini
+etkinleştirir. Canlı tasarım ve doğruluk incelemesi tamamlanmadan bu değişkeni
+etkinleştirmeyin. Zamanları model tahmin etmez: Whisper'ın gerçek segment
+başlangıçlarını metin editörü seçer, ikinci bağımsız inceleme onaylar. Bu otomatik
+inceleme insan dinleme kontrolü veya hatasızlık garantisi değildir. İlk mevcut
+kayıtların geçişleri ayrıca incelenmelidir. Başarısız işaretleme günlük yayın
+kapısını veya orijinal sesleri değiştirmez; Actions özetinde sonucu görünür.
+
+`build(..., previous=...)` yalnız bütünlük denetiminden geçen son iki yayın tarihini
+geçmiş kayıt kataloğuna alır. Bu mevcut saklama kuralını genişletmez; daha eski
+Drive ZIP'leri tarayıcıdan yayın akışı olarak sunulmaz. Yayın deposunda tutulmayan
+kayıtlara çalışmayan düğme üretilmez. Bir geçmiş kaydı başlatırken HEAD/boyut
+kontrolü yapılır. Ayrı bir tarih sayfası yerine aynı kalıcı oynatıcı kullanılır.
+Çalan kayıt kendi release/asset kimliğini tutar: yeni yayın onu değiştirmez ve
+bugünkü kartlar eski kayıt çalıyor diye etkin görünmez. Sabah kapısı haber
+alanını kapatır; kullanıcının başlattığı erişilebilir ses kendiliğinden kesilmez.
+İki günden eski açık sekmelerde temizlenen dosya erişimi garanti edilemez.
+
+Konu satırına dokunmak sesi ilgili saniyeden başlatır, haberi/okuma konumunu
+korur. Başka bölümün sayfasını incelemek sesi değiştirmez. Uzun oynatıcı konusu
+ölçülen taşma kadar ileri/geri kayar; azaltılmış harekette tam metin sabittir.
+Konular/geçmiş yayın listeleri satıra yayılır, kaymaz. Kategoriye özgü arama ve
+çoklu filtreler geri dönüşte korunur; filtre panelinde Uygula dışında kapatma
+seçimleri değiştirmez. Native dialog ve klavye odağı kullanılır.

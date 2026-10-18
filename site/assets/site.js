@@ -52,6 +52,7 @@
     pageEvents = null,
     pendingNav = null,
     listState = null;
+  let selectedRelease = null, playRequest = 0;
   let renderedURL = new URL(location.href);
   let selectedDuration = 0,
     loading = false,
@@ -167,13 +168,13 @@
     if (stored && typeof stored === "object" && !Array.isArray(stored))
       savedListening = stored;
   } catch (_) {}
-  const assetKey = (section, kind) => {
-    const asset = release?.editions[section]?.[kind];
-    return asset ? release.manifest.publish_date + ":" + section + ":" + kind + ":" + asset.sha256 : "";
+  const assetKey = (section, kind, context = release) => {
+    const asset = context?.editions[section]?.[kind];
+    return asset ? context.manifest.publish_date + ":" + section + ":" + kind + ":" + asset.sha256 : "";
   };
-  function remembered(section, kind) {
-    const record = savedListening[assetKey(section, kind)];
-    const duration = release?.editions[section]?.[kind]?.duration || 0;
+  function remembered(section, kind, context = release) {
+    const record = savedListening[assetKey(section, kind, context)];
+    const duration = context?.editions[section]?.[kind]?.duration || 0;
     return record && Number.isFinite(record.position) && record.position >= 3 &&
       record.position < duration - 5 && rates.includes(record.rate)
       ? record : null;
@@ -183,7 +184,7 @@
       return;
     if (!force && Date.now() - lastProgressWrite < 5000) return;
     lastProgressWrite = Date.now();
-    const key = assetKey(selected.section, selected.kind);
+    const key = assetKey(selected.section, selected.kind, selectedRelease);
     if (audio.ended || audio.currentTime >= selectedDuration - 5 || audio.currentTime < 3)
       delete savedListening[key];
     else savedListening[key] = { position: audio.currentTime, rate: audio.playbackRate };
@@ -217,7 +218,7 @@
       ? selected.kind === "summary"
         ? "Günün Özeti · " +
           (selected.section === "teknoloji" ? "Teknoloji" : "Oyun")
-        : release.editions[selected.section].podcast.title
+        : selectedRelease.editions[selected.section].podcast.title
       : "";
   }
   function update() {
@@ -234,7 +235,9 @@
       const active =
         selected &&
         n.dataset.section === selected.section &&
-        n.dataset.kind === selected.kind;
+        n.dataset.kind === selected.kind &&
+        selectedRelease.manifest.publish_date === release?.manifest.publish_date &&
+        selectedRelease.editions[selected.section][selected.kind].sha256 === release?.editions[selected.section]?.[selected.kind]?.sha256;
       icon(n, active && playing ? "pause" : "play");
       n.setAttribute("aria-pressed", String(!!active && playing));
       n.setAttribute("aria-busy", String(!!active && loading));
@@ -273,6 +276,12 @@
                 : "Oynat"),
       );
     });
+    for (const control of all('.history-start')) {
+      const same = selectedRelease?.editions[selected?.section]?.[selected?.kind]?.sha256 === control.dataset.sha &&
+        selectedRelease?.manifest.publish_date === control.dataset.date;
+      icon(control,same && playing ? "pause" : "play");
+      control.setAttribute('aria-pressed',String(!!same && playing));
+    }
     const state = failed
       ? "Ses yüklenemedi."
       : loading
@@ -285,10 +294,10 @@
     retry.hidden = !failed;
     mini.hidden =
       !selected ||
-      !hasStarted ||
-      document.documentElement.classList.contains("pulse-locked");
+      !hasStarted;
     document.body.classList.toggle("has-mini", !mini.hidden);
     icon(miniMore, "settings");
+    syncChapters();
     miniMore.setAttribute("aria-busy", String(loading));
     miniMore.dataset.state = failed
       ? "error"
@@ -347,7 +356,7 @@
       ? audio.duration
       : selectedDuration;
     seek.max = String(duration || 1);
-    seek.disabled = !audio.readyState;
+    seek.disabled = !audio.readyState || !Number.isFinite(audio.duration) || audio.duration <= 0;
     seek.value = String(audio.currentTime || 0);
     current.textContent = format(audio.currentTime);
     end.textContent = format(duration);
@@ -365,30 +374,35 @@
       "aria-valuetext",
       current.textContent + " / " + end.textContent,
     );
+    syncChapters();
   }
   function mount() {
-    miniDetails.append(full);
+    miniDetails.insertBefore(full, chapterPanel);
     full.hidden = false;
   }
-  function configure(section, kind) {
+  function configure(section, kind, context = release) {
     if (
-      !release ||
-      !release.editions[section] ||
+      !context ||
+      !context.editions[section]?.[kind] ||
       !["podcast", "summary"].includes(kind)
     )
       return false;
-    const asset = release.editions[section][kind];
+    const asset = context.editions[section][kind];
     const changed =
-      !selected || selected.section !== section || selected.kind !== kind;
+      !selected || selected.section !== section || selected.kind !== kind ||
+      selectedRelease.editions[section][kind].sha256 !== asset.sha256 ||
+      selectedRelease.manifest.publish_date !== context.manifest.publish_date;
     if (changed) {
       persistListening(true);
       collapsePanel(false);
       audio.pause();
+      playRequest++;
       selected = { section, kind };
-      const previous = remembered(section, kind);
+      selectedRelease = context;
+      const previous = remembered(section, kind, context);
       pendingPosition = previous?.position || 0;
       selectedDuration = asset.duration;
-      audio.src = new URL(asset.file, release.url).href;
+      audio.src = new URL(asset.file, context.url).href;
       audio.load();
       audio.playbackRate = previous?.rate || 1;
       loading = false;
@@ -408,16 +422,18 @@
         : (section === "teknoloji" ? "Teknoloji" : "Oyun") + " · Günün Özeti";
     playerSubtitle.hidden = miniSubtitle.hidden = kind !== "podcast";
     full.setAttribute("aria-label", title() + " oynatıcı");
-    episode.textContent = release.manifest.publish_date
+    episode.textContent = context.manifest.publish_date
       .split("-")
       .reverse()
       .join(".");
-    miniSubtitle.textContent = playerSubtitle.textContent;
+    miniSubtitle.textContent = (section === "teknoloji" ? "Teknoloji" : "Oyun") +
+      (kind === "podcast" ? " podcast’i · " : " · ") + episode.textContent;
     miniLink.textContent = title();
     miniLink.href = new URL(
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
       base,
     ).href;
+    loadSelectedChapters();
     progress();
     update();
     return true;
@@ -427,25 +443,31 @@
     if (document.getElementById("main").contains(document.activeElement))
       lastAudioTrigger = document.activeElement;
     if (!audio.paused && !failed) {
+      playRequest++;
       audio.pause();
       loading = false;
       update();
       return;
     }
-    if (failed) audio.load();
+    if (failed) {
+      pendingPosition = audio.currentTime || pendingPosition;
+      audio.load();
+    }
+    if (audio.ended) { pendingPosition = 0; audio.currentTime = 0; }
     hasStarted = true;
     loading = true;
     failed = false;
     update();
+    const request = ++playRequest;
     try {
       await audio.play();
     } catch (error) {
-      if (error.name !== "AbortError") {
+      if (request === playRequest && error.name !== "AbortError") {
         failed = true;
         loading = false;
       }
     } finally {
-      update();
+      if (request === playRequest) update();
     }
   }
   for (const n of [play]) n.addEventListener("click", toggle);
@@ -456,6 +478,8 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
+    selectedRelease = null;
+    playRequest++;
     syncMediaSession();
     miniDetails.hidden = panel.hidden = true;
     miniMore.setAttribute("aria-expanded", "false");
@@ -482,6 +506,7 @@
       full.hidden = true;
     }
     update();
+    titleMotion?.sync();
     if (restoreFocus && !mini.hidden) miniMore.focus({ preventScroll: true });
   }
   miniMore.onclick = () => {
@@ -492,6 +517,7 @@
     panel.hidden = miniDetails.hidden = false;
     miniMore.setAttribute("aria-expanded", "true");
     mount();
+    titleMotion.refresh();
     update();
     play.focus({ preventScroll: true });
   };
@@ -550,12 +576,7 @@
     updateVolume();
   };
   audio.addEventListener("volumechange", updateVolume);
-  retry.onclick = () => {
-    failed = false;
-    loading = false;
-    audio.load();
-    update();
-  };
+  retry.onclick = () => { toggle(); };
   for (const name of [
     "timeupdate",
     "loadedmetadata",
@@ -620,6 +641,199 @@
     }
     update();
   });
+  const chapterCache = new Map();
+  let chapterRegistry = null;
+  async function chaptersFor(asset) {
+    if (!asset || !/^[a-f0-9]{64}$/.test(asset.sha256)) return null;
+    if (!chapterCache.has(asset.sha256)) chapterCache.set(asset.sha256, (async () => {
+      try {
+        const embedded = window.PULSE_RELEASE?.chapters?.[asset.sha256];
+        if (embedded) return PulseListening.validate(embedded, asset);
+        if (window.PULSE_ARCHIVE) return null;
+        if (!chapterRegistry) chapterRegistry = fetch(new URL("assets/chapters/index.json", base),
+          { cache: "no-cache", signal: AbortSignal.timeout(10000) }).then(async response => {
+            if (!response.ok) return {};
+            const text = await response.text();
+            return text.length < 200000 ? JSON.parse(text) : {};
+          }).catch(() => ({}));
+        const registry = await chapterRegistry;
+        return PulseListening.validate(registry[asset.sha256], asset);
+      } catch (_) { return null; }
+    })());
+    return chapterCache.get(asset.sha256);
+  }
+  const tabs = make("div", "player-tabs");
+  tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "Oynatıcı görünümü");
+  const transportTab = make("button", "", "Oynatıcı"), chapterTab = make("button", "", "Bu bölümde");
+  const chapterPanel = make("div", "player-chapters");
+  chapterPanel.hidden = tabs.hidden = true;
+  const chapterList = make("ol", "chapter-list");
+  chapterPanel.append(chapterList);
+  let currentChapters = null, chapterAsset = null;
+  for (const [tab, id, controlled] of [[transportTab,"transport-tab","transport-pane"],[chapterTab,"chapters-tab","chapters-pane"]]) {
+    tab.type = "button"; tab.id = id; tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", controlled);
+  }
+  const transportExtras = make("div", "transport-extras");
+  transportExtras.id = "transport-pane"; chapterPanel.id = "chapters-pane";
+  transportExtras.append(bottom, restart); full.append(transportExtras);
+  for (const [pane, tab] of [[transportExtras,transportTab],[chapterPanel,chapterTab]]) {
+    pane.setAttribute("role","tabpanel"); pane.setAttribute("aria-labelledby",tab.id);
+  }
+  tabs.append(transportTab, chapterTab);
+  miniDetails.prepend(tabs); miniDetails.append(chapterPanel);
+  // Keep the same transport available while browsing chapters, rather than another audio element.
+  function chooseTab(chapters, scroll = true) {
+    chapterPanel.hidden = !chapters;
+    transportExtras.hidden = chapters;
+    full.classList.toggle("chapter-mode", chapters);
+    for (const [tab, active] of [[transportTab,!chapters],[chapterTab,chapters]]) {
+      tab.setAttribute("aria-selected",String(active)); tab.tabIndex = active ? 0 : -1;
+    }
+    if (chapters && scroll) chapterList.querySelector('[aria-current="true"]')?.scrollIntoView({ block:"nearest" });
+  }
+  chooseTab(false);
+  transportTab.onclick = () => chooseTab(false);
+  chapterTab.onclick = () => chooseTab(true);
+  tabs.onkeydown = e => {
+    if (!["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;
+    e.preventDefault();
+    const next = e.key === "Home" ? transportTab : e.key === "End" ? chapterTab : document.activeElement === transportTab ? chapterTab : transportTab;
+    chooseTab(next === chapterTab); next.focus();
+  };
+  const scrollingTitle = make("button", "scrolling-title");
+  scrollingTitle.type = "button"; scrollingTitle.setAttribute("aria-expanded","false");
+  scrollingTitle.setAttribute("aria-controls","full-topic-title");
+  const titleTrack = make("span", "title-track"); scrollingTitle.append(titleTrack);
+  const fullTopicTitle = make("p", "full-topic-title"); fullTopicTitle.id = "full-topic-title"; fullTopicTitle.hidden = true;
+  minibar.after(scrollingTitle, fullTopicTitle);
+  scrollingTitle.hidden = true;
+  const titleMotion = PulseListening.marquee(scrollingTitle,titleTrack,()=>panel.hidden || !fullTopicTitle.hidden);
+  scrollingTitle.onclick = () => {
+    fullTopicTitle.hidden = !fullTopicTitle.hidden;
+    scrollingTitle.setAttribute("aria-expanded",String(!fullTopicTitle.hidden)); titleMotion.sync();
+  };
+  function chapterRows(data, section, kind) {
+    return data.chapters.map(chapter => {
+      const li = make("li"), button = make("button", "chapter-jump");
+      button.type = "button"; button.dataset.section = section; button.dataset.kind = kind;
+      button.dataset.start = chapter.start; button.dataset.sha = data.audio_sha256;
+      button.append(make("span","chapter-time",format(chapter.start)), make("span","chapter-title",chapter.title), make("span","chapter-indicator"), make("span","sr-only",", buradan dinle"));
+      $(".chapter-indicator",button).setAttribute("aria-hidden","true");
+      icon($(".chapter-indicator",button), "play");
+
+      button.onclick = () => seekChapter(section,kind,chapter.start,data.audio_sha256);
+      li.append(button); return li;
+    });
+  }
+  async function seekChapter(section,kind,time,sha) {
+    const keepOpen = !panel.hidden;
+    const asset = release?.editions[section]?.[kind];
+    // The open player can still belong to yesterday's immutable release.
+    const active = selected?.section === section && selected?.kind === kind &&
+      selectedRelease?.editions[section]?.[kind]?.sha256 === sha;
+    if (!active && (!asset || asset.sha256 !== sha || !configure(section,kind))) return;
+    hasStarted = true; failed = false;
+    if (audio.readyState && Number.isFinite(audio.duration)) {
+      pendingPosition = 0; audio.currentTime = Math.min(time, Math.max(0,audio.duration - .1));
+    } else pendingPosition = time;
+    if (keepOpen) { panel.hidden = miniDetails.hidden = false; miniMore.setAttribute("aria-expanded","true"); mount(); }
+    if (audio.paused) await toggle();
+    progress(); update();
+  }
+  function syncChapters() {
+    const data = currentChapters;
+    const index = data ? PulseListening.activeIndex(data.chapters, audio.currentTime) : -1;
+    const asset = selected && selectedRelease.editions[selected.section][selected.kind];
+    for (const item of all(".chapter-jump")) {
+      const same = asset?.sha256 === item.dataset.sha;
+      const isActive = same && data && data.chapters[index]?.start === Number(item.dataset.start);
+      if (isActive) item.setAttribute("aria-current","true"); else item.removeAttribute("aria-current");
+      item.classList.toggle("is-playing",!!isActive && !audio.paused && !audio.ended);
+      icon($(".chapter-indicator",item), isActive && !audio.paused && !audio.ended ? "pause" : "play");
+    }
+    const text = index >= 0 ? data.chapters[index].title : "";
+    if (titleTrack.textContent !== text) {
+      titleTrack.textContent = fullTopicTitle.textContent = text;
+      fullTopicTitle.hidden = true; scrollingTitle.setAttribute("aria-expanded","false");
+      scrollingTitle.hidden = !text; titleMotion.refresh();
+    }
+  }
+  async function loadSelectedChapters() {
+    const asset = selectedRelease.editions[selected.section][selected.kind];
+    if (chapterAsset === asset.sha256) return;
+    chapterAsset = asset.sha256; currentChapters = null; tabs.hidden = true;
+    chapterList.replaceChildren(); chooseTab(false); syncChapters();
+    const data = selected.kind === "podcast" ? await chaptersFor(asset) : null;
+    if (chapterAsset !== asset.sha256) return;
+    currentChapters = data; tabs.hidden = !data;
+    if (data) chapterList.replaceChildren(...chapterRows(data,selected.section,selected.kind));
+    syncChapters();
+  }
+  async function hydrateChapters() {
+    const listen = $(".listen-player");
+    if (!listen) return;
+    const section = listen.dataset.listenSection;
+    const kind = new URLSearchParams(location.search).get("ses") === "ozet" ? "summary" : "podcast";
+    if (kind !== "podcast") return;
+    const asset = release.editions[section].podcast;
+    const data = await chaptersFor(asset);
+    if (!data || !listen.isConnected) return;
+    const container = make("section","episode-chapters");
+    const heading = make("h2","","Bu bölümde"), list = make("ol","chapter-list");
+    list.append(...chapterRows(data,section,kind)); container.append(heading,list);
+    listen.closest(".episode").append(container); syncChapters();
+  }
+  async function hydrateHistory() {
+    const listen = $(".listen-player");
+    if (!listen || window.PULSE_ARCHIVE || new URLSearchParams(location.search).get("ses") === "ozet") return;
+    const section = listen.dataset.listenSection, currentRelease = release;
+    try {
+      const response = await fetch(new URL("assets/episodes/index.json",base), {cache:"no-cache",signal:AbortSignal.timeout(10000)});
+      if (!response.ok) return;
+      const registry = await response.json();
+      if (registry.schema_version !== 1 || !Array.isArray(registry.episodes) || !listen.isConnected) return;
+      const episodes = registry.episodes.filter(e => e.section === section &&
+        /^\d{4}-\d{2}-\d{2}$/.test(e.publish_date) && e.publish_date < currentRelease.manifest.publish_date &&
+        /^\d{4}-\d{2}-\d{2}-[a-f0-9]{16}$/.test(e.release_id) &&
+        e.podcast?.file === section + "/podcast.mp3" && /^[a-f0-9]{64}$/.test(e.podcast.sha256) &&
+        Number.isFinite(e.podcast.duration) && e.podcast.duration > 0 && Number.isInteger(e.podcast.bytes) && e.podcast.bytes > 0)
+        .sort((a,b)=>b.publish_date.localeCompare(a.publish_date));
+      if (!episodes.length) return;
+      const container = make("section","episode-history");
+      container.append(make("h2","","Geçmiş bölümler"),make("p","detail-meta","Sitede erişilebilir kayıtlar. Daha eski yayınlar kişisel Drive yedeğinde saklanır."));
+      for (const entry of episodes) {
+        const row = make("div","history-row"), copy = make("div"), start = make("button","history-start");
+        icon(start,"play");
+        start.dataset.sha = entry.podcast.sha256;
+        start.dataset.date = entry.publish_date;
+        start.type = "button"; start.setAttribute("aria-label",titleForSection(section) + ", " + entry.publish_date.split('-').reverse().join('.') + ", dinle");
+        copy.append(make("span","",entry.publish_date.split('-').reverse().join('.')),make("p","",format(entry.podcast.duration)));
+        start.onclick = async () => {
+          start.disabled = true;
+          const intent = ++playRequest;
+          try {
+            const context = {manifest:{publish_date:entry.publish_date,release_id:entry.release_id},
+              editions:{[section]:{podcast:entry.podcast}},url:new URL("releases/"+entry.release_id+"/",base)};
+            const head = await fetch(new URL(entry.podcast.file,context.url),{method:"HEAD",cache:"no-cache",signal:AbortSignal.timeout(10000)});
+            if (!head.ok || Number(head.headers.get("Content-Length")) !== entry.podcast.bytes) throw Error("Unavailable recording");
+            if (intent !== playRequest || !start.isConnected) return;
+            configure(section,"podcast",context); await toggle();
+            icon(start,audio.paused ? "play" : "pause");
+          } catch (_) { start.textContent = "!"; start.setAttribute("aria-label","Kayıt yüklenemedi, tekrar dene"); }
+          finally { start.disabled = false; }
+        };
+        row.append(copy,start);container.append(row);
+      }
+      listen.closest(".episode").after(container);
+    } catch (_) { /* Optional history does not block current listening. */ }
+  }
+  function titleForSection(section) { return section === "teknoloji" ? "Yeni Sekme" : "Moradon FM"; }
+  let playbackChannel = null;
+  try { playbackChannel = new BroadcastChannel("pulse-audio-session-v1");
+    playbackChannel.onmessage = event => { if (event.data === "playing") { audio.pause(); playRequest++; } };
+    audio.addEventListener("play",()=>playbackChannel.postMessage("playing"));
+  } catch (_) {}
   function saveState() {
     if (
       release && !window.PULSE_ARCHIVE &&
@@ -664,115 +878,98 @@
     } catch (_) {}
     return null;
   }
+  const categoryStates = new Map();
   function setupList(state) {
     const stories = $("#stories");
-    if (!stories) {
-      listState = null;
-      return;
-    }
-    const articles = all(".story", stories),
-      select = $(".news-filter"),
-      search = $(".news-search"),
-      buttons = all("[data-filter]");
-    let filter = state?.section || "",
-      category = state?.category || "",
-      limit = state?.limit || 8,
-      query = state?.query || "";
+    if (!stories) { listState = null; return; }
+    const articles = all(".story", stories), search = $(".news-search"),
+      buttons = all("[data-filter]"), dialog = $(".topics-dialog"),
+      topicToggle = $(".topics-toggle"), options = $(".topic-options"),
+      chips = $(".filter-chips"), searchToggle = $(".search-toggle"),
+      searchLabel = $(".news-search-label"), clearSearch = $(".search-clear");
+    const scope = document.body.dataset.section || "all";
+    state = state || categoryStates.get(scope);
+    let filter = document.body.dataset.section || state?.section || "",
+      categories = Array.isArray(state?.categories) ? state.categories : state?.category ? [state.category] : [],
+      limit = state?.limit || 8, query = state?.query || "";
     search.value = query;
-    const normalize = (text) => text.toLocaleLowerCase("tr-TR")
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i");
-    const searchable = new Map(articles.map((a) => [a, normalize(a.textContent)]));
-    let searchStateTimer;
-    pageEvents.signal.addEventListener("abort", () => clearTimeout(searchStateTimer), { once: true });
-    if (document.body.dataset.section) filter = document.body.dataset.section;
-    function categories() {
-      const values = [
-        ...new Set(
-          articles
-            .filter((a) => !filter || a.dataset.section === filter)
-            .map((a) => a.dataset.category),
-        ),
-      ];
-      select.replaceChildren(
-        new Option("Tüm konular", ""),
-        ...values.map((v) => new Option(v, v)),
-      );
-      if (!values.includes(category)) category = "";
-      select.value = category;
-    }
+    const normalize = (text) => text.toLocaleLowerCase("tr-TR").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i");
+    const searchable = new Map(articles.map((article) => [article,
+      normalize([$("h2,h3", article)?.textContent, $(".story-brief", article)?.textContent,
+        article.dataset.category].join(" "))]));
+    const available = () => [...new Set(articles.filter(a => !filter || a.dataset.section === filter)
+      .map(a => a.dataset.category))];
+    categories = categories.filter(c => available().includes(c));
+    let timer;
+    pageEvents.signal.addEventListener("abort", () => { clearTimeout(timer); dialog.close(); }, { once: true });
+    function save() { refresh(); saveState(); }
     function refresh() {
       let count = 0;
       const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
-      for (const a of articles) {
-        const match =
-          (!filter || a.dataset.section === filter) &&
-          (!category || a.dataset.category === category) &&
-          terms.every((term) => searchable.get(a).includes(term));
-        a.hidden = !match || count++ >= limit;
+      for (const article of articles) {
+        const match = (!filter || article.dataset.section === filter) &&
+          (!categories.length || categories.includes(article.dataset.category)) &&
+          terms.every(term => searchable.get(article).includes(term));
+        article.hidden = !match || count++ >= limit;
       }
       $(".news-more").hidden = count <= limit;
       $(".empty-filter").hidden = count !== 0;
-      $("#story-count").textContent =
-        Math.min(count, limit) + " / " + count + " haber";
-      buttons.forEach((b) =>
-        b.setAttribute("aria-pressed", String(b.dataset.filter === filter)),
-      );
-      listState = { section: filter, category, limit, query };
+      $("#story-count").textContent = count + " haber";
+      buttons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === filter)));
+      topicToggle.hidden = available().length < 2;
+      topicToggle.textContent = "Konular" + (categories.length ? " · " + categories.length : "");
+      chips.replaceChildren(...categories.map(category => {
+        const chip = make("button", "filter-chip", category + " ×");
+        chip.type = "button";
+        chip.setAttribute("aria-label", category + " filtresini kaldır");
+        chip.onclick = () => { categories = categories.filter(c => c !== category); limit = 8; save(); topicToggle.focus(); };
+        return chip;
+      }));
+      clearSearch.hidden = !query;
+      searchLabel.classList.toggle("search-active", !!query || searchToggle.getAttribute("aria-expanded") === "true");
+      listState = { section: filter, categories, limit, query };
+      categoryStates.set(scope, listState);
     }
+    searchToggle.onclick = () => {
+      const expanded = searchToggle.getAttribute("aria-expanded") !== "true";
+      searchToggle.setAttribute("aria-expanded", String(expanded));
+      searchLabel.classList.toggle("search-active", expanded || !!query);
+      if (expanded) search.focus();
+    };
     search.addEventListener("input", () => {
-      query = search.value.slice(0, 160);
-      limit = 8;
-      refresh();
-      clearTimeout(searchStateTimer);
-      searchStateTimer = setTimeout(saveState, 300);
+      query = search.value.slice(0, 160); limit = 8; refresh();
+      clearTimeout(timer); timer = setTimeout(saveState, 300);
     }, { signal: pageEvents.signal });
-    for (const b of buttons)
-      b.addEventListener(
-        "click",
-        () => {
-          filter = b.dataset.filter;
-          category = "";
-          limit = 8;
-          categories();
-          refresh();
-          saveState();
-        },
-        { signal: pageEvents.signal },
-      );
-    select.addEventListener(
-      "change",
-      () => {
-        category = select.value;
-        limit = 8;
-        refresh();
-        saveState();
-      },
-      { signal: pageEvents.signal },
-    );
-    $(".news-more").addEventListener(
-      "click",
-      () => {
-        limit += 8;
-        refresh();
-        saveState();
-      },
-      { signal: pageEvents.signal },
-    );
-    $(".reset-filter").addEventListener(
-      "click",
-      () => {
-        filter = document.body.dataset.section || "";
-        category = "";
-        query = search.value = "";
-        limit = 8;
-        categories();
-        refresh();
-        saveState();
-        (buttons[0] || select).focus();
-      },
-      { signal: pageEvents.signal },
-    );
-    categories();
+    clearSearch.onclick = () => { query = search.value = ""; limit = 8; save(); search.focus(); };
+    topicToggle.onclick = () => {
+      options.replaceChildren(...available().map(category => {
+        const label = make("label", "topic-option");
+        const input = make("input"); input.type = "checkbox"; input.value = category;
+        input.checked = categories.includes(category);
+        label.append(input, document.createTextNode(category)); return label;
+      }));
+      dialog.showModal();
+    };
+    $(".topics-clear").onclick = () => all("input", options).forEach(i => i.checked = false);
+    $("form", dialog).addEventListener("submit", event => {
+      if (event.submitter?.value === "apply") {
+        categories = all("input:checked", options).map(i => i.value); limit = 8; save();
+      }
+    }, { signal: pageEvents.signal });
+    dialog.addEventListener("close", () => {
+      if (!dialog.open && topicToggle.isConnected) topicToggle.focus({ preventScroll: true });
+    }, { signal: pageEvents.signal });
+    dialog.addEventListener("click", e => { if (e.target === dialog) {
+      const r = dialog.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dialog.close();
+    } }, { signal: pageEvents.signal });
+    for (const b of buttons) b.onclick = () => { filter = b.dataset.filter; categories = []; limit = 8; save(); };
+    $(".news-more").onclick = () => { limit += 8; save(); };
+    $(".reset-filter").onclick = () => {
+      filter = document.body.dataset.section || ""; categories = []; query = search.value = "";
+      limit = 8; save(); (topicToggle.hidden ? searchToggle : topicToggle).focus();
+    };
     refresh();
   }
   function hydrate(state) {
@@ -807,6 +1004,8 @@
       if (image.complete && !image.naturalWidth) show();
     }
     setupList(state?.list);
+    hydrateChapters();
+    hydrateHistory();
     for (const start of all(".audio-start"))
       start.addEventListener(
         "click",
@@ -1036,12 +1235,12 @@
   });
   async function ready(next) {
     if (release?.manifest.release_id === next.manifest.release_id) return;
-    if (release) {
-      close.click();
-    }
+    // A verified new issue must not replace the listener’s active immutable recording.
     release = next;
+    chapterRegistry = null; chapterCache.clear();
     const allowed = new Set(Object.keys(next.editions).flatMap((section) =>
       ["podcast", "summary"].map((kind) => assetKey(section, kind))));
+    if (selected) allowed.add(assetKey(selected.section, selected.kind, selectedRelease));
     savedListening = Object.fromEntries(Object.entries(savedListening)
       .filter(([key]) => allowed.has(key)));
     if ($("#main").dataset.release !== next.manifest.release_id) {
@@ -1073,7 +1272,7 @@
   }
   window.addEventListener("pulse:ready", (event) => ready(event.detail));
   window.addEventListener("pulse:locked", () => {
-    close.click();
+    collapsePanel(false);
     release = null;
     pendingNav?.abort();
   });

@@ -198,6 +198,25 @@ jobs:
                           summary.write(f"- {kind}: {len(report['replacements'])} sözlük dönüşümü; {report['candidate_count']} kontrol adayı. {names}\n")
                   summary.write('\nAyrıntılar özel pulse-state artifact içindeki pronunciation-review.json dosyalarında.\n')
           PY
+      - name: Optional final-audio chapter analysis (never regenerates voices)
+        id: chapters
+        if: vars.PULSE_CHAPTERS_ENABLED == 'true'
+        continue-on-error: true
+        timeout-minutes: 12
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+          RELEASE_PATH: ${{ steps.edition.outputs.release_path }}
+          HF_HUB_DISABLE_XET: '1'
+        run: |
+          python -m pip install -r requirements-chapters.txt
+          python scripts/prepare_chapters.py --release "$RELEASE_PATH"
+      - name: Report optional chapter availability
+        if: always() && vars.PULSE_CHAPTERS_ENABLED == 'true'
+        env:
+          CHAPTER_OUTCOME: ${{ steps.chapters.outcome }}
+        run: |
+          echo "Podcast chapter analysis: $CHAPTER_OUTCOME. Failed/unverified metadata is omitted; original audio is preserved." >> "$GITHUB_STEP_SUMMARY"
       - name: Build only inside the verified publication window; otherwise save the ready checkpoint
         id: build
         env:
@@ -210,7 +229,7 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:
               f.write(f'available={str(available).lower()}\n')
           if available:
-              subprocess.run([sys.executable,'-m','pulse.build','--release',os.environ['RELEASE_PATH']],check=True)
+              subprocess.run([sys.executable,'-m','pulse.build','--release',os.environ['RELEASE_PATH'],'--previous','.published'],check=True)
           else:
               print('Complete morning checkpoint retained. The 07:30 scheduled run will build and publish it; no runner waits idle.')
           PY

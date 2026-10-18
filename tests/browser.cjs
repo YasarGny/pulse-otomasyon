@@ -84,6 +84,18 @@ async function run(name, fn) {
             window.PULSE_RELEASE.manifest.release_id,
       );
     };
+    const selectTopic = async (value) => {
+      await page.locator('.topics-toggle').click();
+      await page.locator('.topic-options input').evaluateAll((nodes,value) => {
+        for(const node of nodes) node.checked = node.value === value;
+      },value);
+      await page.locator('.topics-apply').click();
+      await page.waitForFunction(value=>[...document.querySelectorAll('.filter-chip')].some(n=>n.textContent===value+' ×'),value);
+    };
+    const searchFor = async (value) => {
+      if(!await page.locator('.news-search').isVisible()) await page.locator('.search-toggle').click();
+      await page.locator('.news-search').fill(value);
+    };
     const noOverflow = async () => {
       const result = await page.evaluate(() => ({
         width: innerWidth,
@@ -339,7 +351,7 @@ async function run(name, fn) {
         assert.equal(await page.locator("#stories .story:visible").count(), 8);
         for (const a of await page.locator("#stories .story:visible").all())
           assert.equal(await a.getAttribute("data-section"), "oyun");
-        await page.locator(".news-filter").selectOption("BİLİM");
+        await selectTopic("BİLİM");
         await page.locator(".news-more").click();
         assert.equal(await page.locator("#stories .story:visible").count(), 10);
         await noOverflow();
@@ -418,7 +430,7 @@ async function run(name, fn) {
           await open(route);
           if (route.includes("haberler"))
             await page.locator('[data-filter="oyun"]').click();
-          await page.locator(".news-filter").selectOption("BİLİM");
+          await selectTopic("BİLİM");
           await page.locator(".news-more").click();
           const link = page.locator("#stories .story:visible .story-detail-link").last();
           await link.scrollIntoViewIfNeeded();
@@ -435,7 +447,7 @@ async function run(name, fn) {
           await page.locator(".article-reader .back").click();
           await page.waitForSelector("#stories");
           assert.equal(page.url(), origin);
-          assert.equal(await page.locator(".news-filter").inputValue(), "BİLİM");
+          assert.equal(await page.locator(".filter-chip").innerText(), "BİLİM ×");
           assert.equal(await page.locator("#stories .story:visible").count(), 10);
           assert.equal(await page.locator(":focus").innerText(), story);
           assert(Math.abs(await page.evaluate(() => scrollY) - position) <= 2);
@@ -474,13 +486,9 @@ async function run(name, fn) {
         for (const section of ["teknoloji", "oyun"]) {
           await open("/expanded/" + section + "/");
           assert.equal(await page.locator(".all-news-link").count(), 0);
-          await page.locator(".news-filter").evaluate((select) => {
-            select.add(new Option("Missing test topic", "missing"));
-            select.value = "missing";
-            select.dispatchEvent(new Event("change"));
-          });
+          await searchFor("no-matching-story-xyz");
           await page.locator(".reset-filter").click();
-          assert(await page.locator(".news-filter").evaluate((select) => select === document.activeElement));
+          assert(await page.locator(".topics-toggle").evaluate((button) => button === document.activeElement));
           await page.locator(".news-more").click();
           for (const story of await page.locator("#stories .story:visible").all())
             assert.equal(await story.getAttribute("data-section"), section);
@@ -493,9 +501,9 @@ async function run(name, fn) {
       "search is Turkish-aware, scoped, resettable and retained on article return",
       async () => {
         await open("/expanded/teknoloji/");
-        await page.locator(".news-search").fill("yazilim");
+        await searchFor("yazilim");
         assert.equal(await page.locator("#stories .story:visible").count(), 8);
-        await page.locator(".news-search").fill("YAZILIM");
+        await searchFor("YAZILIM");
         assert.equal(await page.locator("#stories .story:visible").count(), 8);
         await page.locator(".news-more").click();
         assert.equal(await page.locator("#stories .story:visible").count(), 10);
@@ -506,15 +514,15 @@ async function run(name, fn) {
         await page.waitForSelector("#stories");
         assert.equal(await page.locator(".news-search").inputValue(), "YAZILIM");
         assert.equal(await page.locator("#stories .story:visible").count(), 10);
-        await page.locator(".news-filter").selectOption("BİLİM");
+        await selectTopic("BİLİM");
         assert.equal(await page.locator("#stories .story:visible").count(), 0);
         await page.locator(".reset-filter").click();
         assert.equal(await page.locator(".news-search").inputValue(), "");
-        await page.locator(".news-search").fill("bilim");
+        await searchFor("bilim");
         assert.equal(await page.locator("#stories .story:visible").count(), 8);
         for (const story of await page.locator("#stories .story:visible").all())
           assert.equal(await story.getAttribute("data-section"), "teknoloji");
-        await page.locator(".news-search").fill("<script>no-results</script>");
+        await searchFor("<script>no-results</script>");
         assert(await page.locator(".empty-filter").isVisible());
         assert.equal(await page.locator("#stories .story:visible").count(), 0);
         await page.setViewportSize({width:320,height:740});
@@ -1637,6 +1645,7 @@ async function run(name, fn) {
         await c.close();
       },
     );
+    await require("./chapters-browser.cjs")(browser, run, base);
     await require("./install-browser.cjs")(browser, run, base);
     await run("no browser runtime errors", async () =>
       assert.deepEqual(errors, []),

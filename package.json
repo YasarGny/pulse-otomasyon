@@ -2,7 +2,7 @@
   "name": "pulse-publication",
   "private": true,
   "scripts": {
-    "test": "node --test tests/publication.test.cjs",
+    "test": "node --test tests/*.test.cjs",
     "test:browser": "node tests/browser.cjs"
   },
   "devDependencies": {
