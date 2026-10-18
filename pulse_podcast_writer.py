@@ -73,7 +73,7 @@ def _request(payload):
         raise RuntimeError("Podcast script generation failed HTTP " + str(response.status_code))
     result = response.json()
     from pulse.usage import record
-    record("podcast-script", MODEL, result, sum(len(part.get("text", "")) for item in payload.get("contents", []) for part in item.get("parts", [])))
+    record("podcast-script", MODEL, result, sum(len(part.get("text", "")) for item in [payload.get("system_instruction", {}), *payload.get("contents", [])] for part in item.get("parts", [])))
     candidates = result.get("candidates") or []
     if not candidates or candidates[0].get("finishReason") not in (None, "STOP"):
         raise RuntimeError("Incomplete podcast response")

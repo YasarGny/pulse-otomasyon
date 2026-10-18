@@ -96,3 +96,23 @@ class CostControlsTests(unittest.TestCase):
                 transcribe(root,output,sections=['teknoloji'])
             model.assert_not_called()
             self.assertFalse((output/'oyun.json').exists())
+
+    def test_transcription_failure_in_one_program_preserves_the_other(self):
+        from scripts.transcribe_podcasts import transcribe
+        from types import SimpleNamespace
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for section in ('teknoloji','oyun'):
+                (root/section).mkdir()
+                (root/section/'podcast.mp3').write_bytes(b'fixture-audio')
+                sha=hashlib.sha256(b'fixture-audio').hexdigest() if section=='oyun' else 'a'*64
+                (root/(section+'.json')).write_text(json.dumps({'publish_date':'2026-10-18','podcast':{'file':section+'/podcast.mp3','sha256':sha,'duration':3}}))
+            model=Mock()
+            model.transcribe.return_value=([SimpleNamespace(start=0,end=3,text='Test')],None)
+            factory=Mock(return_value=model)
+            with patch.dict('sys.modules', {'faster_whisper':SimpleNamespace(WhisperModel=factory)}), self.assertRaisesRegex(ValueError,'teknoloji'):
+                transcribe(root,root/'transcripts')
+            self.assertTrue((root/'transcripts/oyun.json').exists())
+            self.assertFalse((root/'transcripts/teknoloji.json').exists())
+            self.assertEqual(factory.call_count,1)
