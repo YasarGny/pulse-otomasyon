@@ -38,6 +38,9 @@ class FullArticlesTests(unittest.TestCase):
         self.assertIn('&lt;script&gt;',html)
         self.assertNotIn('<script>unsafe()',html)
         self.assertIn('https://www.nasa.gov/official',html)
+        self.assertEqual(html.count('class="source-link"'),1)
+        self.assertNotIn('class="article-source"',html)
+        self.assertIn('<time class="detail-meta" datetime="2026-10-16">16.10.2026</time>',html)
 
     def test_reader_ignores_script_and_navigation(self):
         parser=ArticleText();parser.feed('<nav><p>'+('Navigation '*20)+'</p></nav><article><p>'+('Actual article text '*10)+'</p><script>secret()</script></article>')

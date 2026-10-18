@@ -238,6 +238,30 @@ module.exports = async function(browser, run, base) {
       assert((await page.locator('.listen-back').getAttribute('href')).startsWith(base+'/podcastler/'));
     }
   });
+  await run('article details have one publisher source and aligned readable metadata in both themes',async()=>{
+    await open('/expanded/teknoloji/');
+    await page.locator('#stories .story-detail-link').first().click();
+    await page.waitForSelector('.article-reader');
+    for(const theme of ['dark','light']) {
+      await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+      for(const width of [320,390,768,1440]) {
+        await page.setViewportSize({width,height:900});
+        assert.equal(await page.locator('.article-reader .source-link').count(),1);
+        assert.equal(await page.locator('.article-source').count(),0);
+        assert.equal(await page.locator('.article-meta time').getAttribute('datetime'),'2026-10-16');
+        const geometry=await page.evaluate(()=>{
+          const meta=document.querySelector('.article-meta'),source=meta.querySelector('.source-link');
+          const text=document.querySelector('.article-text'),r=text.getBoundingClientRect();
+          return {sourceHeight:source.getBoundingClientRect().height,column:r.width,overflow:document.documentElement.scrollWidth>innerWidth,line:parseFloat(getComputedStyle(text).lineHeight)/parseFloat(getComputedStyle(text).fontSize)};
+        });
+        assert(geometry.sourceHeight>=44);assert(geometry.column<=720);assert(geometry.line>=1.6);assert(!geometry.overflow);
+        if(width===390||width===1440) {
+          await page.evaluate(()=>scrollTo(0,0));
+          await page.screenshot({path:`test-results/article-refined-${theme}-${width}.png`,fullPage:true});
+        }
+      }
+    }
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };

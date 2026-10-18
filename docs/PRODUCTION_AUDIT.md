@@ -73,3 +73,10 @@ Bölüm sayfasının dönüş bağlantısı sabit kategori yerine geldiği menü
 geçip dönme zinciri de sınanır. Yeni sekme için kaynak menü izinli `from`
 parametresiyle taşınır; bilinmeyen değerler dış adrese yönlendirmez. Parametre
 ses kimliğini/oynatmayı değiştirmez ve özetin canonical adresine dahil edilmez.
+
+Haber detayında yinelenen alt kaynak bağlantısı kaldırıldı. Yayıncı bağlantısı
+başlık altındaki tarih satırında bir kez gösterilir; tarih semantik time öğesidir.
+Okuma sütunu en fazla 720 px, kaynak dokunma alanı en az 44 px'tir. Görselin
+kendi künyesi korunur. Neden önemli bölümü metnin devamından yatay ayraçla ayrılır.
+Açık/koyu tema ve 320/390/768/1440 px yerleşimleri ayrıca sınanır; JavaScript
+kapalı ve taşınabilir ZIP'te de tek yayıncı bağlantısı kalır.

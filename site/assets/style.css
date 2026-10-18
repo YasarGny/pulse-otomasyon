@@ -733,7 +733,7 @@ main > section + section {
   max-width: 740px;
 }
 .article-layout {
-  max-width: 680px;
+  max-width: 720px;
   margin: auto;
 }
 .article-heading .eyebrow {
@@ -756,9 +756,10 @@ main > section + section {
 .article-heading {
   margin-bottom: 24px;
 }
-.article-heading > .source-link {
-  margin-top: 4px;
-}
+.article-reader > .back { margin-bottom: 20px; }
+.article-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 20px; }
+.article-meta .source-link { display: inline-flex; align-items: center; gap: 5px; }
+.article-heading h1 { overflow-wrap: anywhere; text-wrap: pretty; }
 .detail-figure .image-frame {
   aspect-ratio: auto;
   display: block;
@@ -780,8 +781,8 @@ main > section + section {
 }
 .why {
   margin-top: 32px;
-  border-left: 2px solid var(--line);
-  padding-left: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
   color: var(--muted);
   font-size: 16px;
   line-height: 1.65;
@@ -791,11 +792,7 @@ main > section + section {
   margin-bottom: 10px;
   letter-spacing: 0;
 }
-.article-source {
-  margin-top: 24px;
-  padding: 18px 0;
-  border-top: 1px solid var(--line);
-}
+
 .episode {
   max-width: 900px;
   margin: 0 auto 36px;

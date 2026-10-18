@@ -251,7 +251,7 @@ async function run(name, fn) {
         await p.goto(base + "/expanded/teknoloji/haber/teknoloji0/index.html");
         assert.equal(await p.locator(".article-text p").count(), 2);
         assert(await p.locator("h1").isVisible());
-        assert.equal(await p.locator(".source-link").count(), 2);
+        assert.equal(await p.locator(".source-link").count(), 1);
         assert.equal(
           await p
             .locator(".article-text")
@@ -383,7 +383,7 @@ async function run(name, fn) {
           await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
           await page.waitForURL("**/haber/**");
           assert.equal(await page.locator(".article-text p").count(), 2);
-          assert.equal(await page.locator(".source-link").count(), 2);
+          assert.equal(await page.locator(".source-link").count(), 1);
           assert.equal(
             await page
               .locator('meta[property="og:type"]')
@@ -1630,7 +1630,7 @@ async function run(name, fn) {
           return image?.complete && image.naturalWidth > 0;
         });
         assert.equal(await p.locator(".article-text p").count(), 1);
-        assert.equal(await p.locator(".source-link").count(), 2);
+        assert.equal(await p.locator(".source-link").count(), 1);
         assert.equal(await p.locator("#pulse-printing").count(), 0);
         assert(
           await p
