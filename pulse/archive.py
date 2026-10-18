@@ -59,7 +59,14 @@ def package(site, destination, *, fetch=fetch_public):
             # Explicit filenames work with file:// and don't need a local HTTP server.
             content = re.sub(r'(href=")((?!https?:|#)[^"]*/)(")', r'\1\2index.html\3', content)
             content = content.replace('<main id="main"', '<div class="archive-label">Arşiv · ' + display_date(manifest['publish_date']) + '</div><main id="main"', 1)
-            embedded = json.dumps({'manifest': manifest, 'editions': editions}, ensure_ascii=False).replace('<', chr(92) + 'u003c')
+            chapters = {}
+            from pulse.chapters import load_chapters
+            for data in editions.values():
+                asset = data['podcast']
+                chapter_data = load_chapters(site / 'assets/chapters', asset)
+                if chapter_data:
+                    chapters[asset['sha256']] = chapter_data
+            embedded = json.dumps({'manifest': manifest, 'editions': editions, 'chapters': chapters}, ensure_ascii=False).replace('<', chr(92) + 'u003c')
             script = f'<script>window.PULSE_ARCHIVE=true;window.PULSE_RELEASE={embedded};window.PULSE_RELEASE.url=new URL("{prefix}releases/{manifest["release_id"]}/",location.href);</script>'
             content = re.sub(r'(?=<script src="[^\"]*site\.js)', lambda m: script, content, count=1)
             path.write_text(content)

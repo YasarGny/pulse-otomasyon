@@ -101,6 +101,17 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
     if manifest.get("status") == "ready":
         from pulse.pages import build_views
 
+        # Optional sidecars do not mutate the sealed edition JSON or MP3 identity.
+        from pulse.chapters import load_chapters
+        registry = {}
+        for section in SECTIONS:
+            edition = read_json(output / 'releases' / manifest['release_id'] / (section + '.json'))
+            asset = edition['podcast']
+            chapters = (load_chapters(Path(release) / 'chapters', asset) if release else None) or load_chapters(source / 'assets/chapters', asset) or (load_chapters(Path(previous) / 'assets/chapters', asset) if previous else None)
+            if chapters:
+                registry[asset['sha256']] = chapters
+                write_json(output / 'assets/chapters' / (asset['sha256'] + '.json'), chapters)
+        write_json(output / 'assets/chapters/index.json', registry)
         build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
     assert_public_tree(output)

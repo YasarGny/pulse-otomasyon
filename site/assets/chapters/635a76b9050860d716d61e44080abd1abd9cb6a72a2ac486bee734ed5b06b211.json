@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "reviewed": true,
+  "audio_sha256": "635a76b9050860d716d61e44080abd1abd9cb6a72a2ac486bee734ed5b06b211",
+  "chapters": [
+    {
+      "start": 0.0,
+      "title": "Açılış"
+    },
+    {
+      "start": 11.3,
+      "title": "Web sitelerinin yapay zekâ ajanlarını engellemesi"
+    },
+    {
+      "start": 288.66,
+      "title": "Anthropic'in yapay zekâ ve iş gücü raporu"
+    },
+    {
+      "start": 450.82,
+      "title": "Replit'in model tercihi değişimi"
+    },
+    {
+      "start": 569.2,
+      "title": "ConnectWise siber güvenlik saldırısı"
+    },
+    {
+      "start": 737.36,
+      "title": "Polymarket'teki şüpheli işlem hacimleri"
+    },
+    {
+      "start": 889.44,
+      "title": "Veritas'ın fiziksel doğrulama çipi"
+    },
+    {
+      "start": 1044.92,
+      "title": "Waymo'nun Kanada genişlemesi ve kış testleri"
+    },
+    {
+      "start": 1146.22,
+      "title": "Hubble uzay teleskobunun galaksi gözlemleri"
+    },
+    {
+      "start": 1321.8,
+      "title": "Kapanış"
+    }
+  ],
+  "review_method": "timed-transcript+independent-model+canonical-source-name-check"
+}

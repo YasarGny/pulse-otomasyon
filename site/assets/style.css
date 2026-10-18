@@ -2464,3 +2464,80 @@ body.has-mini {
 .audio-copy p.resume-note, .program-body p.resume-note { color: var(--accent); font-size: 12px; }
 .listen-player { flex-wrap: wrap; }
 .listen-player .resume-note { flex-basis: 100%; }
+
+/* Editorial controls: text-width navigation, compact tools, one floating transport. */
+.nav nav a { border-bottom: 0; justify-content: center; }
+.nav nav a > span { position: relative; display: inline-block; }
+.nav nav a > span::after { content: ''; position: absolute; left: 0; right: 0; bottom: -14px; height: 2px; background: transparent; }
+.nav nav a:hover > span::after, .nav nav a[aria-current="page"] > span::after { background: var(--accent); }
+.news-tools { gap: 10px; align-items: center; margin-bottom: 12px; }
+.news-search-label { flex: 0 1 290px; }
+.news-search { background: transparent; }
+.search-toggle, .search-clear, .topics-toggle, .filter-chip, .topic-actions button, .topics-heading button {
+  min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: transparent; color: var(--text); font: inherit; font-size: 14px;
+}
+.search-toggle { display: none; }
+.search-clear { border-color: transparent; color: var(--muted); }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.filter-chips:empty { margin-bottom: 12px; }
+.filter-chip { color: var(--text); background: var(--surface); }
+.topics-dialog { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 24px; color: var(--text); background: var(--surface); border: 1px solid var(--control); border-radius: 16px; box-shadow: var(--shadow); }
+.topics-dialog::backdrop { background: #0008; }
+.topics-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+.topics-heading h2 { font-size: 22px; margin: 0; }
+.topics-heading button { min-width: 44px; font-size: 24px; border: 0; }
+.topic-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.topic-option { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--control); border-radius: 8px; font-size: 14px; cursor: pointer; }
+.topic-option:has(:checked) { border-color: var(--accent); }
+.topic-option input { accent-color: var(--accent); width: 16px; height: 16px; }
+.topic-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+.topic-actions .topics-apply { background: var(--accent); color: #141416; border-color: var(--accent); }
+.player-tabs { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin: 0 8px 12px; }
+.player-tabs button { min-height: 44px; flex: 1; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--muted); font: inherit; font-size: 14px; }
+.player-tabs button[aria-selected="true"] { color: var(--text); background: var(--raised); border-color: var(--control); font-weight: 600; }
+.floating-panel { display: flex; flex-direction: column; overflow: hidden; }
+.floating-panel .mini-bar, .floating-panel > .mini-close { flex-shrink: 0; }
+.floating-panel .mini-details { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.floating-panel .mini-title { min-width: 0; }
+.floating-panel .mini-title a { white-space: normal; overflow-wrap: anywhere; }
+.scrolling-title { display: block; width: calc(100% - 16px); flex-shrink: 0; margin: 0 8px 8px; min-height: 44px; text-align: left; overflow: hidden; white-space: nowrap; padding: 8px 0; background: transparent; color: var(--text); border: 0; font: inherit; font-size: 14px; }
+.title-track { display: block; width: max-content; }
+.scrolling-title.title-static { white-space: normal; }
+.title-static .title-track { width: auto; }
+.full-topic-title { margin: 0 8px 12px; padding: 12px; max-height: 90px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; line-height: 1.6; flex-shrink: 0; }
+.chapter-list { list-style: none; padding: 0; margin: 0; }
+.chapter-list li + li { border-top: 1px solid var(--line); }
+.chapter-jump { display: grid; grid-template-columns: 46px minmax(0,1fr) 20px; gap: 12px; width: 100%; text-align: left; align-items: center; min-height: 52px; padding: 12px 10px; background: transparent; border: 0; border-radius: 8px; color: var(--text); font: inherit; font-size: 14px; line-height: 1.5; }
+.chapter-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapter-title { overflow-wrap: anywhere; }
+.chapter-indicator { font-size: 12px; text-align: center; }
+.chapter-jump[aria-current="true"] { background: var(--raised); box-shadow: inset 0 0 0 1px var(--control); }
+.chapter-jump[aria-current="true"] .chapter-time, .chapter-jump.is-playing .chapter-indicator { color: var(--text); }
+.episode-chapters { margin-top: 28px; max-width: 680px; }
+.episode-chapters h2 { font-size: 20px; }
+.player.chapter-mode :is(.player-bottom,.player-restart,.player-speed) { display: none; }
+.player.chapter-mode .player-controls { margin: 0; }
+.player.chapter-mode .player-play { width: 48px; height: 48px; }
+.player-chapters { max-height: min(260px, 32dvh); overflow-y: auto; overscroll-behavior: contain; margin: 0 8px; }
+@media(max-width: 640px) {
+  .news-tools { display: flex; flex-wrap: wrap; }
+  .search-toggle { display: inline-block; }
+  .news-search-label { display: none; flex: 1 1 100%; order: 5; }
+  .news-search-label.search-active { display: block; }
+  .news-tools .section-filters { flex-basis: 100%; order: -1; }
+  .news-tools .section-filters button { padding-inline: 12px; }
+  .topics-dialog { margin: auto 0 0; width: 100%; max-width: none; border-radius: 18px 18px 0 0; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .floating-panel { width: min(380px, calc(100vw - 24px)); }
+}
+@media(max-height: 500px) {
+  .floating-panel { bottom: 0; right: 72px; max-height: calc(100dvh - 24px); }
+  .player-chapters { max-height: 110px; }
+}
+@media(max-width:640px) {
+  .nav nav { flex-wrap: nowrap; gap: 16px; overflow-x: auto; min-width: 0; }
+  .nav nav a { flex: none; }
+}
+.chapter-indicator svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; margin: auto; }
+/* A started recording remains controllable when the daily news gate closes. */
+.persistent-audio { z-index: 110; }

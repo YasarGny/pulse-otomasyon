@@ -54,7 +54,7 @@ jobs:
           current = read_json('.published/data/publication.json')
           assert current['status'] == 'ready', 'Wait for a complete current edition before a website-only rollout'
           # build() verifies the manifest, every MP3 and the actual publication window.
-          result = build('site', 'dist', release=Path('.published/releases') / current['release_id'])
+          result = build('site', 'dist', release=Path('.published/releases') / current['release_id'], previous='.published')
           assert result == current, 'A website-only rollout must preserve the publication identity'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('date=' + result['publish_date'] + '\n')

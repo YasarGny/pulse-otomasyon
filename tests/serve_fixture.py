@@ -28,6 +28,13 @@ for section in ('teknoloji', 'oyun'):
 seal_release(release, DATE, DATE)
 build("site", root / "site", release=release, at=not_before(DATE))
 
+# Synthetic chapter metadata exercises final-audio binding, never production times.
+asset = read_json(release / 'teknoloji.json')['podcast']
+chapters = {'schema_version': 1, 'reviewed': True, 'audio_sha256': asset['sha256'],
+            'chapters': [{'start': 0, 'title': 'Açılış'}, {'start': 12, 'title': 'Yapay zekâ araçlarından çip üretimine: teknoloji dünyasında bugünün gelişmeleri'}, {'start': 28, 'title': 'Kapanış'}]}
+write_json(root / 'site/assets/chapters/index.json', {asset['sha256']: chapters})
+write_json(root / ('site/assets/chapters/' + asset['sha256'] + '.json'), chapters)
+
 package(root / "site", root / "offline.zip", fetch=lambda url: (Path("site/assets/covers/teknoloji-768.webp").read_bytes(), "image/webp"))
 with zipfile.ZipFile(root / "offline.zip") as archive:
     archive.extractall(root / "offline")

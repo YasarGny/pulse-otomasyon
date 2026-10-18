@@ -1,18 +1,17 @@
 """Published JSON is the durable record even when Actions checkpoints expire."""
 
 import shutil
-import hashlib
 from pathlib import Path
 
 from pulse.publication import SECTIONS, digest, read_json, verify_manifest
+from pulse.source_history import SourceHistory
 
 
 def exclude_published(research, previous, date):
     if previous is None:
         return research
     ledger_path = Path(previous) / "data/source-history.json"
-    ledger = read_json(ledger_path) if ledger_path.exists() else {s: [] for s in SECTIONS}
-    seen = {section: set() for section in SECTIONS}
+    ledger = SourceHistory(read_json(ledger_path) if ledger_path.exists() else None)
     for manifest_path in (Path(previous) / "releases").glob("*/release.json"):
         manifest = read_json(manifest_path)
         if manifest.get("status") != "ready" or manifest["publish_date"] >= date:
@@ -30,13 +29,14 @@ def exclude_published(research, previous, date):
                 or data["publish_date"] != manifest["publish_date"]
             ):
                 raise ValueError("Historical edition identity mismatch")
-            seen[section].update(s["source_url"] for s in data["stories"])
+            for story in data["stories"]:
+                ledger.add(story["source_url"])
     clean = {**research, "sections": {}}
     for section in SECTIONS:
         clean["sections"][section] = [
             s
             for s in research["sections"][section]
-            if s["source_url"] not in seen[section] and hashlib.sha256(s["source_url"].encode()).hexdigest() not in ledger[section]
+            if not ledger.contains(s["source_url"])
         ]
         if len(clean["sections"][section]) < 3:
             raise ValueError(

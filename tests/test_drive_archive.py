@@ -36,6 +36,20 @@ class BackupTests(unittest.TestCase):
     def media(self, url):
         return Path('site/assets/covers/teknoloji-768.webp').read_bytes(), 'image/webp'
 
+    def test_sync_retires_historical_catalog_without_removing_unbacked_releases(self):
+        from scripts.sync_site import sync
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            obsolete = target / 'assets/episodes/index.json'
+            write_json(obsolete, {'episodes': []})
+            unbacked = target / 'releases/unbacked/keep.txt'
+            unbacked.parent.mkdir(parents=True)
+            unbacked.write_text('backup not confirmed')
+            sync(self.site, target, at=not_before(DATE))
+            self.assertFalse(obsolete.parent.exists())
+            self.assertTrue(unbacked.exists())
+            self.assertFalse((self.site / 'assets/episodes').exists())
+
     def test_same_day_preparation_retains_working_detail_routes(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'prepared'
@@ -220,6 +234,36 @@ class BackupTests(unittest.TestCase):
             drive.request.assert_not_called()
             self.assertFalse(receipt.exists())
 
+    def test_preparation_retry_after_cleanup_has_nothing_to_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source, published = root / 'source', root / 'published'
+            state = {'status': 'preparing', 'publish_date': '2026-10-17'}
+            for tree in (source, published):
+                write_json(tree / 'data/publication.json', state)
+            drive = Mock()
+            receipts = root / 'receipts.json'
+            self.assertEqual(backup_releases(source, published, receipts, drive=drive, folder='root'), {})
+            self.assertEqual(prune(published, receipts), 0)
+            drive.upload.assert_not_called()
+            drive.existing.assert_not_called()
+            write_json(published / 'data/publication.json', self.manifest)
+            with self.assertRaises(ValueError):
+                backup_releases(source, published, receipts, drive=drive, folder='root')
+            self.assertFalse(receipts.exists())
+
+    def test_invalid_publication_cannot_authorize_removing_active_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'site'
+            shutil.copytree(self.site, target)
+            receipts = Path(tmp) / 'receipts.json'
+            write_json(receipts, {'releases': {}})
+            for invalid in ({'status': 'ready'}, {'status': 'unknown'}):
+                write_json(target / 'data/publication.json', invalid)
+                with self.assertRaises(ValueError):
+                    prune(target, receipts)
+                self.assertTrue((target / 'releases' / self.manifest['release_id']).is_dir())
+
     def test_prune_preflight_preserves_all_without_receipts(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp)
@@ -234,11 +278,38 @@ class BackupTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 prune(target, target / 'receipts.json')
             self.assertEqual(len(list(releases.iterdir())), 3)
-            old = manifests[0]
-            write_json(target / 'receipts.json', {'releases': {old['release_id']: {'verified': True, 'release_id': old['release_id'], 'publish_date': old['publish_date'], 'file_id': 'verified', 'sha256': 'a'*64}}})
-            self.assertEqual(prune(target, target / 'receipts.json'), 1)
-            self.assertEqual(len(list(releases.iterdir())), 2)
-            self.assertEqual(len(read_json(target / 'data/source-history.json')['teknoloji']), 3)
+            entries = {m['release_id']: {'verified': True, 'release_id': m['release_id'], 'publish_date': m['publish_date'], 'file_id': 'verified', 'sha256': 'a'*64} for m in manifests[:-1]}
+            write_json(target / 'receipts.json', {'releases': entries})
+            self.assertEqual(prune(target, target / 'receipts.json'), 2)
+            self.assertEqual(len(list(releases.iterdir())), 1)
+            from pulse.source_history import SourceHistory
+            ledger = SourceHistory(read_json(target / 'data/source-history.json'))
+            self.assertTrue(ledger.contains('https://example.com/teknoloji/0'))
+            self.assertEqual(prune(target, target / 'receipts.json'), 0)
+
+    def test_preparing_removes_yesterday_only_after_backup_and_keeps_dedup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)
+            root = target / 'releases' / 'yesterday'
+            manifest = ready_release(root, self.audio)
+            detail = target / 'teknoloji/haber/teknoloji0/index.html'
+            detail.parent.mkdir(parents=True)
+            detail.write_text('old article')
+            write_json(target / 'data/publication.json', {'status': 'preparing', 'publish_date': '2026-10-17'})
+            receipts = target / 'receipts.json'
+            write_json(receipts, {'releases': {}})
+            with self.assertRaises(ValueError):
+                prune(target, receipts)
+            self.assertTrue(root.exists())
+            self.assertTrue(detail.exists())
+            write_json(receipts, {'releases': {manifest['release_id']: {'verified': True, 'release_id': manifest['release_id'], 'publish_date': manifest['publish_date'], 'file_id': 'verified', 'sha256': 'a'*64}}})
+            self.assertEqual(prune(target, receipts), 1)
+            self.assertFalse(root.exists())
+            self.assertFalse(detail.exists())
+            from pulse.history import exclude_published
+            research = {'sections': {section: [{'source_url': f'https://example.com/{section}/0?utm_source=changed'}] + [{'source_url': f'https://example.com/{section}/new-{i}'} for i in range(3)] for section in ('teknoloji', 'oyun')}}
+            clean = exclude_published(research, target, '2026-10-17')
+            self.assertEqual(len(clean['sections']['teknoloji']), 3)
 
     def test_private_source_networks_rejected(self):
         with self.assertRaises(ValueError):

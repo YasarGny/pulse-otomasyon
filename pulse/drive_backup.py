@@ -149,7 +149,16 @@ def backup_releases(source, published, output, *, drive=None, folder=None, refre
     from pulse.daily_archive import select_daily, canonical_name, protect_order, retire_older
     chosen, grouped = select_daily(source, published)
     if not chosen:
-        raise ValueError('No complete release to archive')
+        # A retried preparation can follow a successful backup+prune: there is
+        # genuinely nothing left to archive. Never mask a missing ready release.
+        source_manifest = read_json(Path(source) / 'data/publication.json')
+        published_path = Path(published) / 'data/publication.json'
+        published_manifest = read_json(published_path) if published_path.exists() else {}
+        if source_manifest.get('status') != 'preparing' or published_manifest.get('status') not in (None, 'preparing'):
+            raise ValueError('No complete release to archive')
+        write_json(output, {'schema_version': 2, 'releases': {}, 'superseded': {}})
+        return {}
+
     active_file = Path(source) / "data/publication.json"
     active = read_json(active_file) if refresh_current and active_file.exists() else {}
     receipts, superseded = {}, {}

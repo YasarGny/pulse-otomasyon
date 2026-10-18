@@ -52,7 +52,14 @@ def sync(source, target, *, at=None):
         obsolete = target / name
         if not (source / name).exists() and (obsolete.is_file() or obsolete.is_symlink()):
             obsolete.unlink()
-    # Historical releases and the target's existing Pages workflow are retained.
+    # No historical browsing catalog is published; recordings live in private ZIPs.
+    obsolete = target / 'assets/episodes'
+    if obsolete.is_symlink():
+        raise ValueError('Unexpected episode catalog symlink')
+    if obsolete.exists():
+        shutil.rmtree(obsolete)
+    # Releases are removed separately, only after verified Drive readback.
+    # The target's existing Pages workflow is retained.
     # No source code or generated prompts are copied to the publication repository.
 
 
