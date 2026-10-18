@@ -153,7 +153,7 @@
       banner = make("aside", "install-card");
       banner.setAttribute("aria-labelledby", "install-title");
       const icon = make("img", "install-icon");
-      icon.src = new URL("assets/app-192.png", base).href;
+      icon.src = new URL("assets/app-192.png?v=2", base).href;
       icon.alt = "";
       icon.width = icon.height = 44;
       const copy = make("div", "install-copy");
