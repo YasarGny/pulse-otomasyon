@@ -1616,6 +1616,11 @@ async function run(name, fn) {
           () => document.querySelector("audio").currentTime > 0.1,
         );
         await p.locator(".selection-grid .story-detail-link").first().click();
+        await p.locator(".article-text p").first().waitFor({ state: "visible" });
+        await p.waitForFunction(() => {
+          const image = document.querySelector(".story-image");
+          return image?.complete && image.naturalWidth > 0;
+        });
         assert.equal(await p.locator(".article-text p").count(), 1);
         assert.equal(await p.locator(".source-link").count(), 2);
         assert.equal(await p.locator("#pulse-printing").count(), 0);
