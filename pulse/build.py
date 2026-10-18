@@ -111,17 +111,7 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
             if chapters:
                 registry[asset['sha256']] = chapters
                 write_json(output / 'assets/chapters' / (asset['sha256'] + '.json'), chapters)
-        from pulse.episode_catalog import catalog
-        episodes = catalog(output / 'releases' / manifest['release_id'], previous)
-        for entry in episodes['episodes']:
-            asset = entry['podcast']
-            if asset['sha256'] not in registry:
-                chapters = load_chapters(source / 'assets/chapters', asset) or (load_chapters(Path(previous) / 'assets/chapters', asset) if previous else None)
-                if chapters:
-                    registry[asset['sha256']] = chapters
-                    write_json(output / 'assets/chapters' / (asset['sha256'] + '.json'), chapters)
         write_json(output / 'assets/chapters/index.json', registry)
-        write_json(output / 'assets/episodes/index.json', episodes)
         build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
     assert_public_tree(output)

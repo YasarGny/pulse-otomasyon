@@ -55,7 +55,7 @@ runs:
     - name: Validate and synchronize public files
       shell: bash
       run: python scripts/sync_site.py dist .published
-    - name: Retain current and previous issue dates; prune only verified backups
+    - name: Retain only active daily issue; prune only verified Drive backups
       if: env.PULSE_DRIVE_ENABLED == 'true'
       shell: bash
       run: python scripts/prune_backed_up.py .published .drive-receipts.json

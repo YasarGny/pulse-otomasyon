@@ -2493,9 +2493,9 @@ body.has-mini {
 .topic-option input { accent-color: var(--accent); width: 16px; height: 16px; }
 .topic-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
 .topic-actions .topics-apply { background: var(--accent); color: #141416; border-color: var(--accent); }
-.player-tabs { display: flex; border-bottom: 1px solid var(--line); margin: 0 8px 8px; }
-.player-tabs button { min-height: 44px; flex: 1; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); font: inherit; font-size: 14px; }
-.player-tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.player-tabs { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin: 0 8px 12px; }
+.player-tabs button { min-height: 44px; flex: 1; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--muted); font: inherit; font-size: 14px; }
+.player-tabs button[aria-selected="true"] { color: var(--text); background: var(--raised); border-color: var(--control); font-weight: 600; }
 .floating-panel { display: flex; flex-direction: column; overflow: hidden; }
 .floating-panel .mini-bar, .floating-panel > .mini-close { flex-shrink: 0; }
 .floating-panel .mini-details { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -2512,8 +2512,8 @@ body.has-mini {
 .chapter-time { color: var(--muted); font-variant-numeric: tabular-nums; }
 .chapter-title { overflow-wrap: anywhere; }
 .chapter-indicator { font-size: 12px; text-align: center; }
-.chapter-jump[aria-current="true"] { background: var(--raised); box-shadow: inset 3px 0 var(--accent); }
-.chapter-jump[aria-current="true"] .chapter-time, .chapter-jump.is-playing .chapter-indicator { color: var(--accent); }
+.chapter-jump[aria-current="true"] { background: var(--raised); box-shadow: inset 0 0 0 1px var(--control); }
+.chapter-jump[aria-current="true"] .chapter-time, .chapter-jump.is-playing .chapter-indicator { color: var(--text); }
 .episode-chapters { margin-top: 28px; max-width: 680px; }
 .episode-chapters h2 { font-size: 20px; }
 .player.chapter-mode :is(.player-bottom,.player-restart,.player-speed) { display: none; }
@@ -2534,15 +2534,10 @@ body.has-mini {
   .floating-panel { bottom: 0; right: 72px; max-height: calc(100dvh - 24px); }
   .player-chapters { max-height: 110px; }
 }
-.episode-history { margin: 32px 0; max-width: 680px; }
-.history-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
-.history-row p { color: var(--muted); font-size: 13px; margin-top: 6px; }
-.history-row .history-start { min-width: 44px; min-height: 44px; border: 1px solid var(--control); border-radius: 50%; background: var(--surface); color: var(--text); }
 @media(max-width:640px) {
   .nav nav { flex-wrap: nowrap; gap: 16px; overflow-x: auto; min-width: 0; }
   .nav nav a { flex: none; }
 }
-.player-tabs button { border-radius: 0; }
-.chapter-indicator svg, .history-start svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; margin: auto; }
+.chapter-indicator svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; margin: auto; }
 /* A started recording remains controllable when the daily news gate closes. */
 .persistent-audio { z-index: 110; }

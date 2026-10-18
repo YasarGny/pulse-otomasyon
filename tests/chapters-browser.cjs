@@ -100,35 +100,38 @@ module.exports = async function(browser, run, base) {
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     }
   });
-  await run('historical playback retains its date and never activates today’s cards or chapters',async()=>{
+  await run('daily-only listening has no archive catalog and uses neutral player selection',async()=>{
+    let catalogRequests = 0;
+    const track = request => { if(request.url().includes('/assets/episodes/')) catalogRequests++; };
+    page.on('request',track);
     await open('/teknoloji/dinle/');
-    const snapshot = await page.evaluate(()=>({asset:window.PULSE_RELEASE.editions.teknoloji.podcast,url:window.PULSE_RELEASE.url.href}));
-    const body = await (await context.request.get(new URL(snapshot.asset.file,snapshot.url).href)).body();
-    const oldId = '2026-10-15-' + 'a'.repeat(16);
-    await context.route('**/assets/episodes/index.json',route=>route.fulfill({json:{schema_version:1,episodes:[
-      {section:'teknoloji',publish_date:'2026-10-15',release_id:oldId,podcast:snapshot.asset}]
-    }}));
-    await context.route('**/releases/'+oldId+'/**',route=>route.fulfill({status:200,
-      headers:{'Content-Type':'audio/mpeg','Content-Length':String(body.length)},
-      body:route.request().method()==='HEAD'?Buffer.alloc(0):body}));
-    await open('/teknoloji/dinle/');
-    await page.locator('.history-start').click();
-    await page.waitForFunction(()=>!document.querySelector('audio').paused);
-    assert((await page.locator('audio').getAttribute('src')).includes(oldId));
-    assert.equal(await page.locator('.listen-player .audio-start').getAttribute('aria-pressed'),'false');
-    assert.equal(await page.locator('.episode-chapters [aria-current="true"]').count(),0);
-    await page.locator('.mini-more').click();
-    assert((await page.locator('.mini-subtitle').innerText()).includes('15.10.2026'));
-    assert.equal(await page.locator('.mini-title a').getAttribute('href'),null);
-    await page.locator('.mini-title a').click();
-    await page.keyboard.press('Escape');
+    await page.waitForSelector('.episode-chapters');
+    assert.equal(await page.locator('.episode-history,.history-start').count(),0);
     await page.locator('.episode-chapters [data-start="12"]').click();
-    await page.waitForFunction(()=>document.querySelector('audio').currentTime>=12);
-    assert(!(await page.locator('audio').getAttribute('src')).includes(oldId));
-    await context.unroute('**/assets/episodes/index.json');
-    await context.unroute('**/releases/'+oldId+'/**');
+    await page.locator('audio').evaluate(a=>a.pause());
+    await page.locator('.mini-more').click();
+    await page.locator('#chapters-tab').click();
+    for(const width of [390,1440]) {
+      await page.setViewportSize({width,height:900});
+      const styles = await page.evaluate(()=>{
+        const tab=getComputedStyle(document.querySelector('.player-tabs [aria-selected="true"]'));
+        const active=getComputedStyle(document.querySelector('.player-chapters [aria-current="true"]'));
+        return {tabBorder:tab.borderBottomColor,shadow:active.boxShadow,accent:getComputedStyle(document.querySelector('.player-play')).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};
+      });
+      assert(!styles.shadow.includes('3px 0px'));
+      assert.notEqual(styles.tabBorder,styles.accent);
+      assert(!styles.shadow.includes(styles.accent));
+      assert.equal(styles.overflow,false);
+      await page.screenshot({path:`test-results/neutral-player-${width}.png`});
+    }
+    assert.equal(catalogRequests,0);
+    page.off('request',track);
+    await page.setViewportSize({width:390,height:844});
+    await page.keyboard.press('Escape');
   });
   await run('daily gate closes topic selection without stranding an already playing recording',async()=>{
+    await page.locator('.episode-chapters [data-start="12"]').click();
+    await page.waitForFunction(()=>!document.querySelector('audio').paused);
     await page.locator('.nav nav a[href*="teknoloji/index"]').click();
     await page.waitForSelector('#stories');
     await page.locator('.topics-dialog').evaluate(dialog=>dialog.showModal());

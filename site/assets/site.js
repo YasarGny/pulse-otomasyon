@@ -278,12 +278,6 @@
                 : "Oynat"),
       );
     });
-    for (const control of all('.history-start')) {
-      const same = selectedRelease?.editions[selected?.section]?.[selected?.kind]?.sha256 === control.dataset.sha &&
-        selectedRelease?.manifest.publish_date === control.dataset.date;
-      icon(control,same && playing ? "pause" : "play");
-      control.setAttribute('aria-pressed',String(!!same && playing));
-    }
     const state = failed
       ? "Ses yüklenemedi."
       : loading
@@ -790,54 +784,6 @@
     list.append(...chapterRows(data,section,kind)); container.append(heading,list);
     listen.closest(".episode").append(container); syncChapters();
   }
-  async function hydrateHistory() {
-    const listen = $(".listen-player");
-    if (!listen || window.PULSE_ARCHIVE || new URLSearchParams(location.search).get("ses") === "ozet") return;
-    const section = listen.dataset.listenSection, currentRelease = release;
-    try {
-      const response = await fetch(new URL("assets/episodes/index.json",base), {cache:"no-cache",signal:AbortSignal.timeout(10000)});
-      if (!response.ok) return;
-      const registry = await response.json();
-      if (registry.schema_version !== 1 || !Array.isArray(registry.episodes) || !listen.isConnected) return;
-      const episodes = registry.episodes.filter(e => e.section === section &&
-        /^\d{4}-\d{2}-\d{2}$/.test(e.publish_date) && e.publish_date < currentRelease.manifest.publish_date &&
-        /^\d{4}-\d{2}-\d{2}-[a-f0-9]{16}$/.test(e.release_id) &&
-        e.podcast?.file === section + "/podcast.mp3" && /^[a-f0-9]{64}$/.test(e.podcast.sha256) &&
-        Number.isFinite(e.podcast.duration) && e.podcast.duration > 0 && Number.isInteger(e.podcast.bytes) && e.podcast.bytes > 0)
-        .sort((a,b)=>b.publish_date.localeCompare(a.publish_date));
-      if (!episodes.length) return;
-      const container = make("section","episode-history");
-      container.append(make("h2","","Geçmiş bölümler"),make("p","detail-meta","Sitede erişilebilir kayıtlar. Daha eski yayınlar kişisel Drive yedeğinde saklanır."));
-      for (const entry of episodes) {
-        const row = make("div","history-row"), copy = make("div"), start = make("button","history-start");
-        const historyError = make("p","history-error","Kayıt yüklenemedi. Tekrar deneyebilirsin.");
-        historyError.hidden = true; historyError.setAttribute("role","status");
-        icon(start,"play");
-        start.dataset.sha = entry.podcast.sha256;
-        start.dataset.date = entry.publish_date;
-        start.type = "button"; start.setAttribute("aria-label",titleForSection(section) + ", " + entry.publish_date.split('-').reverse().join('.') + ", dinle");
-        copy.append(make("span","",entry.publish_date.split('-').reverse().join('.')),make("p","",format(entry.podcast.duration)));
-        start.onclick = async () => {
-          historyError.hidden = true;
-          start.disabled = true;
-          const intent = ++playRequest;
-          try {
-            const context = {manifest:{publish_date:entry.publish_date,release_id:entry.release_id},
-              editions:{[section]:{podcast:entry.podcast}},url:new URL("releases/"+entry.release_id+"/",base)};
-            const head = await fetch(new URL(entry.podcast.file,context.url),{method:"HEAD",cache:"no-cache",signal:AbortSignal.timeout(10000)});
-            if (!head.ok || Number(head.headers.get("Content-Length")) !== entry.podcast.bytes) throw Error("Unavailable recording");
-            if (intent !== playRequest || !start.isConnected) return;
-            configure(section,"podcast",context); await toggle();
-            icon(start,audio.paused ? "play" : "pause");
-          } catch (_) { historyError.hidden = false; start.setAttribute("aria-label","Kayıt yüklenemedi, tekrar dene"); }
-          finally { start.disabled = false; }
-        };
-        copy.append(historyError); row.append(copy,start);container.append(row);
-      }
-      listen.closest(".episode").after(container);
-    } catch (_) { /* Optional history does not block current listening. */ }
-  }
-  function titleForSection(section) { return section === "teknoloji" ? "Yeni Sekme" : "Moradon FM"; }
   let playbackChannel = null;
   try { playbackChannel = new BroadcastChannel("pulse-audio-session-v1");
     playbackChannel.onmessage = event => { if (event.data === "playing") { audio.pause(); playRequest++; } };
@@ -1018,7 +964,6 @@
     }
     setupList(state?.list);
     hydrateChapters();
-    hydrateHistory();
     for (const start of all(".audio-start"))
       start.addEventListener(
         "click",

@@ -101,8 +101,8 @@ sayısını yeni günün yayını olarak yayımlayamaz. API başarısızlıklar�
 olur, matbaa açık kalır. Actions bildirimlerini açın: GitHub bildirim ayarları →
 Actions → başarısız iş akışları.
 
-Yayın deposundaki tarihli JSON geçmişi, önceki gün yayımlanmış kaynak URL'lerini
-yeni seçkiden çıkarır. Yeterli yeni haber kalmazsa eski haber yeniden yayımlanmaz.
+Güncel doğrulanmış JSON ve kalıcı, küçük URL parmak izi kaydı, daha önce
+yayımlanmış kaynakları yeni seçkiden çıkarır. Yeterli yeni haber kalmazsa eski haber yeniden yayımlanmaz.
 Aynı günün sürümü yayın deposunda zaten mevcutsa, Actions artifact'ları silinmiş
 olsa bile doğrulanmış sürüm oradan geri alınır; yeniden API ücreti oluşturulmaz.
 
@@ -112,8 +112,7 @@ artifact'ına yazılır. Yalnız bu depodaki bu iş akışının `main` üzerind
 Yeniden çalıştırma aynı günlük JSON'u, konuşma metnini ve geçerli sesleri kullanır.
 Tamamlanmış bir sürüm yeniden numaralandırılmaz veya tekrar seslendirilmez.
 Artifact silinirse henüz yayımlanmamış, tamamlanmamış günün bazı ücretli üretimleri yeniden gerekebilir;
-2 günlük artifact geçmişi uzun vadeli arşiv değildir. Yayımlanmış sürümler yayın
-deposunda kalır. Araştırma başarısız olursa diğer günün haberleriyle doldurulmaz.
+2 günlük artifact geçmişi uzun vadeli arşiv değildir. Güncel sürüm yayın deposunda; önceki günler doğrulanmış Drive ZIP’lerinde kalır. Araştırma başarısız olursa diğer günün haberleriyle doldurulmaz.
 
 Teknoloji sayısı 16 Ekim 2026 = 001 takvim başlangıcına bağlıdır. Oyun başlangıcı
 ilk başarılı yayın gününde kaydedilir; o gün = 001. İlk deneme başarısızsa ertesi
@@ -341,8 +340,8 @@ kimlik doğrulamasıyla Git read/push ayrıca sınanmalıdır.
 ## Private depo çıktı bütçesi
 
 Geçici site ve yeniden başlatma artifact'ları 2, tarayıcı sonuçları 3 gün saklanır.
-Kalıcı hazır yayınlar public yayın deposundaki `releases/` altında korunur;
-artifact'ın silinmesi arşivi veya aynı günün dayanıklı geri dönüşünü silmez.
+Güncel hazır yayın public yayın deposundaki `releases/` altında korunur; geçmiş
+günler özel Drive ZIP’lerindedir. Artifact temizliği bu kopyaları silmez.
 İlk temizlikte son beş tarayıcı kanıtı korundu, daha eski ekran görüntüsü
 artifact'ları kaldırıldı; job/test geçmişi silinmedi. Kaynak private olduğundan
 planın Actions dakika ve depolama kotası geçerlidir.
@@ -381,7 +380,7 @@ korunur; `audio-vN` yolu sabitten hesaplanır. İki özet ve iki podcast tam do�
 yeni sürüm açılmaz. Başarısız sentez mevcut sesleri değiştirmez. Sentez kopyaları
 ve sözlük/diyalog hash’leri private Actions kontrol noktasında kalır.
 
-## Kalıcı oynatıcı, konu işaretleri ve sınırlı geçmiş yayınlar
+## Kalıcı oynatıcı ve konu işaretleri
 
 `assets/listening.js` opsiyonel konu verisini son MP3 SHA-256 kimliğine bağlar.
 `site/assets/chapters/<mp3-sha256>.json` yalnız denetlenmiş kamuya açık başlıkları
@@ -406,19 +405,46 @@ inceleme insan dinleme kontrolü veya hatasızlık garantisi değildir. İlk mev
 kayıtların geçişleri ayrıca incelenmelidir. Başarısız işaretleme günlük yayın
 kapısını veya orijinal sesleri değiştirmez; Actions özetinde sonucu görünür.
 
-`build(..., previous=...)` yalnız bütünlük denetiminden geçen son iki yayın tarihini
-geçmiş kayıt kataloğuna alır. Bu mevcut saklama kuralını genişletmez; daha eski
-Drive ZIP'leri tarayıcıdan yayın akışı olarak sunulmaz. Yayın deposunda tutulmayan
-kayıtlara çalışmayan düğme üretilmez. Bir geçmiş kaydı başlatırken HEAD/boyut
-kontrolü yapılır. Ayrı bir tarih sayfası yerine aynı kalıcı oynatıcı kullanılır.
-Çalan kayıt kendi release/asset kimliğini tutar: yeni yayın onu değiştirmez ve
-bugünkü kartlar eski kayıt çalıyor diye etkin görünmez. Sabah kapısı haber
-alanını kapatır; kullanıcının başlattığı erişilebilir ses kendiliğinden kesilmez.
-İki günden eski açık sekmelerde temizlenen dosya erişimi garanti edilemez.
+Site yalnız güncel yayını gösterir; geçmiş haber/bölüm kataloğu oluşturulmaz.
+Çalan kayıt kendi release/asset kimliğini tutar; sayfalarda gezinmek onu değiştirmez.
+Sabah kapısı açılınca yeni yayın beklenir. Kullanıcının başlattığı sesin kontrolleri
+kalır; eski dosya yayından kaldırıldıktan sonra tamponlanmamış kısmın devamı
+garanti edilemez. Hata durumunda yeni kayda kendiliğinden geçilmez.
+
+## Günlük Drive arşivi, temizlik ve haber tekrarı
+
+Her gün için son sürüm `PULSE-DD.MM.YYYY.zip` olarak saklanır: ana sayfa, haber
+detayları, kaynak bağlantıları, yerel görseller, dört ses ve varsa konu işaretleri.
+ZIP açılıp `index.html` tarayıcıda açılarak dolaşılabilir; kaynak siteler dış bağlantıdır.
+Yüklenen ZIP tamamen geri indirilip hash/envanter denetlenmeden eski ZIP veya
+site dosyaları kaldırılmaz. Aynı günün eski sürümleri yalnız son sürüm doğrulandıktan
+sonra emekliye ayrılır. Drive doğrulaması başarısızsa dağıtım durur.
+
+Hazırlık dağıtımında önceki günün tüm release klasörleri ve artık kullanılmayan
+haber yolları doğrulanmış Drive makbuzlarıyla kaldırılır. Hazır dağıtımda yalnız
+aktif release tutulur; aynı günün eski sürümleri de son günlük yedek doğrulanmışsa
+kaldırılır. Bütün adaylar silme başlamadan denetlenir. Yedekleme mevcut günlük
+concurrency kilidi altındadır; kullanıcıdan yeni bir Drive izni gerektirmez.
+
+`data/source-history.json` haber metni, başlık veya görsel içermez. Sabit 512 KiB
+Bloom filtresinin sıkıştırılmış biçimidir (JSON alanı üst sınırı yaklaşık 700 KB).
+Kaynak URL SHA-256 parmak izleri eklenir; önceki ham hash listeleri kayıpsız taşınır.
+HTTP/HTTPS, www, son eğik çizgi, fragment ve bilinen takip parametreleri eşitlenir;
+içerik kimliğini değiştirebilen query parametreleri korunur. Eski biçimden kalan,
+URL’si artık mevcut olmayan takipli hashler geriye dönük eşitlenemez.
+
+Filtre eklenen kimliği unutmaz. Az olasılıkla yeni bir adresi de eski sanabilir;
+doluluk %30’u aşarsa geçmişi sıfırlamak yerine yayın durur ve geçiş gerekir.
+En kötü izinli dolulukta tek kontrolün yanlış eşleşme olasılığı yaklaşık %0,022’dir;
+normal dolulukta çok daha düşüktür. Başka yayıncı/URL ile yeniden yazılmış aynı
+olayı kesin tanımaz. Gerçek yeni gelişmeler için farklı makale kimlikleri korunur.
+
+Bu temizlik yayın ağacını küçültür; Git geçmişindeki eski MP3 nesnelerini silmez.
+Git geçmişini yeniden yazmak ayrı, ayrıca onaylanması gereken bir taşıma işlemidir.
 
 Konu satırına dokunmak sesi ilgili saniyeden başlatır, haberi/okuma konumunu
 korur. Başka bölümün sayfasını incelemek sesi değiştirmez. Uzun oynatıcı konusu
 ölçülen taşma kadar ileri/geri kayar; azaltılmış harekette tam metin sabittir.
-Konular/geçmiş yayın listeleri satıra yayılır, kaymaz. Kategoriye özgü arama ve
+Konu listeleri satıra yayılır, kaymaz. Kategoriye özgü arama ve
 çoklu filtreler geri dönüşte korunur; filtre panelinde Uygula dışında kapatma
 seçimleri değiştirmez. Native dialog ve klavye odağı kullanılır.
