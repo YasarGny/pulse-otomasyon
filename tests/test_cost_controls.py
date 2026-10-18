@@ -116,3 +116,26 @@ class CostControlsTests(unittest.TestCase):
             self.assertTrue((root/'transcripts/oyun.json').exists())
             self.assertFalse((root/'transcripts/teknoloji.json').exists())
             self.assertEqual(factory.call_count,1)
+
+    def test_render_recovers_paid_response_after_private_checkpoint_restore(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);wav=root/'provider.wav'
+            subprocess.run(['ffmpeg','-v','error','-y','-f','lavfi','-i','sine=frequency=440:sample_rate=24000','-t','3',str(wav)],check=True)
+            response=Mock(ok=True,status_code=200)
+            response.json.return_value={'steps':[{'content':[{'type':'audio','data':base64.b64encode(wav.read_bytes()).decode()}]}]}
+            work=root/'2026-10-18';cache=work/'teknoloji/tts-parts'
+            turns=[{'speaker':'Yaşar','text':'Test kaydı.'}]
+            with patch.dict(os.environ,{'GEMINI_API_KEY':'fixture-only'}), patch.object(audio.requests,'post',return_value=response) as post:
+                with patch.object(audio,'run',side_effect=OSError('temporary local conversion failure')), self.assertRaises(OSError):
+                    audio.render(turns,root/'failed.mp3',strict_audio=True,checkpoint_dir=cache)
+                self.assertEqual(len(list(cache.rglob('*.raw'))),1)
+                state=io.BytesIO()
+                with zipfile.ZipFile(state,'w') as archive:
+                    for path in cache.rglob('*'):
+                        if path.is_file():archive.write(path,path.relative_to(root))
+                restored=root/'restored'
+                unpack(state.getvalue(),restored,'2026-10-18')
+                audio.render(turns,root/'recovered.mp3',strict_audio=True,checkpoint_dir=restored/'2026-10-18/teknoloji/tts-parts')
+                self.assertEqual(post.call_count,1)
+                self.assertGreater(audio.duration(root/'recovered.mp3'),2.9)
