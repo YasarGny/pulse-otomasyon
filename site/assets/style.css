@@ -568,10 +568,10 @@ main > section + section {
 }
 
 /* A quiet, permanent footer action; no automatic install promotion. */
-.foot { flex-wrap: wrap; gap: 8px 24px; }
+.foot { flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
 .foot-actions {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 20px;
   margin-left: auto;
