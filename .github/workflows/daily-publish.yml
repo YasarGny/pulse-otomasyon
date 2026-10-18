@@ -180,6 +180,24 @@ jobs:
             python -m pulse.pipeline --date "$PULSE_DATE" --game-start "$PULSE_GAME_START_DATE" --previous .published
             echo "release_path=.pulse-work/$PULSE_DATE" >> "$GITHUB_OUTPUT"
           fi
+      - name: Show pronunciation review hints without generating any extra audio
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path('.pulse-work') / os.environ['PULSE_DATE']
+          reports = sorted(root.rglob('pronunciation-review.json'))
+          if reports:
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write('## Telaffuz kontrol listesi\n\nBunlar otomatik adaylardır; doğru telaffuz onayı değildir. Bilinmeyen adlar otomatik değiştirilmez.\n\n')
+                  for path in reports:
+                      summary.write('### ' + str(path.parent.relative_to(root)) + '\n\n')
+                      for kind, report in json.loads(path.read_text()).items():
+                          names = ', '.join(item['name'] for item in report['candidates'][:20]) or 'Yok'
+                          summary.write(f"- {kind}: {len(report['replacements'])} sözlük dönüşümü; {report['candidate_count']} kontrol adayı. {names}\n")
+                  summary.write('\nAyrıntılar özel pulse-state artifact içindeki pronunciation-review.json dosyalarında.\n')
+          PY
       - name: Build only inside the verified publication window; otherwise save the ready checkpoint
         id: build
         env:

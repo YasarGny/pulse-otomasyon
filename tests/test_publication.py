@@ -351,6 +351,7 @@ class ReleaseTests(unittest.TestCase):
         data = edition("teknoloji")
 
         async def save(path):
+            self.assertIn("summary", read_json(root / "teknoloji/pronunciation-review.json"))
             shutil.copyfile(self.audio, path)
 
         turns = [
@@ -362,6 +363,7 @@ class ReleaseTests(unittest.TestCase):
         ]
 
         def render(dialogue, target, *, strict_audio=False):
+            self.assertIn("podcast", read_json(root / "teknoloji/pronunciation-review.json"))
             shutil.copyfile(self.audio, target)
 
         def reviewed_writer(*args, **kwargs):
@@ -406,6 +408,9 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(read_json(root / "teknoloji/turns.json")["turns"], turns)
             self.assertIn("Pals", edge.call_args.kwargs["text"])
             self.assertTrue((root / "teknoloji/podcast-spoken.json").exists())
+            report = read_json(root / "teknoloji/pronunciation-review.json")
+            self.assertEqual(set(report), {"summary", "podcast"})
+            self.assertTrue(any(r["spoken"] == "Pals" for r in report["summary"]["replacements"]))
         data["stories"][0]["title"] = "Changed after synthesis"
         with self.assertRaises(ValueError):
             generate_audio(root, data)

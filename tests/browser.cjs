@@ -223,6 +223,11 @@ async function run(name, fn) {
           await p.locator("html").getAttribute("data-theme"),
           "light",
         );
+        await p.locator(".podcast-box .audio-start").first().click();
+        await p.waitForFunction(()=>document.querySelector("audio").currentTime>.1);
+        await p.locator("audio").evaluate(a=>{a.currentTime=17;a.pause();});
+        await p.locator(".mini-more").click();
+        assert(await p.locator(".player-restart").isVisible());
         await c.close();
       },
     );
@@ -482,6 +487,93 @@ async function run(name, fn) {
           await noOverflow();
         }
         await page.setViewportSize({ width: 1440, height: 1000 });
+      },
+    );
+    await run(
+      "search is Turkish-aware, scoped, resettable and retained on article return",
+      async () => {
+        await open("/expanded/teknoloji/");
+        await page.locator(".news-search").fill("yazilim");
+        assert.equal(await page.locator("#stories .story:visible").count(), 8);
+        await page.locator(".news-search").fill("YAZILIM");
+        assert.equal(await page.locator("#stories .story:visible").count(), 8);
+        await page.locator(".news-more").click();
+        assert.equal(await page.locator("#stories .story:visible").count(), 10);
+        const link = page.locator("#stories .story:visible .story-detail-link").last();
+        await link.click();
+        await page.waitForSelector(".article-reader");
+        await page.locator(".back").click();
+        await page.waitForSelector("#stories");
+        assert.equal(await page.locator(".news-search").inputValue(), "YAZILIM");
+        assert.equal(await page.locator("#stories .story:visible").count(), 10);
+        await page.locator(".news-filter").selectOption("BİLİM");
+        assert.equal(await page.locator("#stories .story:visible").count(), 0);
+        await page.locator(".reset-filter").click();
+        assert.equal(await page.locator(".news-search").inputValue(), "");
+        await page.locator(".news-search").fill("bilim");
+        assert.equal(await page.locator("#stories .story:visible").count(), 8);
+        for (const story of await page.locator("#stories .story:visible").all())
+          assert.equal(await story.getAttribute("data-section"), "teknoloji");
+        await page.locator(".news-search").fill("<script>no-results</script>");
+        assert(await page.locator(".empty-filter").isVisible());
+        assert.equal(await page.locator("#stories .story:visible").count(), 0);
+        await page.setViewportSize({width:320,height:740});
+        await noOverflow();
+        await axe();
+        await page.setViewportSize({width:1440,height:1000});
+      },
+    );
+    await run(
+      "saved listening resumes only on explicit play, restores speed and supports restarting",
+      async () => {
+        await open("/");
+        await page.locator(".podcast-box .audio-start").first().click();
+        await page.waitForFunction(() => document.querySelector("audio").currentTime > .1);
+        await page.locator("audio").evaluate((a) => {a.pause();a.currentTime=17;a.playbackRate=1.25;});
+        await page.waitForFunction(() => Object.values(JSON.parse(localStorage.getItem("pulse-listening-v1") || "{}")).some(r=>r.position>=17));
+        await page.reload();
+        await page.waitForSelector(".resume-note");
+        assert(await page.locator(".resume-note").first().innerText().then(t=>t.includes("0:17")));
+        assert.equal(await page.locator("audio").getAttribute("src"), null);
+        assert(await page.locator("audio").evaluate(a=>a.paused));
+        await page.locator(".podcast-box .audio-start").first().click();
+        await page.waitForFunction(() => document.querySelector("audio").currentTime>=17);
+        assert.equal(await page.locator("audio").evaluate(a=>a.playbackRate),1.25);
+        await page.locator(".mini-more").click();
+        await page.locator(".player-restart").click();
+        assert(await page.locator("audio").evaluate(a=>a.currentTime<2));
+        await page.locator(".mini-close").click();
+        await page.reload();
+        await page.waitForFunction(()=>!!window.PULSE_RELEASE);
+        assert.equal(await page.locator(".resume-note").count(),0);
+        await page.evaluate(()=>localStorage.removeItem("pulse-listening-v1"));
+      },
+    );
+    await run(
+      "invalid or completed listening records never auto-select audio or leak to another edition",
+      async () => {
+        await open("/");
+        await page.evaluate(()=>{
+          const sha = window.PULSE_RELEASE.editions.teknoloji.podcast.sha256;
+          localStorage.setItem("pulse-listening-v1",JSON.stringify({["2020-01-01:teknoloji:podcast:"+sha]:{position:17,rate:1}}));
+        });
+        await page.reload();
+        await page.waitForFunction(()=>!!window.PULSE_RELEASE);
+        assert.equal(await page.locator(".resume-note").count(),0);
+        assert.equal(await page.locator("audio").getAttribute("src"),null);
+        await page.evaluate(()=>localStorage.setItem("pulse-listening-v1","{broken"));
+        await page.reload();
+        await page.waitForFunction(()=>!!window.PULSE_RELEASE);
+        assert.equal(await page.locator(".resume-note").count(),0);
+        await page.evaluate(()=>{
+          const r=window.PULSE_RELEASE,a=r.editions.teknoloji.podcast;
+          const key=r.manifest.publish_date+":teknoloji:podcast:"+a.sha256;
+          localStorage.setItem("pulse-listening-v1",JSON.stringify({[key]:{position:a.duration-1,rate:1}}));
+        });
+        await page.reload();
+        await page.waitForFunction(()=>!!window.PULSE_RELEASE);
+        assert.equal(await page.locator(".resume-note").count(),0);
+        await page.evaluate(()=>localStorage.removeItem("pulse-listening-v1"));
       },
     );
     await run(

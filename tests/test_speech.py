@@ -2,12 +2,27 @@
 
 import copy
 import unittest
-from pulse.speech import cardinal, pronunciation, spoken_turns, LEXICON_SHA256
+from pulse.speech import cardinal, pronunciation, spoken_turns, pronunciation_review, LEXICON_SHA256
 from pulse.editorial import summary_script
 from fixtures import edition
 
 
 class SpeechTests(unittest.TestCase):
+    def test_review_lists_known_forms_and_unknown_candidates_without_rewriting(self):
+        text = "Bugün PULSE ve OpenAI ile NewStudio, iDevice ve NEWSDK gündemde."
+        report = pronunciation_review(text)
+        self.assertIn({"name": "pulse", "spoken": "Pals", "count": 1}, report["replacements"])
+        self.assertEqual({c["name"] for c in report["candidates"]}, {"NewStudio", "iDevice", "NEWSDK"})
+        self.assertNotIn("Pals", text)
+
+    def test_review_protects_identifiers_and_bounds_and_deduplicates_hints(self):
+        report = pronunciation_review("NewStudio NewStudio https://example.com/SecretBrand `PrivateCode` test@Company.com")
+        self.assertEqual([c["name"] for c in report["candidates"]], ["NewStudio"])
+        self.assertNotIn("example.com", report["candidates"][0]["context"])
+        report = pronunciation_review(" ".join("Brand" + str(i) for i in range(110)))
+        self.assertEqual(len(report["candidates"]), 100)
+        self.assertEqual(report["candidate_count"], 110)
+
     def test_brand_and_common_technology_game_names_have_reviewable_spoken_forms(self):
         self.assertEqual(
             pronunciation("PULSE, OpenAI ve NVIDIA; Steam Deck, Xbox, Knight Online."),
