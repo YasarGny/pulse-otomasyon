@@ -13,6 +13,7 @@ class SpeechTests(unittest.TestCase):
             pronunciation("PULSE, OpenAI ve NVIDIA; Steam Deck, Xbox, Knight Online."),
             "Pals, Oupın Ey Ay ve Envidya; Stim Dek, Eks Boks, Nayt Onlayn.",
         )
+        self.assertEqual(pronunciation("GOG Preservation Program"), "Gog Preservation Program")
         self.assertEqual(len(LEXICON_SHA256), 64)
 
     def test_longest_match_word_boundaries_and_apostrophes(self):
