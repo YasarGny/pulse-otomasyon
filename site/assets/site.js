@@ -33,6 +33,8 @@
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
   };
   const icon = (n, name) => {
+    if (n.dataset.icon === name) return;
+    n.dataset.icon = name;
     n.innerHTML =
       '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[name] + "</svg>";
   };
@@ -805,12 +807,15 @@
       container.append(make("h2","","Geçmiş bölümler"),make("p","detail-meta","Sitede erişilebilir kayıtlar. Daha eski yayınlar kişisel Drive yedeğinde saklanır."));
       for (const entry of episodes) {
         const row = make("div","history-row"), copy = make("div"), start = make("button","history-start");
+        const historyError = make("p","history-error","Kayıt yüklenemedi. Tekrar deneyebilirsin.");
+        historyError.hidden = true; historyError.setAttribute("role","status");
         icon(start,"play");
         start.dataset.sha = entry.podcast.sha256;
         start.dataset.date = entry.publish_date;
         start.type = "button"; start.setAttribute("aria-label",titleForSection(section) + ", " + entry.publish_date.split('-').reverse().join('.') + ", dinle");
         copy.append(make("span","",entry.publish_date.split('-').reverse().join('.')),make("p","",format(entry.podcast.duration)));
         start.onclick = async () => {
+          historyError.hidden = true;
           start.disabled = true;
           const intent = ++playRequest;
           try {
@@ -821,10 +826,10 @@
             if (intent !== playRequest || !start.isConnected) return;
             configure(section,"podcast",context); await toggle();
             icon(start,audio.paused ? "play" : "pause");
-          } catch (_) { start.textContent = "!"; start.setAttribute("aria-label","Kayıt yüklenemedi, tekrar dene"); }
+          } catch (_) { historyError.hidden = false; start.setAttribute("aria-label","Kayıt yüklenemedi, tekrar dene"); }
           finally { start.disabled = false; }
         };
-        row.append(copy,start);container.append(row);
+        copy.append(historyError); row.append(copy,start);container.append(row);
       }
       listen.closest(".episode").after(container);
     } catch (_) { /* Optional history does not block current listening. */ }
