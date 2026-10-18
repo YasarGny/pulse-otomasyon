@@ -24,4 +24,5 @@ class EpisodeCatalogTests(unittest.TestCase):
                 path.write_bytes(b'not an mp3')
             data = catalog(current, previous)
             self.assertNotIn('2026-10-17', [e['publish_date'] for e in data['episodes']])
+            self.assertNotIn('2026-10-16', [e['publish_date'] for e in data['episodes']])
             self.assertIn('2026-10-18', [e['publish_date'] for e in data['episodes']])

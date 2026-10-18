@@ -9,10 +9,23 @@ def catalog(current, previous=None):
     selected = {}
     paths = list((Path(previous) / 'releases').glob('*/release.json')) if previous else []
     paths.append(current / 'release.json')
+    # Match prune_backed_up's date window even when one retained recording is
+    # corrupt: never fall back to an older date that cleanup will remove.
+    dates = {active['publish_date']}
+    for path in paths:
+        try:
+            candidate = read_json(path).get('publish_date', '')
+            if isinstance(candidate, str) and candidate <= active['publish_date']:
+                from datetime import date
+                date.fromisoformat(candidate)
+                dates.add(candidate)
+        except (OSError, ValueError, TypeError):
+            continue
+    keep_dates = set(sorted(dates)[-2:])
     for path in paths:
         try:
             manifest = read_json(path)
-            if manifest.get('status') != 'ready' or manifest['publish_date'] > active['publish_date']:
+            if manifest.get('status') != 'ready' or manifest['publish_date'] not in keep_dates:
                 continue
             verify_manifest(path.parent, manifest)
             date = manifest['publish_date']
