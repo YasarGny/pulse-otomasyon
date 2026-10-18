@@ -1659,8 +1659,10 @@ html.document-hidden .press-newspaper {
   border-radius: 8px;
 }
 
-.brand {
-  font-family: "Segoe UI", Arial, sans-serif;
+.brand,
+.loading-brand {
+  font-family: Arial, sans-serif;
+  font-weight: 400;
 }
 
 .image-retry {
