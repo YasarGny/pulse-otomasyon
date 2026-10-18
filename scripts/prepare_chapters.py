@@ -64,10 +64,17 @@ def prepare(release):
     if not missing:
         return
     transcribe(release, release / 'chapter-transcripts')
+    failures = []
     for section, asset in missing:
-        result = propose(read_json(release / 'chapter-transcripts' / (section + '.json')), asset, gemini)
-        write_json(target / (asset['sha256'] + '.json'), result)
-        print(section, 'audio-aligned chapter metadata prepared; voices unchanged')
+        try:
+            result = propose(read_json(release / 'chapter-transcripts' / (section + '.json')), asset, gemini)
+            write_json(target / (asset['sha256'] + '.json'), result)
+            print(section, 'audio-aligned chapter metadata prepared; voices unchanged')
+        except Exception as error:
+            failures.append(section)
+            print(section, 'chapter metadata omitted:', type(error).__name__)
+    if failures:
+        raise ValueError('Chapter analysis incomplete for: ' + ', '.join(failures))
 
 
 if __name__ == '__main__':

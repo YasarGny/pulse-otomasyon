@@ -89,6 +89,7 @@ jobs:
           from pathlib import Path
           from pulse.editorial import gemini
           from scripts.prepare_chapters import propose
+          failures = []
           for section in ('teknoloji', 'oyun'):
               transcript = json.loads(Path('chapter-review', section + '.json').read_text())
               manifest = json.loads(Path('.published/data/publication.json').read_text())
@@ -99,11 +100,14 @@ jobs:
               except Exception as error:
                   message = (type(error).__name__ + ': ' + str(error))[:1500]
                   print('::error::' + message.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
-                  raise
+                  failures.append(section)
+                  continue
               Path('chapter-review', asset['sha256'] + '.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
               # Public-safe metadata is also available to reviewers through check annotations.
               notice = json.dumps({'section': section, 'data': result}, ensure_ascii=False)
               print('::notice title=Verified chapter proposal::' + notice.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+          if failures:
+              raise ValueError('Chapter review incomplete for: ' + ', '.join(failures))
           PYCODE
       - uses: actions/upload-artifact@v4
         if: always()

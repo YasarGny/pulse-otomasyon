@@ -1,4 +1,8 @@
 import unittest
+import tempfile
+import json
+from pathlib import Path
+from unittest.mock import patch
 from scripts.prepare_chapters import propose
 
 
@@ -28,3 +32,20 @@ class ChapterPreparationTests(unittest.TestCase):
                 propose(self.transcript, self.asset, generate)
         with self.assertRaises(ValueError):
             propose(self.transcript, {**self.asset, 'sha256': 'b' * 64}, self.generate())
+
+    def test_failed_topic_analysis_does_not_discard_the_other_program(self):
+        from scripts.prepare_chapters import prepare
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'chapter-transcripts').mkdir()
+            for section in ('teknoloji', 'oyun'):
+                (root / (section + '.json')).write_text(json.dumps({'podcast': self.asset}))
+                (root / 'chapter-transcripts' / (section + '.json')).write_text(json.dumps(self.transcript))
+            accepted = {'schema_version': 1, 'reviewed': True, 'audio_sha256': self.asset['sha256'],
+                        'chapters': [{'start': 0.1, 'title': 'Açılış'}]}
+            with patch('scripts.transcribe_podcasts.transcribe'), patch(
+                'scripts.prepare_chapters.propose', side_effect=[ValueError('rejected'), accepted]
+            ) as generate, self.assertRaisesRegex(ValueError, 'teknoloji'):
+                prepare(root)
+            self.assertEqual(generate.call_count, 2)
+            self.assertEqual(json.loads((root / 'chapters' / (self.asset['sha256'] + '.json')).read_text()), accepted)
