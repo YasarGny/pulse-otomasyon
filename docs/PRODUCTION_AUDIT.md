@@ -56,3 +56,14 @@ kaldırılmadı. Model denetimi insan doğrulamasının yerini tutmaz.
   Geçmişi yeniden yazmak ayrı ve ayrıca onay gerektiren bir taşımadır.
 
 Ses kalitesi için yeni örnek üretim/dinleme ancak ayrıca açık onayla yapılır.
+
+## Canlı kullanımda bildirilen arayüz düzeltmeleri
+
+Mobil menüde yatay taşma ayarı, alt çizginin dikey taşmasını da bir kaydırma
+alanına dönüştürüyordu. Menü artık kaydırma alanı değildir; küçük ekran/büyük yazıda
+satıra yerleşir. 320–1440 px ve büyütülmüş yazıyla doğrulanır.
+Yükleme mesajı oynatıcı akışına satır eklemiyordur: kısa beklemelerde gösterilmez,
+350 ms üzerindeki beklemede düğmenin içinde sabit boyutlu gösterge ve ekran
+okuyucu durumu kullanılır. Gerçek hata mesajı/tekrar dene kontrolü korunur.
+Test yükleme öncesi/sırası/sonrasında panel, sekmeler, oynat düğmesi ve ilerleme
+çubuğunun tüm dikdörtgenlerinin aynı kaldığını doğrular.

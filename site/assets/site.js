@@ -55,6 +55,7 @@
     pendingNav = null,
     listState = null;
   let selectedRelease = null, playRequest = 0;
+  let bufferingTimer = null, showBuffering = false;
   let renderedURL = new URL(location.href);
   let selectedDuration = 0,
     loading = false,
@@ -132,7 +133,8 @@
     miniTitle = make("div", "mini-title"),
     miniLink = make("a"),
     miniTime = make("span", "mini-time"),
-    miniStatus = make("span", "mini-status");
+    miniStatus = make("span", "mini-status sr-only");
+  miniStatus.setAttribute("role", "status");
   const miniSubtitle = make("span", "mini-subtitle");
   miniTitle.append(miniLink, miniSubtitle, miniTime, miniStatus);
   const close = button(
@@ -224,6 +226,15 @@
       : "";
   }
   function update() {
+    if (!loading || failed) {
+      clearTimeout(bufferingTimer); bufferingTimer = null; showBuffering = false;
+    } else if (!showBuffering && bufferingTimer === null) {
+      bufferingTimer = setTimeout(() => {
+        bufferingTimer = null;
+        if (loading && !failed) { showBuffering = true; update(); }
+      }, 350);
+    }
+    play.dataset.buffering = miniMore.dataset.buffering = String(showBuffering);
     const playing = !!selected && !audio.paused && !audio.ended && !failed;
     for (const n of [play]) {
       icon(n, playing ? "pause" : "play");
@@ -254,7 +265,7 @@
       n.dataset.state = active
         ? failed
           ? "error"
-          : loading
+          : showBuffering
             ? "loading"
             : playing
               ? "playing"
@@ -283,10 +294,10 @@
       : loading
         ? "Ses yükleniyor…"
         : "";
-    full.classList.toggle("is-loading", loading && !failed);
+    full.classList.toggle("is-loading", showBuffering && !failed);
     full.classList.toggle("is-error", failed);
-    status.textContent = state;
-    miniStatus.textContent = state;
+    status.textContent = failed ? "Ses yüklenemedi." : "";
+    miniStatus.textContent = showBuffering && !failed ? state : "";
     retry.hidden = !failed;
     mini.hidden =
       !selected ||
@@ -297,7 +308,7 @@
     miniMore.setAttribute("aria-busy", String(loading));
     miniMore.dataset.state = failed
       ? "error"
-      : loading
+      : showBuffering
         ? "loading"
         : playing
           ? "playing"
@@ -307,7 +318,7 @@
       (panel.hidden ? "Oynatıcı kontrollerini aç" : "Kontrolleri küçült") +
         ": " +
         title() +
-        (playing ? ", çalıyor" : ", duraklatıldı"),
+        (failed ? ", ses yüklenemedi" : playing ? ", çalıyor" : ", duraklatıldı"),
     );
     miniMore.style.setProperty(
       "--progress",

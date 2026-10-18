@@ -164,6 +164,48 @@ module.exports = async function(browser, run, base) {
       assert.equal(await other.locator('audio').count(),1);
     } finally { await other.close(); }
   });
+  await run('navigation never creates a scroll container, including enlarged mobile text',async()=>{
+    await open('/');
+    for(const width of [320,390,640,768,1440]) {
+      await page.setViewportSize({width,height:900});
+      const result=await page.locator('.nav nav').evaluate(nav=>{
+        const style=getComputedStyle(nav),rect=nav.getBoundingClientRect();
+        return {x:style.overflowX,y:style.overflowY,inside:[...nav.querySelectorAll('a')].every(a=>{const r=a.getBoundingClientRect();return r.left>=rect.left-1&&r.right<=rect.right+1}),pageOverflow:document.documentElement.scrollWidth>innerWidth};
+      });
+      assert.equal(result.x,'visible'); assert.equal(result.y,'visible');
+      assert(result.inside); assert(!result.pageOverflow);
+    }
+    await page.setViewportSize({width:320,height:844});
+    await page.locator('.nav nav a').evaluateAll(links=>links.forEach(a=>a.style.fontSize='26px'));
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    assert.equal(await page.locator('.nav nav a').count(),4);
+  });
+  await run('brief and sustained buffering never move player controls or resize the panel',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await open('/teknoloji/dinle/');
+    await page.locator('.episode-chapters [data-start="12"]').click();
+    await page.waitForFunction(()=>!document.querySelector('audio').paused);
+    await page.locator('audio').evaluate(a=>a.pause());
+    await page.locator('.mini-more').click();
+    const rects=()=>page.evaluate(()=>['.floating-panel','.player-play','.player-seek','.player-tabs'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {s,x:r.x,y:r.y,w:r.width,h:r.height}}));
+    for(const width of [390,1440]) {
+      await page.setViewportSize({width,height:900});
+      const before=await rects();
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('waiting')));
+      assert.equal(await page.locator('.player-play').getAttribute('data-buffering'),'false');
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('canplay')));
+      assert.deepEqual(await rects(),before);
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('waiting')));
+      await page.waitForFunction(()=>document.querySelector('.player-play').dataset.buffering==='true');
+      assert.deepEqual(await rects(),before);
+      assert.equal(await page.locator('.audio-status').innerText(),'');
+      assert(await page.locator('.mini-status').evaluate(n=>n.classList.contains('sr-only')&&n.textContent.includes('yükleniyor')));
+      await page.screenshot({path:`test-results/stable-buffering-${width}.png`});
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('canplay')));
+      assert.deepEqual(await rects(),before);
+      assert.equal(await page.locator('.player-play').getAttribute('data-buffering'),'false');
+    }
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };
