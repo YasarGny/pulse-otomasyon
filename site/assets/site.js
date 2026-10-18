@@ -1282,6 +1282,7 @@
   }
   window.addEventListener("pulse:ready", (event) => ready(event.detail));
   window.addEventListener("pulse:locked", () => {
+    $(".topics-dialog")?.close();
     collapsePanel(false);
     miniLink.removeAttribute("href");
     release = null;

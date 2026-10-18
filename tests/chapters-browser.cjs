@@ -125,13 +125,17 @@ module.exports = async function(browser, run, base) {
     await context.unroute('**/assets/episodes/index.json');
     await context.unroute('**/releases/'+oldId+'/**');
   });
-  await run('daily gate locks news without stranding an already playing recording',async()=>{
+  await run('daily gate closes topic selection without stranding an already playing recording',async()=>{
+    await page.locator('.nav nav a[href*="teknoloji/index"]').click();
+    await page.waitForSelector('#stories');
+    await page.locator('.topics-dialog').evaluate(dialog=>dialog.showModal());
     await page.evaluate(()=>{
       document.documentElement.classList.add('pulse-locked');
       const overlay=document.createElement('div');overlay.className='pulse-printing';overlay.textContent='Haberler baskıya giriyor!';document.body.append(overlay);
       window.dispatchEvent(new Event('pulse:locked'));
     });
     assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
+    assert(await page.locator('.topics-dialog').isHidden());
     await page.locator('.mini-more').click();
     assert(await page.locator('.player-play').isVisible());
     await page.locator('.player-play').click();
