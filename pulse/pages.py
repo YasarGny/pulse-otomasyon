@@ -84,19 +84,19 @@ def podcast_art(section, root, *, large=False):
     return f'<img class="program-art" src="{root}assets/covers/{name}-192.webp" srcset="{root}assets/covers/{name}-192.webp 192w, {root}assets/covers/{name}-768.webp 768w" sizes="{sizes}" width="192" height="192" alt="" decoding="async">'
 
 
-def audio_card(section, kind, data, root):
+def audio_card(section, kind, data, root, *, origin=None):
     asset = data[kind]
     name = NAMES[section] if kind == "podcast" else LABELS[section]
     title = f'{name} — {LABELS[section]} {"podcast’i" if kind == "podcast" else "Günün Özeti"}'
     route = root + f"{section}/dinle/index.html"
-    if kind == "summary":
-        route += "?ses=ozet"
+    origin = origin or ("secki" if root == "./" else section)
+    route += ("?ses=ozet&" if kind == "summary" else "?") + "from=" + origin
     artwork = (
         podcast_art(section, root)
         if kind == "podcast"
         else '<span class="summary-mark" aria-hidden="true">≡</span>'
     )
-    return f"""<section class="audio-box {kind}-box" data-audio-section="{section}" data-audio-kind="{kind}">{artwork}<div class="audio-copy"><h3><a href="{route}">{e(name)}</a></h3><p>{LABELS[section] + ' podcast’i · ' if kind == 'podcast' else ''}{duration(asset['duration'])}</p></div><button type="button" class="audio-start" data-section="{section}" data-kind="{kind}" aria-label="{e(title)}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor"/></svg></button></section>"""
+    return f"""<section class="audio-box {kind}-box" data-audio-section="{section}" data-audio-kind="{kind}">{artwork}<div class="audio-copy"><h3><a href="{e(route)}">{e(name)}</a></h3><p>{LABELS[section] + ' podcast’i · ' if kind == 'podcast' else ''}{duration(asset['duration'])}</p></div><button type="button" class="audio-start" data-section="{section}" data-kind="{kind}" aria-label="{e(title)}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor"/></svg></button></section>"""
 
 
 def listening(editions, root, *, only=None):
@@ -116,8 +116,8 @@ def category_audio(section, data, root):
 
 def program_card(section, data, root):
     title = NAMES[section]
-    route = root + section + "/dinle/index.html"
-    return f"""<section class="program-card" aria-labelledby="program-{section}"><a class="program-cover-link" href="{route}" aria-label="{title}: Bölüm ayrıntıları">{podcast_art(section, root, large=True)}</a><div class="program-body"><p class="eyebrow">{LABELS[section]} podcast’i</p><div class="program-title-row"><h2 id="program-{section}"><a href="{route}">{title}</a></h2><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{title}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button></div><p>Yaşar ve Necdet</p><p class="program-meta">{display_date(data['publish_date'])} · {duration(data['podcast']['duration'])}</p><a class="program-detail" href="{route}">Bölümü incele →</a></div></section>"""
+    route = root + section + "/dinle/index.html?from=podcastler"
+    return f"""<section class="program-card" aria-labelledby="program-{section}"><a class="program-cover-link" href="{e(route)}" aria-label="{title}: Bölüm ayrıntıları">{podcast_art(section, root, large=True)}</a><div class="program-body"><p class="eyebrow">{LABELS[section]} podcast’i</p><div class="program-title-row"><h2 id="program-{section}"><a href="{e(route)}">{title}</a></h2><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{title}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button></div><p>Yaşar ve Necdet</p><p class="program-meta">{display_date(data['publish_date'])} · {duration(data['podcast']['duration'])}</p><a class="program-detail" href="{e(route)}">Bölümü incele →</a></div></section>"""
 
 
 def navigation(root, page="", section=""):
@@ -264,7 +264,7 @@ def build_views(output, manifest):
         )
         + '</div><section class="podcast-summaries" aria-labelledby="summary-title"><h2 id="summary-title">Günün Özeti</h2><div class="summary-cards">'
         + "".join(
-            audio_card(section, "summary", editions[section], "../")
+            audio_card(section, "summary", editions[section], "../", origin="podcastler")
             for section in SECTIONS
         )
         + "</div></section>",
@@ -273,7 +273,7 @@ def build_views(output, manifest):
     )
     for section in SECTIONS:
         data = editions[section]
-        main = f"""<a class="back" href="../../{section}/index.html">← {LABELS[section]} yayını</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p class="episode-hosts">Yaşar ve Necdet</p><p class="detail-meta">{date} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{NAMES[section]}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button><span>Dinle</span></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
+        main = f"""<a class="back listen-back" href="../../podcastler/index.html">← Podcast’lere dön</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p class="episode-hosts">Yaşar ve Necdet</p><p class="detail-meta">{date} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{NAMES[section]}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button><span>Dinle</span></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
         save(
             section + "/dinle/",
             main,

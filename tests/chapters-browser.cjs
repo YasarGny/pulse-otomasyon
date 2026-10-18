@@ -206,6 +206,38 @@ module.exports = async function(browser, run, base) {
       assert.equal(await page.locator('.player-play').getAttribute('data-buffering'),'false');
     }
   });
+  await run('episode back links preserve the entry menu, scroll and related-program context',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await open('/podcastler/');
+    const card=page.locator('.program-detail').nth(1);
+    await card.scrollIntoViewIfNeeded();
+    const originalURL=page.url(), originalScroll=await page.evaluate(()=>scrollY);
+    await card.click();
+    await page.waitForSelector('.listen-back');
+    assert((await page.locator('.listen-back').innerText()).includes('Podcast’lere dön'));
+    assert.equal(await page.locator('.listen-back').getAttribute('href'),originalURL);
+    await page.locator('.episode-secondary > a').click();
+    await page.waitForSelector('body[data-section="teknoloji"] .listen-back');
+    await page.locator('.episode-stories .story-detail-link').first().click();
+    await page.waitForSelector('.article-reader');
+    assert((await page.locator('.article-reader .back').innerText()).includes('Bölüme dön'));
+    await page.locator('.article-reader .back').click();
+    await page.waitForSelector('.listen-back');
+    await page.locator('.listen-back').click();
+    await page.waitForURL(originalURL);
+    await page.waitForFunction(y=>Math.abs(scrollY-y)<3,originalScroll);
+    await open('/teknoloji/');
+    await page.locator('.podcast-box .audio-copy a').click();
+    await page.waitForSelector('.listen-back');
+    assert((await page.locator('.listen-back').innerText()).includes('Teknoloji yayınına dön'));
+    await page.locator('.listen-back').click();
+    await page.waitForSelector('body[data-page="news"][data-section="teknoloji"] #stories');
+    for(const query of ['?from=podcastler','?from=https://outside.example/','?from=constructor','']) {
+      await open('/oyun/dinle/'+query);
+      assert((await page.locator('.listen-back').innerText()).includes('Podcast’lere dön'));
+      assert((await page.locator('.listen-back').getAttribute('href')).startsWith(base+'/podcastler/'));
+    }
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };

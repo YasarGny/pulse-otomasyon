@@ -67,3 +67,9 @@ Yükleme mesajı oynatıcı akışına satır eklemiyordur: kısa beklemelerde g
 okuyucu durumu kullanılır. Gerçek hata mesajı/tekrar dene kontrolü korunur.
 Test yükleme öncesi/sırası/sonrasında panel, sekmeler, oynat düğmesi ve ilerleme
 çubuğunun tüm dikdörtgenlerinin aynı kaldığını doğrular.
+
+Bölüm sayfasının dönüş bağlantısı sabit kategori yerine geldiği menüyü izler.
+İç gezinmede geçmiş/okuma konumu korunur; başka programa ve bölümdeki habere
+geçip dönme zinciri de sınanır. Yeni sekme için kaynak menü izinli `from`
+parametresiyle taşınır; bilinmeyen değerler dış adrese yönlendirmez. Parametre
+ses kimliğini/oynatmayı değiştirmez ve özetin canonical adresine dahil edilmez.
