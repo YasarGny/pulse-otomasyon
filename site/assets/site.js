@@ -713,26 +713,27 @@
     fullTopicTitle.hidden = !fullTopicTitle.hidden;
     scrollingTitle.setAttribute("aria-expanded",String(!fullTopicTitle.hidden)); titleMotion.sync();
   };
-  function chapterRows(data, section, kind) {
+  function chapterRows(data, section, kind, context = release) {
+    const date = context.manifest.publish_date;
     return data.chapters.map(chapter => {
       const li = make("li"), button = make("button", "chapter-jump");
       button.type = "button"; button.dataset.section = section; button.dataset.kind = kind;
-      button.dataset.start = chapter.start; button.dataset.sha = data.audio_sha256;
+      button.dataset.start = chapter.start; button.dataset.sha = data.audio_sha256; button.dataset.date = date;
       button.append(make("span","chapter-time",format(chapter.start)), make("span","chapter-title",chapter.title), make("span","chapter-indicator"), make("span","sr-only",", buradan dinle"));
       $(".chapter-indicator",button).setAttribute("aria-hidden","true");
       icon($(".chapter-indicator",button), "play");
 
-      button.onclick = () => seekChapter(section,kind,chapter.start,data.audio_sha256);
+      button.onclick = () => seekChapter(section,kind,chapter.start,data.audio_sha256,date);
       li.append(button); return li;
     });
   }
-  async function seekChapter(section,kind,time,sha) {
+  async function seekChapter(section,kind,time,sha,date) {
     const keepOpen = !panel.hidden;
     const asset = release?.editions[section]?.[kind];
     // The open player can still belong to yesterday's immutable release.
     const active = selected?.section === section && selected?.kind === kind &&
-      selectedRelease?.editions[section]?.[kind]?.sha256 === sha;
-    if (!active && (!asset || asset.sha256 !== sha || !configure(section,kind))) return;
+      selectedRelease?.editions[section]?.[kind]?.sha256 === sha && selectedRelease.manifest.publish_date === date;
+    if (!active && (!asset || asset.sha256 !== sha || release.manifest.publish_date !== date || !configure(section,kind))) return;
     hasStarted = true; failed = false;
     if (audio.readyState && Number.isFinite(audio.duration)) {
       pendingPosition = 0; audio.currentTime = Math.min(time, Math.max(0,audio.duration - .1));
@@ -746,7 +747,7 @@
     const index = data ? PulseListening.activeIndex(data.chapters, audio.currentTime) : -1;
     const asset = selected && selectedRelease.editions[selected.section][selected.kind];
     for (const item of all(".chapter-jump")) {
-      const same = asset?.sha256 === item.dataset.sha;
+      const same = asset?.sha256 === item.dataset.sha && selectedRelease.manifest.publish_date === item.dataset.date;
       const isActive = same && data && data.chapters[index]?.start === Number(item.dataset.start);
       if (isActive) item.setAttribute("aria-current","true"); else item.removeAttribute("aria-current");
       item.classList.toggle("is-playing",!!isActive && !audio.paused && !audio.ended);
@@ -767,7 +768,7 @@
     const data = selected.kind === "podcast" ? await chaptersFor(asset) : null;
     if (chapterAsset !== asset.sha256) return;
     currentChapters = data; tabs.hidden = !data;
-    if (data) chapterList.replaceChildren(...chapterRows(data,selected.section,selected.kind));
+    if (data) chapterList.replaceChildren(...chapterRows(data,selected.section,selected.kind,selectedRelease));
     syncChapters();
   }
   async function hydrateChapters() {
