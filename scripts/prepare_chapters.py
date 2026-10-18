@@ -1,6 +1,7 @@
 """Optional final-audio transcription + independent topic review; no synthesis."""
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -71,7 +72,11 @@ def prepare(release, previous=None):
             missing.append((section, asset))
     if not missing:
         return
-    transcribe(release, release / 'chapter-transcripts')
+    try:
+        transcribe(release, release / 'chapter-transcripts', sections=[section for section, _ in missing])
+    except Exception as error:
+        print('Some transcripts unavailable:', type(error).__name__)
+        # Review surviving programs independently; never invent missing timings.
     failures = []
     for section, asset in missing:
         try:
@@ -92,4 +97,5 @@ if __name__ == '__main__':
     parser.add_argument('--release', required=True)
     parser.add_argument('--previous')
     args = parser.parse_args()
+    os.environ["PULSE_USAGE_LOG"] = str(Path(args.release) / "api-usage.jsonl")
     prepare(args.release, args.previous)

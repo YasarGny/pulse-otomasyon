@@ -192,6 +192,7 @@ def refresh_audio_release(work, date, game_start, previous):
     verify_manifest(source, manifest)
     root = Path(work) / date / ("audio-v" + str(AUDIO_REVISION))
     root.mkdir(parents=True, exist_ok=True)
+    os.environ["PULSE_USAGE_LOG"] = str(root / "api-usage.jsonl")
     def finish(result):
         # A later ordinary rerun must not roll back to a pre-revision checkpoint.
         names = ["release.json"]
@@ -240,6 +241,7 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
     regular = work / date
     root = regular / "expanded-v1" if expanded_issue else regular
     root.mkdir(parents=True, exist_ok=True)
+    os.environ["PULSE_USAGE_LOG"] = str(root / "api-usage.jsonl")
     settings = root / "settings.json"
     expected = {"publish_date": date, "game_start": game_start}
     if settings.exists() and read_json(settings) != expected:

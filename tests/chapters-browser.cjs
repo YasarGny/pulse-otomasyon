@@ -164,6 +164,104 @@ module.exports = async function(browser, run, base) {
       assert.equal(await other.locator('audio').count(),1);
     } finally { await other.close(); }
   });
+  await run('navigation never creates a scroll container, including enlarged mobile text',async()=>{
+    await open('/');
+    for(const width of [320,390,640,768,1440]) {
+      await page.setViewportSize({width,height:900});
+      const result=await page.locator('.nav nav').evaluate(nav=>{
+        const style=getComputedStyle(nav),rect=nav.getBoundingClientRect();
+        return {x:style.overflowX,y:style.overflowY,inside:[...nav.querySelectorAll('a')].every(a=>{const r=a.getBoundingClientRect();return r.left>=rect.left-1&&r.right<=rect.right+1}),pageOverflow:document.documentElement.scrollWidth>innerWidth};
+      });
+      assert.equal(result.x,'visible'); assert.equal(result.y,'visible');
+      assert(result.inside); assert(!result.pageOverflow);
+    }
+    await page.setViewportSize({width:320,height:844});
+    await page.locator('.nav nav a').evaluateAll(links=>links.forEach(a=>a.style.fontSize='26px'));
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    assert.equal(await page.locator('.nav nav a').count(),4);
+  });
+  await run('brief and sustained buffering never move player controls or resize the panel',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await open('/teknoloji/dinle/');
+    await page.locator('.episode-chapters [data-start="12"]').click();
+    await page.waitForFunction(()=>!document.querySelector('audio').paused);
+    await page.locator('audio').evaluate(a=>a.pause());
+    await page.locator('.mini-more').click();
+    const rects=()=>page.evaluate(()=>['.floating-panel','.player-play','.player-seek','.player-tabs'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {s,x:r.x,y:r.y,w:r.width,h:r.height}}));
+    for(const width of [390,1440]) {
+      await page.setViewportSize({width,height:900});
+      const before=await rects();
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('waiting')));
+      assert.equal(await page.locator('.player-play').getAttribute('data-buffering'),'false');
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('canplay')));
+      assert.deepEqual(await rects(),before);
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('waiting')));
+      await page.waitForFunction(()=>document.querySelector('.player-play').dataset.buffering==='true');
+      assert.deepEqual(await rects(),before);
+      assert.equal(await page.locator('.audio-status').innerText(),'');
+      assert(await page.locator('.mini-status').evaluate(n=>n.classList.contains('sr-only')&&n.textContent.includes('yükleniyor')));
+      await page.screenshot({path:`test-results/stable-buffering-${width}.png`});
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('canplay')));
+      assert.deepEqual(await rects(),before);
+      assert.equal(await page.locator('.player-play').getAttribute('data-buffering'),'false');
+    }
+  });
+  await run('episode back links preserve the entry menu, scroll and related-program context',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await open('/podcastler/');
+    const card=page.locator('.program-detail').nth(1);
+    await card.scrollIntoViewIfNeeded();
+    const originalURL=page.url(), originalScroll=await page.evaluate(()=>scrollY);
+    await card.click();
+    await page.waitForSelector('.listen-back');
+    assert((await page.locator('.listen-back').innerText()).includes('Podcast’lere dön'));
+    assert.equal(await page.locator('.listen-back').getAttribute('href'),originalURL);
+    await page.locator('.episode-secondary > a').click();
+    await page.waitForSelector('body[data-section="teknoloji"] .listen-back');
+    await page.locator('.episode-stories .story-detail-link').first().click();
+    await page.waitForSelector('.article-reader');
+    assert((await page.locator('.article-reader .back').innerText()).includes('Bölüme dön'));
+    await page.locator('.article-reader .back').click();
+    await page.waitForSelector('.listen-back');
+    await page.locator('.listen-back').click();
+    await page.waitForURL(originalURL);
+    await page.waitForFunction(y=>Math.abs(scrollY-y)<3,originalScroll);
+    await open('/teknoloji/');
+    await page.locator('.podcast-box .audio-copy a').click();
+    await page.waitForSelector('.listen-back');
+    assert((await page.locator('.listen-back').innerText()).includes('Teknoloji yayınına dön'));
+    await page.locator('.listen-back').click();
+    await page.waitForSelector('body[data-page="news"][data-section="teknoloji"] #stories');
+    for(const query of ['?from=podcastler','?from=https://outside.example/','?from=constructor','']) {
+      await open('/oyun/dinle/'+query);
+      assert((await page.locator('.listen-back').innerText()).includes('Podcast’lere dön'));
+      assert((await page.locator('.listen-back').getAttribute('href')).startsWith(base+'/podcastler/'));
+    }
+  });
+  await run('article details have one publisher source and aligned readable metadata in both themes',async()=>{
+    await open('/expanded/teknoloji/');
+    await page.locator('#stories .story-detail-link').first().click();
+    await page.waitForSelector('.article-reader');
+    for(const theme of ['dark','light']) {
+      await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+      for(const width of [320,390,768,1440]) {
+        await page.setViewportSize({width,height:900});
+        assert.equal(await page.locator('.article-reader .source-link').count(),1);
+        assert.equal(await page.locator('.article-source').count(),0);
+        assert.equal(await page.locator('.article-meta time').getAttribute('datetime'),'2026-10-16');
+        const geometry=await page.evaluate(()=>{
+          const meta=document.querySelector('.article-meta'),source=meta.querySelector('.source-link');
+          const text=document.querySelector('.article-text'),r=text.getBoundingClientRect();
+          return {sourceHeight:source.getBoundingClientRect().height,column:r.width,overflow:document.documentElement.scrollWidth>innerWidth,line:parseFloat(getComputedStyle(text).lineHeight)/parseFloat(getComputedStyle(text).fontSize)};
+        });
+        assert(geometry.sourceHeight>=44);assert(geometry.column<=720);assert(geometry.line>=1.6);assert(!geometry.overflow);
+        if(width===390||width===1440) {
+          await page.evaluate(()=>scrollTo(0,0));
+          await page.screenshot({path:`test-results/article-refined-${theme}-${width}.png`,fullPage:true});
+        }
+      }
+    }
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };

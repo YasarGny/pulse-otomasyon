@@ -84,19 +84,19 @@ def podcast_art(section, root, *, large=False):
     return f'<img class="program-art" src="{root}assets/covers/{name}-192.webp" srcset="{root}assets/covers/{name}-192.webp 192w, {root}assets/covers/{name}-768.webp 768w" sizes="{sizes}" width="192" height="192" alt="" decoding="async">'
 
 
-def audio_card(section, kind, data, root):
+def audio_card(section, kind, data, root, *, origin=None):
     asset = data[kind]
     name = NAMES[section] if kind == "podcast" else LABELS[section]
     title = f'{name} — {LABELS[section]} {"podcast’i" if kind == "podcast" else "Günün Özeti"}'
     route = root + f"{section}/dinle/index.html"
-    if kind == "summary":
-        route += "?ses=ozet"
+    origin = origin or ("secki" if root == "./" else section)
+    route += ("?ses=ozet&" if kind == "summary" else "?") + "from=" + origin
     artwork = (
         podcast_art(section, root)
         if kind == "podcast"
         else '<span class="summary-mark" aria-hidden="true">≡</span>'
     )
-    return f"""<section class="audio-box {kind}-box" data-audio-section="{section}" data-audio-kind="{kind}">{artwork}<div class="audio-copy"><h3><a href="{route}">{e(name)}</a></h3><p>{LABELS[section] + ' podcast’i · ' if kind == 'podcast' else ''}{duration(asset['duration'])}</p></div><button type="button" class="audio-start" data-section="{section}" data-kind="{kind}" aria-label="{e(title)}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor"/></svg></button></section>"""
+    return f"""<section class="audio-box {kind}-box" data-audio-section="{section}" data-audio-kind="{kind}">{artwork}<div class="audio-copy"><h3><a href="{e(route)}">{e(name)}</a></h3><p>{LABELS[section] + ' podcast’i · ' if kind == 'podcast' else ''}{duration(asset['duration'])}</p></div><button type="button" class="audio-start" data-section="{section}" data-kind="{kind}" aria-label="{e(title)}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor"/></svg></button></section>"""
 
 
 def listening(editions, root, *, only=None):
@@ -116,8 +116,8 @@ def category_audio(section, data, root):
 
 def program_card(section, data, root):
     title = NAMES[section]
-    route = root + section + "/dinle/index.html"
-    return f"""<section class="program-card" aria-labelledby="program-{section}"><a class="program-cover-link" href="{route}" aria-label="{title}: Bölüm ayrıntıları">{podcast_art(section, root, large=True)}</a><div class="program-body"><p class="eyebrow">{LABELS[section]} podcast’i</p><div class="program-title-row"><h2 id="program-{section}"><a href="{route}">{title}</a></h2><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{title}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button></div><p>Yaşar ve Necdet</p><p class="program-meta">{display_date(data['publish_date'])} · {duration(data['podcast']['duration'])}</p><a class="program-detail" href="{route}">Bölümü incele →</a></div></section>"""
+    route = root + section + "/dinle/index.html?from=podcastler"
+    return f"""<section class="program-card" aria-labelledby="program-{section}"><a class="program-cover-link" href="{e(route)}" aria-label="{title}: Bölüm ayrıntıları">{podcast_art(section, root, large=True)}</a><div class="program-body"><p class="eyebrow">{LABELS[section]} podcast’i</p><div class="program-title-row"><h2 id="program-{section}"><a href="{e(route)}">{title}</a></h2><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{title}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button></div><p>Yaşar ve Necdet</p><p class="program-meta">{display_date(data['publish_date'])} · {duration(data['podcast']['duration'])}</p><a class="program-detail" href="{e(route)}">Bölümü incele →</a></div></section>"""
 
 
 def navigation(root, page="", section=""):
@@ -193,7 +193,7 @@ def shell(
     attrs = f'data-page="{page}" data-section="{section}" data-story="{e(story_id)}"'
     return symbols(
         f"""<!doctype html>
-<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg?v=2" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png?v=2"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=18"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=7" defer></script><script src="{root}assets/listening.js?v=1" defer></script><script src="{root}assets/site.js?v=16" defer></script><script src="{root}assets/install.js?v=3" defer></script></head>
+<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg?v=2" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png?v=2"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=19"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=7" defer></script><script src="{root}assets/listening.js?v=1" defer></script><script src="{root}assets/site.js?v=17" defer></script><script src="{root}assets/install.js?v=3" defer></script></head>
 <body data-design="{DESIGN}" {attrs}><noscript><style>.pulse-loading .site-shell{{visibility:visible!important}}.site-shell{{display:block!important}}[data-audio-section],.audio-start,.listen-player,.theme-toggle,.news-tools,.news-more{{display:none!important}}</style><p class="nojs-note">Bu kayıt {e(stamp)} tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak için JavaScript’i etkinleştirin.</p></noscript><div class="site-shell"><a class="skip" href="#main">İçeriğe geç</a><header class="nav"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><span class="nav-issue">{e(stamp)}</span>{navigation(root, page, section)}<button type="button" class="theme-toggle" aria-label="Açık temaya geç"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></header><main id="main" tabindex="-1" data-release="{e(release_id)}">{main}</main><footer class="foot"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><div class="foot-actions"><button type="button" class="install-entry" aria-haspopup="dialog" hidden>Uygulamayı yükle <span aria-hidden="true">↗</span></button><a href="{root}gizlilik/index.html">Gizlilik</a></div></footer></div></body></html>"""
     )
 
@@ -264,7 +264,7 @@ def build_views(output, manifest):
         )
         + '</div><section class="podcast-summaries" aria-labelledby="summary-title"><h2 id="summary-title">Günün Özeti</h2><div class="summary-cards">'
         + "".join(
-            audio_card(section, "summary", editions[section], "../")
+            audio_card(section, "summary", editions[section], "../", origin="podcastler")
             for section in SECTIONS
         )
         + "</div></section>",
@@ -273,7 +273,7 @@ def build_views(output, manifest):
     )
     for section in SECTIONS:
         data = editions[section]
-        main = f"""<a class="back" href="../../{section}/index.html">← {LABELS[section]} yayını</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p class="episode-hosts">Yaşar ve Necdet</p><p class="detail-meta">{date} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{NAMES[section]}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button><span>Dinle</span></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
+        main = f"""<a class="back listen-back" href="../../podcastler/index.html">← Podcast’lere dön</a><section class="episode"><div class="episode-heading">{podcast_art(section, "../../")}<div><p class="eyebrow">{LABELS[section]} podcast’i</p><h1>{NAMES[section]}</h1><p class="episode-hosts">Yaşar ve Necdet</p><p class="detail-meta">{date} · {duration(data['podcast']['duration'])}</p></div></div><div class="listen-player" data-listen-section="{section}"><button type="button" class="audio-start" data-section="{section}" data-kind="podcast" aria-label="{NAMES[section]}: Oynat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/></svg></button><span>Dinle</span></div></section><section aria-labelledby="episode-news"><h2 id="episode-news">Bölümdeki haberler</h2><div class="episode-stories">{''.join(story_card(section, story, '../../') for story in data['stories'])}</div></section><div class="episode-secondary">{audio_card(section, 'summary', data, '../../')}<a href="../../{('oyun' if section == 'teknoloji' else 'teknoloji')}/dinle/index.html">{NAMES['oyun' if section == 'teknoloji' else 'teknoloji']} ↗</a></div>"""
         save(
             section + "/dinle/",
             main,

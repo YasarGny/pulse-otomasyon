@@ -55,6 +55,7 @@
     pendingNav = null,
     listState = null;
   let selectedRelease = null, playRequest = 0;
+  let bufferingTimer = null, showBuffering = false;
   let renderedURL = new URL(location.href);
   let selectedDuration = 0,
     loading = false,
@@ -132,7 +133,8 @@
     miniTitle = make("div", "mini-title"),
     miniLink = make("a"),
     miniTime = make("span", "mini-time"),
-    miniStatus = make("span", "mini-status");
+    miniStatus = make("span", "mini-status sr-only");
+  miniStatus.setAttribute("role", "status");
   const miniSubtitle = make("span", "mini-subtitle");
   miniTitle.append(miniLink, miniSubtitle, miniTime, miniStatus);
   const close = button(
@@ -224,6 +226,15 @@
       : "";
   }
   function update() {
+    if (!loading || failed) {
+      clearTimeout(bufferingTimer); bufferingTimer = null; showBuffering = false;
+    } else if (!showBuffering && bufferingTimer === null) {
+      bufferingTimer = setTimeout(() => {
+        bufferingTimer = null;
+        if (loading && !failed) { showBuffering = true; update(); }
+      }, 350);
+    }
+    play.dataset.buffering = miniMore.dataset.buffering = String(showBuffering);
     const playing = !!selected && !audio.paused && !audio.ended && !failed;
     for (const n of [play]) {
       icon(n, playing ? "pause" : "play");
@@ -254,7 +265,7 @@
       n.dataset.state = active
         ? failed
           ? "error"
-          : loading
+          : showBuffering
             ? "loading"
             : playing
               ? "playing"
@@ -283,10 +294,10 @@
       : loading
         ? "Ses yükleniyor…"
         : "";
-    full.classList.toggle("is-loading", loading && !failed);
+    full.classList.toggle("is-loading", showBuffering && !failed);
     full.classList.toggle("is-error", failed);
-    status.textContent = state;
-    miniStatus.textContent = state;
+    status.textContent = failed ? "Ses yüklenemedi." : "";
+    miniStatus.textContent = showBuffering && !failed ? state : "";
     retry.hidden = !failed;
     mini.hidden =
       !selected ||
@@ -297,7 +308,7 @@
     miniMore.setAttribute("aria-busy", String(loading));
     miniMore.dataset.state = failed
       ? "error"
-      : loading
+      : showBuffering
         ? "loading"
         : playing
           ? "playing"
@@ -307,7 +318,7 @@
       (panel.hidden ? "Oynatıcı kontrollerini aç" : "Kontrolleri küçült") +
         ": " +
         title() +
-        (playing ? ", çalıyor" : ", duraklatıldı"),
+        (failed ? ", ses yüklenemedi" : playing ? ", çalıyor" : ", duraklatıldı"),
     );
     miniMore.style.setProperty(
       "--progress",
@@ -815,8 +826,8 @@
   document.addEventListener("scrollend", () => {
     if (release) saveState();
   });
-  function readerReturn(state = history.state) {
-    const origin = state?.readerReturn;
+  function readerReturn(state = history.state, key = "readerReturn") {
+    const origin = state?.[key];
     if (!origin || origin.state?.releaseId !== release?.manifest.release_id)
       return null;
     try {
@@ -824,10 +835,13 @@
       const routes = [
         "", "index.html", "haberler/", "haberler/index.html",
         "teknoloji/", "teknoloji/index.html", "oyun/", "oyun/index.html",
+        "podcastler/", "podcastler/index.html",
+        "teknoloji/dinle/", "teknoloji/dinle/index.html", "oyun/dinle/", "oyun/dinle/index.html",
       ];
       if (
         url.origin === base.origin &&
-        routes.some((route) => url.pathname === new URL(route, base).pathname)
+        (routes.some((route) => url.pathname === new URL(route, base).pathname) ||
+          (url.pathname.startsWith(base.pathname) && /^(teknoloji|oyun)\/haber\/[A-Za-z0-9_-]{1,100}\/(index\.html)?$/.test(url.pathname.slice(base.pathname.length))))
       )
         return origin;
     } catch (_) {}
@@ -931,12 +945,36 @@
     };
     refresh();
   }
+  function backLabel(link, text) {
+    const arrow = link.querySelector("svg");
+    link.replaceChildren(...(arrow ? [arrow] : []), document.createTextNode(" " + text));
+  }
+  function returnLabel() {
+    if (document.body.dataset.page === "listen") return "Bölüme dön";
+    if (document.body.dataset.page === "article") return "Habere dön";
+    if (document.body.dataset.page === "podcasts") return "Podcast’lere dön";
+    if (document.body.dataset.page === "home") return "Seçkiye dön";
+    return document.body.dataset.section === "teknoloji" ? "Teknoloji yayınına dön" : document.body.dataset.section === "oyun" ? "Oyun yayınına dön" : "Haberlere dön";
+  }
   function hydrate(state) {
     pageEvents?.abort();
     pageEvents = new AbortController();
     const articleBack = $(".article-reader .back");
     const origin = readerReturn(state);
-    if (articleBack && origin) articleBack.href = origin.url;
+    if (articleBack && origin) {
+      articleBack.href = origin.url;
+      if (origin.label) backLabel(articleBack, origin.label);
+    }
+    const listenBack = $(".listen-back");
+    if (listenBack) {
+      const source = readerReturn(state, "listeningReturn");
+      const routes = {secki: ["index.html", "Seçkiye dön"], podcastler: ["podcastler/index.html", "Podcast’lere dön"],
+        teknoloji: ["teknoloji/index.html", "Teknoloji yayınına dön"], oyun: ["oyun/index.html", "Oyun yayınına dön"], haberler: ["haberler/index.html", "Haberlere dön"]};
+      const from = new URLSearchParams(location.search).get("from");
+      const fallback = Object.hasOwn(routes, from) ? routes[from] : routes.podcastler;
+      listenBack.href = source?.url || new URL(fallback[0], base).href;
+      backLabel(listenBack, source?.label || fallback[1]);
+    }
     for (const image of all(".story-image")) {
       const frame = image.closest(".image-frame");
       if (!frame) continue;
@@ -993,6 +1031,7 @@
       if (kind === "summary") {
         const canonical = new URL(location.href);
         canonical.hash = "";
+        canonical.searchParams.delete("from");
         $('link[rel="canonical"]')?.setAttribute("href", canonical.href);
         $('meta[property="og:url"]')?.setAttribute("content", canonical.href);
         const description =
@@ -1118,13 +1157,20 @@
       if (pop && state?.releaseId !== release.manifest.release_id) state = null;
       if (!pop) {
         const origin =
-          ["home", "news"].includes(document.body.dataset.page) &&
+          ["home", "news", "podcasts", "listen"].includes(document.body.dataset.page) &&
           doc.body.dataset.page === "article"
-            ? { url: location.href, state: history.state }
+            ? { url: location.href, state: {releaseId: release.manifest.release_id}, label: returnLabel() }
             : null;
+        const previousListening = readerReturn(history.state, "listeningReturn");
+        const listeningOrigin = doc.body.dataset.page === "listen"
+          ? (document.body.dataset.page === "listen" && previousListening
+            ? {...previousListening, distance: (previousListening.distance || 1) + 1}
+            : ["home", "news", "podcasts", "article"].includes(document.body.dataset.page)
+              ? {url: location.href, state: {releaseId: release.manifest.release_id}, label: returnLabel(), distance: 1} : null)
+          : null;
         state = {
           pulse: true, releaseId: release.manifest.release_id,
-          scroll: 0, readerReturn: origin,
+          scroll: 0, readerReturn: origin, listeningReturn: listeningOrigin,
         };
         history.pushState(state, "", url);
       }
@@ -1183,6 +1229,11 @@
     event.preventDefault();
     if (a.matches(".article-reader .back") && readerReturn()) {
       history.back();
+      return;
+    }
+    if (a.matches(".listen-back") && readerReturn(history.state, "listeningReturn")) {
+      const count = readerReturn(history.state, "listeningReturn").distance || 1;
+      history.go(-Math.max(1, Math.min(100, Number.isInteger(count) ? count : 1)));
       return;
     }
     navigate(url);

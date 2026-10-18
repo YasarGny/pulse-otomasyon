@@ -202,6 +202,7 @@ p {
   gap: 20px;
   align-items: center;
   margin-left: auto;
+  overflow: visible;
 }
 .nav nav a {
   display: inline-flex;
@@ -732,7 +733,7 @@ main > section + section {
   max-width: 740px;
 }
 .article-layout {
-  max-width: 680px;
+  max-width: 720px;
   margin: auto;
 }
 .article-heading .eyebrow {
@@ -755,9 +756,10 @@ main > section + section {
 .article-heading {
   margin-bottom: 24px;
 }
-.article-heading > .source-link {
-  margin-top: 4px;
-}
+.article-reader > .back { margin-bottom: 20px; }
+.article-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 20px; }
+.article-meta .source-link { display: inline-flex; align-items: center; gap: 5px; }
+.article-heading h1 { overflow-wrap: anywhere; text-wrap: pretty; }
 .detail-figure .image-frame {
   aspect-ratio: auto;
   display: block;
@@ -779,8 +781,8 @@ main > section + section {
 }
 .why {
   margin-top: 32px;
-  border-left: 2px solid var(--line);
-  padding-left: 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
   color: var(--muted);
   font-size: 16px;
   line-height: 1.65;
@@ -790,11 +792,7 @@ main > section + section {
   margin-bottom: 10px;
   letter-spacing: 0;
 }
-.article-source {
-  margin-top: 24px;
-  padding: 18px 0;
-  border-top: 1px solid var(--line);
-}
+
 .episode {
   max-width: 900px;
   margin: 0 auto 36px;
@@ -2535,9 +2533,27 @@ body.has-mini {
   .player-chapters { max-height: 110px; }
 }
 @media(max-width:640px) {
-  .nav nav { flex-wrap: nowrap; gap: 16px; overflow-x: auto; min-width: 0; }
+  .nav nav { flex-wrap: wrap; gap: 8px clamp(4px, 1.8vw, 12px); overflow: visible; min-width: 0; }
   .nav nav a { flex: none; }
 }
 .chapter-indicator svg { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; margin: auto; }
 /* A started recording remains controllable when the daily news gate closes. */
 .persistent-audio { z-index: 110; }
+
+/* Buffering feedback uses existing controls; the panel never gains a loading row. */
+.player-play { position: relative; }
+.player-play[data-buffering="true"]::after,
+.mini-more[data-buffering="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: audio-loading 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-play[data-buffering="true"]::after,
+  .mini-more[data-buffering="true"]::after { animation: none; border-style: dotted; }
+}

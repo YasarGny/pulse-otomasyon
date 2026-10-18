@@ -210,13 +210,28 @@ def gemini(prompt, *, system="", json_output=True):
     )
     if not response.ok:
         raise RuntimeError("Gemini editorial HTTP " + str(response.status_code))
-    candidates = response.json().get("candidates", [])
+    result = response.json()
+    from pulse.usage import record
+    record("editorial", MODEL, result, len(prompt) + len(system))
+    candidates = result.get("candidates", [])
     if not candidates or candidates[0].get("finishReason") not in (None, "STOP"):
         raise ValueError("Incomplete Gemini response")
     text = "".join(
         p.get("text", "") for p in candidates[0].get("content", {}).get("parts", [])
     )
     return json.loads(text) if json_output else text.strip()
+
+
+def selection_sources(sources):
+    """Selection needs identity and evidence, never long image URLs or full bodies.
+
+    Full source records remain unchanged for original article drafting and review.
+    """
+    return [{'id': source['id'], 'original_title': source['original_title'],
+             'source_name': source['source_name'],
+             'source_published_at': source['source_published_at'],
+             'source_excerpt': source['source_excerpt'][:2200]}
+            for source in sources.values()]
 
 
 def create_edition(research_data, section, date, issue, game_start, article_cache=None):
@@ -241,7 +256,7 @@ haberi özetle. Yorum, önem açıklaması, çıkarım ve tavsiye ekleme; başl�
 JSON: {{"stories":[{{"id":"kaynak id", "category":"KISA KATEGORİ", "title":"...",
 "event_key":"olayin-kisa-ortak-kimligi", "summary":"2–4 cümle", "brief":"Yorumsuz, tek cümlelik sesli haber özeti",
 "why":"Neden önemli? 1–2 cümle"}}]}}.
-Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(list(sources.values()), ensure_ascii=False)}"""
+Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sources), ensure_ascii=False)}"""
     generated = gemini(
         prompt,
         system="Sen dikkatli bir Türkçe haber editörüsün. Yalnızca sağlanan kaynaklara dayan. Çıktı yalnızca JSON olsun.",

@@ -48,23 +48,7 @@ def make_parts(turns):
     return parts
 
 
-def synthesize(group, destination, number, *, strict_audio=False):
-    # Gemini 3.8 uses the Interactions API, not legacy generateContent.
-    # Existing prebuilt voices remain defaults until persistent voice IDs are chosen.
-    payload = {
-        "model": MODEL,
-        "input": [{"type": "user_input", "content": make_parts(group)}],
-        "response_format": {"type": "audio", "mime_type": "audio/wav"},
-        "generation_config": {
-            "speech_config": {
-                "mode": "conversational",
-                "speakers": [
-                    {"speaker": speaker, "voice": voice}
-                    for speaker, voice in VOICES.items()
-                ],
-            }
-        },
-    }
+def _provider_audio(payload, number, *, strict_audio):
     # Retry network/server failures only. Never re-bill TTS because ffmpeg fails.
     for attempt in range(3):
         try:
@@ -93,6 +77,8 @@ def synthesize(group, destination, number, *, strict_audio=False):
             continue
         break
     response = result.json()
+    from pulse.usage import record
+    record("podcast-tts", MODEL, response, sum(len(part.get("text", "")) for item in payload["input"] for part in item["content"]))
     encoded = None
     for step in response.get("steps", []):
         for content in step.get("content", []):
@@ -116,8 +102,41 @@ def synthesize(group, destination, number, *, strict_audio=False):
                 break
     if not encoded:
         raise RuntimeError("No audio returned for segment " + str(number))
+    return base64.b64decode(encoded)
+
+
+
+def synthesize(group, destination, number, *, strict_audio=False):
+    # Gemini 3.8 uses the Interactions API, not legacy generateContent.
+    # Existing prebuilt voices remain defaults until persistent voice IDs are chosen.
+    payload = {
+        "model": MODEL,
+        "input": [{"type": "user_input", "content": make_parts(group)}],
+        "response_format": {"type": "audio", "mime_type": "audio/wav"},
+        "generation_config": {
+            "speech_config": {
+                "mode": "conversational",
+                "speakers": [
+                    {"speaker": speaker, "voice": voice}
+                    for speaker, voice in VOICES.items()
+                ],
+            }
+        },
+    }
     raw = destination.with_suffix(".raw")
-    raw.write_bytes(base64.b64decode(encoded))
+    receipt = raw.with_name(raw.name + '.json')
+    identity = hashlib.sha256(json.dumps({'payload': payload, 'strict_audio': strict_audio}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    cached = False
+    if raw.is_file() and receipt.is_file():
+        try:
+            saved = json.loads(receipt.read_text())
+            cached = saved.get('input_sha256') == identity and saved.get('audio_sha256') == hashlib.sha256(raw.read_bytes()).hexdigest()
+        except (ValueError, OSError):
+            pass
+    if not cached:
+        content = _provider_audio(payload, number, strict_audio=strict_audio)
+        raw.write_bytes(content)
+        receipt.write_text(json.dumps({'input_sha256': identity, 'audio_sha256': hashlib.sha256(content).hexdigest()}))
     input_args = ["-i", str(raw)] if raw.read_bytes()[:4] == b"RIFF" else [
         "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", str(raw)]
     run("ffmpeg", "-v", "error", "-y", *input_args, "-ar", "44100",
@@ -125,6 +144,7 @@ def synthesize(group, destination, number, *, strict_audio=False):
     if duration(destination) < 2:
         raise RuntimeError("Suspiciously short TTS segment " + str(number))
     raw.unlink(missing_ok=True)
+    receipt.unlink(missing_ok=True)
 
 
 def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
@@ -155,7 +175,6 @@ def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
                         raise RuntimeError('TTS segment shorter than its dialogue; refusing truncated audio')
                     partial.replace(path)
                 finally:
-                    partial.with_suffix('.raw').unlink(missing_ok=True)
                     partial.unlink(missing_ok=True)
             paths.append(path)
         # Short intentional pause after ident; small section gaps avoid rushed edits.
