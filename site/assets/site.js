@@ -435,6 +435,7 @@
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
       base,
     ).href;
+    if (context.manifest.publish_date !== release?.manifest.publish_date) miniLink.removeAttribute("href");
     loadSelectedChapters();
     progress();
     update();
@@ -1243,6 +1244,7 @@
     if (release?.manifest.release_id === next.manifest.release_id) return;
     // A verified new issue must not replace the listener’s active immutable recording.
     release = next;
+    if (selected) configure(selected.section, selected.kind, selectedRelease);
     chapterRegistry = null; chapterCache.clear();
     const allowed = new Set(Object.keys(next.editions).flatMap((section) =>
       ["podcast", "summary"].map((kind) => assetKey(section, kind))));
@@ -1279,6 +1281,7 @@
   window.addEventListener("pulse:ready", (event) => ready(event.detail));
   window.addEventListener("pulse:locked", () => {
     collapsePanel(false);
+    miniLink.removeAttribute("href");
     release = null;
     pendingNav?.abort();
   });
