@@ -109,6 +109,7 @@ module.exports = async function(browser, run, base) {
     await page.locator('.mini-more').click();
     assert((await page.locator('.mini-subtitle').innerText()).includes('15.10.2026'));
     assert.equal(await page.locator('.mini-title a').getAttribute('href'),null);
+    await page.locator('.mini-title a').click();
     await page.keyboard.press('Escape');
     await page.locator('.episode-chapters [data-start="12"]').click();
     await page.waitForFunction(()=>document.querySelector('audio').currentTime>=12);

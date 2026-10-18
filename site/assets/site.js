@@ -1201,7 +1201,7 @@
     }
   }
   document.addEventListener("click", (event) => {
-    const a = event.target.closest("a");
+    const a = event.target.closest("a[href]");
     if (
       !a ||
       !release ||
