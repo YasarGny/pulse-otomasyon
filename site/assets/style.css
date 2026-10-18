@@ -2473,3 +2473,46 @@ body.has-mini {
     margin-top: 8px;
   }
 }
+
+/* Search and saved playback stay secondary to editorial content. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.news-search-label { flex: 1 1 220px; min-width: 0; }
+.news-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--control);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.news-search::placeholder { color: var(--muted); opacity: 1; }
+.resume-note { color: var(--accent); font-size: 12px; line-height: 1.5; margin-top: 4px; }
+.player-restart {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  .news-search-label { flex-basis: 100%; }
+}
+.audio-copy p.resume-note, .program-body p.resume-note { color: var(--accent); font-size: 12px; }
+.listen-player { flex-wrap: wrap; }
+.listen-player .resume-note { flex-basis: 100%; }

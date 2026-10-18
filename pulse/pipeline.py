@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pulse.editorial import create_edition, research, summary_script
 from pulse.history import exclude_published, restore_published
-from pulse.speech import pronunciation, spoken_turns, LEXICON_SHA256
+from pulse.speech import pronunciation, spoken_turns, pronunciation_review, LEXICON_SHA256
 from pulse.publication import (
     SECTIONS,
     expected_date,
@@ -87,6 +87,9 @@ def generate_audio(root, data):
     script = summary_script(data)
     (folder / "summary.txt").write_text(script, encoding="utf-8")
     (folder / "summary-spoken.txt").write_text(pronunciation(script), encoding="utf-8")
+    report_path = folder / "pronunciation-review.json"
+    reports = {"summary": pronunciation_review(script)}
+    write_json(report_path, reports)
     summary = folder / "summary.mp3"
     if not valid_audio(summary, 20):
         temp = folder / "summary.partial.mp3"
@@ -141,6 +144,8 @@ def generate_audio(root, data):
     if turns[0]["speaker"] != "Yaşar":
         raise ValueError("The main host must open the episode")
     speech = spoken_turns(turns)
+    reports["podcast"] = pronunciation_review("\n".join(turn["text"] for turn in turns))
+    write_json(report_path, reports)
     write_json(folder / "podcast-spoken.json", {"lexicon_sha256": LEXICON_SHA256, "canonical_turns_sha256": pulse_podcast_writer.dialogue_digest(turns), "turns": speech})
     podcast = folder / "podcast.mp3"
     if not valid_audio(podcast, minimum_podcast):
@@ -193,7 +198,7 @@ def refresh_audio_release(work, date, game_start, previous):
         for section in SECTIONS:
             names.append(section + ".json")
             names.extend(section + "/" + name for name in (
-                "summary.mp3", "podcast.mp3", "input.json", "turns.json", "podcast-review.json", "summary.txt", "summary-spoken.txt", "podcast-spoken.json"
+                "summary.mp3", "podcast.mp3", "input.json", "turns.json", "podcast-review.json", "summary.txt", "summary-spoken.txt", "podcast-spoken.json", "pronunciation-review.json"
             ))
         for name in names:
             origin, destination = root / name, root.parent / name

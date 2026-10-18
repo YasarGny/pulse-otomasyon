@@ -10,6 +10,24 @@ Mevcut onaylı günlük otomasyon bu manuel müdahalelerden ayrıdır.
 PULSE seslendirmesi **Pals** olmalıdır; özet ve podcast ortak telaffuz kopyasını
 kullanır, özgün haber ve onaylı konuşma metinlerindeki adlar değiştirilmez.
 
+### Üretim öncesi telaffuz kontrol listesi
+
+Her yayının özel `pronunciation-review.json` dosyasında özet ve podcast için
+sözlük dönüşümleri, kullanım sayıları ve tanınmayan özel ad adayları bulunur.
+Rapor her seslendirmeden **önce** yazılır. Otomatik adaylar kesin yabancı ad tespiti
+veya telaffuz onayı değildir; bilinmeyenler otomatik değiştirilmez. Günlük işin
+Actions özetinde adaylar gösterilir, bağlamları özel `pulse-state` artifact'ında
+kalır. Raporlar halka açık siteye veya Drive yayın ZIP'ine aktarılmaz.
+İncelenen adların doğru biçimleri `pulse/pronunciations.json` içine eklenebilir;
+mevcut sesleri değiştirmek ayrıca onay gerektirir. Rapor üretimi ekstra API veya
+ses üretimi çağrısı yapmaz ve günlük zamanlamayı durdurmaz.
+
+Yerel bir konuşma metnini ücretsiz ve çevrimdışı kontrol etmek için:
+
+```bash
+python -m pulse.speech --input /path/to/script.txt --output /tmp/pronunciation-review.json
+```
+
 Kullanıcı 16 Ekim 2026'da canlı geçişi ve ardından eski Notion sisteminin
 temizlenmesini açıkça onayladı. `live_enabled` kod kapısı açıktır; canlı işler ayrıca
 `PULSE_LIVE_APPROVED=true` gerektirir. Günlük cron varsayılan olarak açıktır;

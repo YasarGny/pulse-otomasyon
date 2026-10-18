@@ -136,6 +136,20 @@ on browser/OS policy. Browser API checks are not a physical-device UI test.
 
 ## Routes and offline backup
 
+Playback position and rate are kept locally for the four current audio assets,
+keyed by publication date, section, audio kind and MP3 hash. No audio is selected
+or loaded on a fresh visit. Pressing play explicitly resumes a valid unfinished
+record; "Baştan dinle" resets it. Completed/near-complete records are discarded.
+Writes are throttled, with final saves on pause, seek, track change and page hide.
+Storage denial/corruption falls back safely; no listening data is sent to PULSE.
+This does not synchronize listening across devices.
+
+News search combines all query words across visible headline, brief, category and
+source text, within the selected section/topic. Turkish casing and diacritics are
+normalized. Query, filters, pagination and reading position survive article
+return. Empty-result reset clears the query while retaining a section page's
+section. There is no search service or network request for the query.
+
 Section lists never link to the mixed list under a misleading "Tüm haberler"
 label. "Daha fazla haber" expands the current section only; resetting the topic
 filter retains that section and returns keyboard focus to an available control.
