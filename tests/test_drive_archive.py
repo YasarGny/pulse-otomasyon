@@ -234,6 +234,18 @@ class BackupTests(unittest.TestCase):
             drive.request.assert_not_called()
             self.assertFalse(receipt.exists())
 
+    def test_invalid_publication_cannot_authorize_removing_active_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'site'
+            shutil.copytree(self.site, target)
+            receipts = Path(tmp) / 'receipts.json'
+            write_json(receipts, {'releases': {}})
+            for invalid in ({'status': 'ready'}, {'status': 'unknown'}):
+                write_json(target / 'data/publication.json', invalid)
+                with self.assertRaises(ValueError):
+                    prune(target, receipts)
+                self.assertTrue((target / 'releases' / self.manifest['release_id']).is_dir())
+
     def test_prune_preflight_preserves_all_without_receipts(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp)

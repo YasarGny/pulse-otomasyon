@@ -18,6 +18,8 @@ def prune(target, receipts):
     entries = record['releases']
     superseded = record.get('superseded', {})
     current = read_json(target / 'data/publication.json')
+    if current.get('status') not in ('ready', 'preparing') or (current.get('status') == 'ready' and not current.get('release_id')):
+        raise ValueError('Invalid publication state; nothing removed')
     folders = sorted((target / 'releases').glob('*/release.json'))
     manifests = [(p.parent, read_json(p)) for p in folders]
     # During preparation yesterday is no longer a public issue. Its verified
