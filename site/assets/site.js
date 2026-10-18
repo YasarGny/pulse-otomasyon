@@ -21,7 +21,7 @@
     return n;
   };
   const icons = {
-    play: '<path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',
+    play: '<path d="m8 5 12 7-12 7Z" fill="currentColor" stroke="none"/>',
     pause: '<path d="M8 6v12M16 6v12" stroke-width="4"/>',
     back: '<path d="M5 9a8 8 0 1 1-1 8M5 3v6h6"/><text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="8" font-family="Arial,sans-serif" font-weight="700">10</text>',
     forward:
@@ -52,8 +52,7 @@
     pageEvents = null,
     pendingNav = null,
     listState = null;
-  let fullVisible = false,
-    selectedDuration = 0,
+  let selectedDuration = 0,
     loading = false,
     failed = false,
     hasStarted = false;
@@ -95,7 +94,7 @@
     end = make("span", "", "0:00");
   times.append(current, end);
   const bottom = make("div", "player-bottom");
-  const episode = make("span", "player-episode");
+  const episode = make("span", "player-date");
   const mute = button("player-mute", "volume", "Sesi kapat");
   mute.setAttribute("aria-pressed", "false");
   const volume = make("input", "player-volume");
@@ -140,7 +139,7 @@
   const miniCover = make("img", "mini-cover");
   miniCover.alt = "";
   miniCover.width = miniCover.height = 44;
-  const miniMore = button("mini-more", "play", "Oynatıcıyı aç");
+  const miniMore = button("mini-more", "settings", "Oynatıcı kontrollerini aç");
   const panel = make("div", "floating-panel");
   panel.hidden = true;
   panel.id = "floating-player-panel";
@@ -185,6 +184,24 @@
         n.dataset.kind === selected.kind;
       icon(n, active && playing ? "pause" : "play");
       n.setAttribute("aria-pressed", String(!!active && playing));
+      n.setAttribute("aria-busy", String(!!active && loading));
+      const listenLabel = n.closest(".listen-player")?.querySelector("span");
+      if (listenLabel)
+        listenLabel.textContent =
+          active && failed
+            ? "Tekrar dene"
+            : active && playing
+              ? "Duraklat"
+              : "Dinle";
+      n.dataset.state = active
+        ? failed
+          ? "error"
+          : loading
+            ? "loading"
+            : playing
+              ? "playing"
+              : "paused"
+        : "idle";
       n.setAttribute(
         "aria-label",
         (n.dataset.kind === "podcast"
@@ -194,7 +211,11 @@
           : "Günün Özeti · " +
             (n.dataset.section === "teknoloji" ? "Teknoloji" : "Oyun")) +
           ": " +
-          (active && playing ? "Duraklat" : "Oynat"),
+          (active && failed
+            ? "Tekrar dene"
+            : active && playing
+              ? "Duraklat"
+              : "Oynat"),
       );
     });
     const state = failed
@@ -210,10 +231,10 @@
     mini.hidden =
       !selected ||
       !hasStarted ||
-      (fullVisible && !mini.contains(full)) ||
       document.documentElement.classList.contains("pulse-locked");
     document.body.classList.toggle("has-mini", !mini.hidden);
-    icon(miniMore, playing ? "pause" : "play");
+    icon(miniMore, "settings");
+    miniMore.setAttribute("aria-busy", String(loading));
     miniMore.dataset.state = failed
       ? "error"
       : loading
@@ -223,7 +244,7 @@
           : "paused";
     miniMore.setAttribute(
       "aria-label",
-      (panel.hidden ? "Oynatıcıyı aç" : "Oynatıcıyı küçült") +
+      (panel.hidden ? "Oynatıcı kontrollerini aç" : "Kontrolleri küçült") +
         ": " +
         title() +
         (playing ? ", çalıyor" : ", duraklatıldı"),
@@ -290,28 +311,11 @@
       current.textContent + " / " + end.textContent,
     );
   }
-  const observer = new IntersectionObserver(
-    (entries) => {
-      fullVisible =
-        !full.hidden &&
-        !mini.contains(full) &&
-        entries.some((x) => x.isIntersecting);
-      update();
-    },
-    { threshold: 0.15 },
-  );
-  function mount(target) {
-    if (target !== miniDetails) {
-      miniDetails.hidden = panel.hidden = true;
-      miniMore.setAttribute("aria-expanded", "false");
-    }
-    observer.disconnect();
-    fullVisible = false;
-    target.append(full);
+  function mount() {
+    miniDetails.append(full);
     full.hidden = false;
-    observer.observe(full);
   }
-  function configure(section, kind, target) {
+  function configure(section, kind) {
     if (
       !release ||
       !release.editions[section] ||
@@ -322,6 +326,7 @@
     const changed =
       !selected || selected.section !== section || selected.kind !== kind;
     if (changed) {
+      collapsePanel(false);
       audio.pause();
       selected = { section, kind };
       selectedDuration = asset.duration;
@@ -342,15 +347,18 @@
         ? (section === "teknoloji" ? "Teknoloji" : "Oyun") +
           " podcast’i · Yaşar ve Necdet"
         : (section === "teknoloji" ? "Teknoloji" : "Oyun") + " · Günün Özeti";
+    playerSubtitle.hidden = miniSubtitle.hidden = kind !== "podcast";
     full.setAttribute("aria-label", title() + " oynatıcı");
-    episode.textContent = "Bölüm " + String(asset.episode).padStart(3, "0");
+    episode.textContent = release.manifest.publish_date
+      .split("-")
+      .reverse()
+      .join(".");
     miniSubtitle.textContent = playerSubtitle.textContent;
     miniLink.textContent = title();
     miniLink.href = new URL(
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
       base,
     ).href;
-    if (target) mount(target);
     progress();
     update();
     return true;
@@ -359,10 +367,14 @@
     if (!selected) return;
     if (document.getElementById("main").contains(document.activeElement))
       lastAudioTrigger = document.activeElement;
-    if (!audio.paused) {
+    if (!audio.paused && !failed) {
       audio.pause();
+      loading = false;
+      update();
       return;
     }
+    if (failed) audio.load();
+    hasStarted = true;
     loading = true;
     failed = false;
     update();
@@ -389,8 +401,6 @@
     miniMore.setAttribute("aria-expanded", "false");
     hasStarted = false;
     full.hidden = true;
-    observer.disconnect();
-    fullVisible = false;
     loading = failed = false;
     update();
     if (
@@ -408,10 +418,8 @@
     panel.hidden = miniDetails.hidden = true;
     miniMore.setAttribute("aria-expanded", "false");
     if (mini.contains(full)) {
-      observer.disconnect();
       host.append(full);
       full.hidden = true;
-      fullVisible = false;
     }
     update();
     if (restoreFocus && !mini.hidden) miniMore.focus({ preventScroll: true });
@@ -423,7 +431,7 @@
     }
     panel.hidden = miniDetails.hidden = false;
     miniMore.setAttribute("aria-expanded", "true");
-    mount(miniDetails);
+    mount();
     update();
     play.focus({ preventScroll: true });
   };
@@ -693,12 +701,7 @@
       start.addEventListener(
         "click",
         () => {
-          let target = start.closest(".audio-box").nextElementSibling;
-          if (!target?.classList.contains("inline-player")) {
-            target = make("div", "inline-player");
-            start.closest(".audio-box").after(target);
-          }
-          configure(start.dataset.section, start.dataset.kind, target);
+          configure(start.dataset.section, start.dataset.kind);
           toggle();
         },
         { signal: pageEvents.signal },
@@ -743,22 +746,11 @@
       heading.querySelector(".program-art").hidden = kind !== "podcast";
       heading.querySelector(".detail-meta").textContent =
         release.manifest.publish_date.split("-").reverse().join(".") +
-        " · Sayı " +
-        String(edition.issue).padStart(3, "0") +
         " · " +
         format(edition[kind].duration);
-      // Merely visiting a program never switches or starts an existing session.
-      if (!selected || (selected.section === section && selected.kind === kind))
-        configure(section, kind, listen);
-      else {
-        const start = make("button", "retry", "Bu bölümü dinle");
-        start.type = "button";
-        start.onclick = () => {
-          configure(section, kind, listen);
-          toggle();
-        };
-        listen.replaceChildren(start);
-      }
+      const start = listen.querySelector(".audio-start");
+      start.dataset.kind = kind;
+      start.setAttribute("aria-label", pageTitle + ": Oynat");
     }
     update();
     window.dispatchEvent(new Event("pulse:navigate"));
@@ -789,12 +781,6 @@
     return doc;
   }
   function swap(doc, state) {
-    if (full.closest("#main")) {
-      observer.disconnect();
-      host.append(full);
-      full.hidden = true;
-      fullVisible = false;
-    }
     const main = $("#main"),
       incoming = $("#main", doc);
     main.className = incoming.className;

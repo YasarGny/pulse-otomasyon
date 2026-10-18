@@ -23,7 +23,12 @@ the applicable owner approval and passing release checks.
   their URLs cannot drift into a nested article directory. Ordinary links and static full text
   remain usable without the enhancement. The mini player has seeking and an
   expandable panel with the same full controls (not a second audio element).
-  The compact player is a 60px floating launcher, not a second scroll frame.
+  Cards and listening pages contain only stable play/pause actions; starting audio
+  never inserts a full transport into editorial content. The single transport
+  lives outside main, in the floating panel. Its 60px launcher has a controls icon,
+  because clicking it opens controls rather than toggling playback. It remains in
+  the same corner, independent of card visibility and scroll position. Card SVGs
+  retain strokes so pause bars cannot disappear.
   Its nonmodal controls close on outside press, focus leaving, Escape, explicit
   collapse or another launcher press. There is no inactivity timer while editing
   controls. Collapse retains playback; ending playback is a separate labelled
@@ -38,8 +43,9 @@ the applicable owner approval and passing release checks.
   position and play/pause/stop/seek handlers where supported. OS/browser policy
   controls notification/lock-screen presentation and background playback; no
   physical-phone validation is implied. Summary routes update tab/OG identity
-  independently of any other audio that is already playing. Section stamps use
-  their own issue number; combined pages show only the date if numbers differ.
+  independently of any other audio that is already playing. Public identities use
+  the publication date. Internal issue/episode integers stay unchanged for archive
+  integrity; they are not repeated in headers, articles or audio controls.
 - The print room uses an actual isometric 3D press model. The pink ink roll,
   front ivory blanket roll and hidden impression roll share one scene; the
   newspaper passes through the blanket/impression nip. The rendered paper mask
@@ -71,6 +77,33 @@ natural ratio. Publisher provenance is linked below the picture without pretendi
 that the publisher is the photographer. Optional explicit image credits are escaped.
 An image transfer error retains the article and its source with a retry control;
 it does not replace the picture with unrelated artwork.
+
+## Categories and spoken text
+
+The menu explicitly links Günün seçkisi, Teknoloji, Oyun and Podcast’ler. The home
+keeps its mixed editorial selection; category pages show only their own stories,
+podcast and daily summary. The podcast library has two large uncropped program
+covers; small summaries remain secondary. Direct listening routes never select
+or start a track until the user presses play.
+
+`pulse/pronunciations.json` is a reviewed, finite speech lexicon. PULSE is spoken
+as **Pals**, per the owner's clarified English pronunciation preference. The
+speech layer makes a separate synthesis copy for both Edge TTS and Gemini; the
+published news, approved canonical turns and speaker identities remain unchanged.
+URLs, email addresses and inline code are protected, phrases match longest-first
+at word boundaries, and unknown names are left intact rather than guessed.
+`summary-spoken.txt` and `podcast-spoken.json` retain private audit copies; the latter
+binds the lexicon and original dialogue hashes. These files do not ship publicly.
+
+Spoken openings use the date and program name, without zero-padded issue numbers.
+A defensive legacy-number rule pronounces labelled 003 as üç without changing
+product/model numbers. Speech spelling improves synthesis input; it is not a claim
+that every future proper noun or provider output is phonetically perfect.
+Keep the successful Edge narrator, Gemini API and custom host voice IDs. Bump
+`AUDIO_REVISION` when changing speech policy or the lexicon: the input fingerprint
+includes its hash, and Gemini segment caches use the transformed turns. Revision 5
+uses this shared layer. The workflow derives audio-vN from that constant, rather
+than duplicating a hard-coded revision path.
 
 ## App installation and desktop media
 

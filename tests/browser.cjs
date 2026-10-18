@@ -147,7 +147,7 @@ async function run(name, fn) {
         );
         assert.match(
           await page.locator(".nav-issue").innerText(),
-          /16\.10\.2026 · Sayı 001/,
+          /^16\.10\.2026$/,
         );
         assert.deepEqual(
           await page
@@ -179,8 +179,8 @@ async function run(name, fn) {
           await page.locator("html").getAttribute("data-theme"),
           "light",
         );
-        await page.locator(".nav nav a").first().click();
-        await page.waitForURL("**/haberler/index.html");
+        await page.locator('.nav nav a[href*="teknoloji"]').click();
+        await page.waitForURL("**/teknoloji/index.html");
         assert.equal(
           await page.locator("html").getAttribute("data-theme"),
           "light",
@@ -405,6 +405,128 @@ async function run(name, fn) {
       },
     );
     await run(
+      "audio cards stay fixed, show a visible pause glyph and use only the floating transport",
+      async () => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await open("/");
+        for (const selector of [
+          ".podcast-box .audio-start",
+          ".summary-box .audio-start",
+        ]) {
+          const start = page.locator(selector).first();
+          await start.scrollIntoViewIfNeeded();
+          const geometry = () =>
+            start.evaluate((n) => {
+              const b = n.getBoundingClientRect();
+              const c = n.closest(".audio-box").getBoundingClientRect();
+              return {
+                x: b.x + b.width / 2,
+                y: b.y + scrollY + b.height / 2,
+                height: c.height,
+              };
+            });
+          const before = await geometry();
+          await start.click();
+          await page.waitForFunction(
+            () => document.querySelector("audio").currentTime > 0.1,
+          );
+          assert.equal(
+            await page.locator("#main .player, .inline-player").count(),
+            0,
+          );
+          const after = await geometry();
+          for (const key of ["x", "y", "height"])
+            assert(Math.abs(before[key] - after[key]) < 0.6, key + " changed");
+          const stroke = await start
+            .locator("svg path")
+            .evaluate((n) => getComputedStyle(n).stroke);
+          assert.notEqual(stroke, "none");
+          assert.equal(await start.getAttribute("aria-pressed"), "true");
+          await start.click();
+          assert(await page.locator("audio").evaluate((a) => a.paused));
+          assert.equal(await start.getAttribute("aria-pressed"), "false");
+          assert(await page.locator(".mini-more").isVisible());
+        }
+        for (const width of [320, 390, 768, 1440]) {
+          await page.setViewportSize({ width, height: 900 });
+          await page.locator(".mini-more").click();
+          const centres = await page
+            .locator(".player-controls")
+            .evaluate((n) => {
+              const c = n.getBoundingClientRect();
+              const p = n.querySelector(".player-play").getBoundingClientRect();
+              return { controls: c.x + c.width / 2, play: p.x + p.width / 2 };
+            });
+          assert(
+            Math.abs(centres.controls - centres.play) < 1,
+            "transport is not centred at " + width,
+          );
+          assert.equal(
+            await page.locator(".floating-panel .player").count(),
+            1,
+          );
+          await axe();
+          await page.screenshot({
+            path: "test-results/player-single-" + width + ".png",
+          });
+          await page.locator(".mini-collapse").click();
+        }
+      },
+    );
+    await run(
+      "navigation and category soundtracks are explicit and podcast covers are substantial",
+      async () => {
+        for (const section of ["teknoloji", "oyun"]) {
+          await open("/" + section + "/");
+          assert.deepEqual(await page.locator(".nav nav a").allTextContents(), [
+            "Günün seçkisi",
+            "Teknoloji",
+            "Oyun",
+            "Podcast’ler",
+          ]);
+          assert.equal(
+            await page
+              .locator('.nav nav a[aria-current="page"]')
+              .getAttribute("href"),
+            base + "/" + section + "/index.html",
+          );
+          assert.equal(
+            await page
+              .locator('[data-audio-section="' + section + '"]')
+              .count(),
+            2,
+          );
+          assert.equal(
+            await page
+              .locator(
+                '[data-audio-section="' +
+                  (section === "teknoloji" ? "oyun" : "teknoloji") +
+                  '"]',
+              )
+              .count(),
+            0,
+          );
+        }
+        await open("/podcastler/");
+        assert.equal(await page.locator(".program-card").count(), 2);
+        for (const width of [390, 1440]) {
+          await page.setViewportSize({ width, height: 1000 });
+          for (const art of await page
+            .locator(".program-card .program-art")
+            .all()) {
+            const box = await art.boundingBox();
+            assert(box.width >= 270 && Math.abs(box.width - box.height) < 1);
+          }
+          await noOverflow();
+          await axe();
+          await page.screenshot({
+            path: "test-results/podcast-library-" + width + ".png",
+            fullPage: true,
+          });
+        }
+      },
+    );
+    await run(
       "one actual MP3 plays and continues through article navigation",
       async () => {
         await open("/");
@@ -597,6 +719,7 @@ async function run(name, fn) {
       "speed cycle, ten-second seeks, volume and mute control actual audio",
       async () => {
         const audio = page.locator("audio");
+        await page.locator(".mini-more").click();
         for (const rate of [1.1, 1.2, 1.25, 1.5, 2, 0.75, 1]) {
           await page.locator(".player-speed").click();
           assert.equal(await audio.evaluate((a) => a.playbackRate), rate);
@@ -684,7 +807,7 @@ async function run(name, fn) {
         );
         for (const [selector, route, identity] of [
           ['.foot a[href*="gizlilik"]', "/gizlilik/index.html", "legal"],
-          ['.nav nav a[href*="haberler"]', "/haberler/index.html", "news"],
+          ['.nav nav a[href*="teknoloji"]', "/teknoloji/index.html", "news"],
           [
             '.nav nav a[href*="podcastler"]',
             "/podcastler/index.html",
@@ -729,12 +852,16 @@ async function run(name, fn) {
         await open("/teknoloji/dinle/");
         assert(await page.locator("audio").evaluate((a) => a.paused));
         assert(await page.locator(".persistent-audio").isHidden());
-        assert.equal(await page.locator(".player").isVisible(), true);
+        assert.equal(await page.locator(".player").isVisible(), false);
+        assert.equal(await page.locator("audio").getAttribute("src"), null);
         assert.match(
           await page.locator(".episode .detail-meta").innerText(),
           /^16\.10\.2026/,
         );
-        assert(await page.locator(".episode .player-heading").isHidden());
+        assert.equal(await page.locator(".episode .player").count(), 0);
+        await page.locator(".listen-player .audio-start").click();
+        await page.locator(".mini-more").click();
+        assert(await page.locator(".floating-panel .player").isVisible());
         await page.screenshot({
           path: "test-results/editor-full-player-mobile.png",
           fullPage: true,
@@ -766,10 +893,19 @@ async function run(name, fn) {
         );
         assert(await page.locator(".episode-hosts").isHidden());
         assert(await page.locator(".episode-heading .program-art").isHidden());
+        assert.equal(await page.locator("audio").getAttribute("src"), null);
+        assert.equal(
+          await page
+            .locator(".listen-player .audio-start")
+            .getAttribute("data-kind"),
+          "summary",
+        );
+        await page.locator(".listen-player .audio-start").click();
         assert.match(
           await page.locator("audio").getAttribute("src"),
           /summary.mp3/,
         );
+        await page.locator("audio").evaluate((a) => a.pause());
         assert(await page.locator("audio").evaluate((a) => a.paused));
         await noOverflow();
       },
@@ -976,6 +1112,8 @@ async function run(name, fn) {
             window.PULSE_RELEASE &&
             !document.querySelector(".site-shell").inert,
         );
+        await p.locator(".listen-player .audio-start").click();
+        await p.locator(".mini-more").click();
         assert(await p.locator(".player-volume").isHidden());
         assert(await p.locator(".device-volume").isVisible());
         await c.close();
