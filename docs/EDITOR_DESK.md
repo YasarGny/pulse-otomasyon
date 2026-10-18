@@ -112,17 +112,24 @@ window, theme and 192/512px maskable icons derived from the preserved P. favicon
 Apple touch icons use the same mark. `scripts/render_app_icons.cjs` rasterizes the
 original SVG; it is a development tool, not a runtime dependency.
 
-`install.js` shows a compact inline suggestion on the home page only after a real
-`beforeinstallprompt` eligibility event. It does not cover news or audio controls.
-Closing it suppresses automatic suggestions for 30 days; the footer remains an
-explicit entry while the browser still offers installation. Installation events,
-standalone display mode, related installed-app detection and stored confirmation
-hide the suggestion and entry. Storage denial is tolerated. Availability depends
-on the browser; detecting an install in another browser/profile is not possible.
-Safari cannot reliably report an existing home-screen install from a browser tab,
-so it gets **no automatic reminder**: a footer action opens platform-specific
-Share → Add to Home Screen or File → Add to Dock instructions. Nothing requests
-notification permission, push access or native application installation.
+`install.js` provides one quiet "Uygulamayı yükle" footer action on every live
+page. There is no automatic installation banner, dialog or repeated reminder.
+A click uses the current native `beforeinstallprompt` event when available;
+otherwise it opens concise Android, iOS, macOS Safari or desktop instructions.
+Cancellation leaves the footer action available. Native prompt failure falls back
+to instructions. Acceptance alone does not confirm installation.
+
+Standalone display mode, a current-page `appinstalled` event or a positive
+`getInstalledRelatedApps` result hides the action. Old persistent installed and
+30-day dismissal records are removed; history never permanently blocks reinstall.
+A fresh eligibility event supersedes previous signals, including in-flight related
+app checks. Related-app status is refreshed on return/focus when supported. Storage
+denial and unknown installation status do not suppress the footer action.
+An installed app in another browser/profile and iOS home-screen installations
+cannot always be detected; unknown status keeps manual access available without
+an automatic reminder. Native dialogs and OS uninstall behavior require physical
+browser/device validation. No notification permission or push access is requested.
+Offline/no-JavaScript pages leave the inactive footer button hidden.
 
 `sw.js` handles only network navigation. It never puts HTML, daily JSON, stories
 or audio into Cache Storage. Network failure shows a self-contained offline
@@ -190,7 +197,7 @@ Browser checks cover both themes, mobile/tablet/desktop widths, keyboard, axe,
 200% text enlargement, full-card/source separation, filter/back state, real MP3
 playback, speed/10-second seek/volume/mute, audio across reading navigation,
 image/audio errors, camera/mask alignment, stale HTML, 07:30/06:00 gates, offline extraction,
-installation/dismissal/standalone states, desktop Media Session and the real
+footer installation/reinstallation/standalone states, desktop Media Session and the real
 network-only service worker. Installability is checked in a fresh normal Chromium
 profile because incognito profiles deliberately disable installation.
 Managed Chromium may block `file://`; in that case the suite reports the policy
