@@ -397,9 +397,9 @@ Mevcut sesleri değiştirmeden incelemek için `podcast-chapters.yml` elle
 `requirements-chapters.txt` içindedir; çalışan Edge/Gemini sentez ortamına zorunlu
 eklenmez. PyAV 19, faster-whisper 1.2.1 ile uyumsuz olduğundan 16.0.1 sabittir.
 
-Gelecek yayınlarda `PULSE_CHAPTERS_ENABLED=true` isteğe bağlı son-ses çözümlemesini
-etkinleştirir. Canlı tasarım ve doğruluk incelemesi tamamlanmadan bu değişkeni
-etkinleştirmeyin. Zamanları model tahmin etmez: Whisper'ın gerçek segment
+Canlı geçiş onayı sonrasında bölüm işaretleri günlük akışta varsayılan açıktır;
+`PULSE_CHAPTERS_ENABLED=false` isteğe bağlı son-ses çözümlemesini kapatır.
+Konu işaretleri yayının zorunlu ses/JSON kapısından ayrıdır. Zamanları model tahmin etmez: Whisper'ın gerçek segment
 başlangıçlarını metin editörü seçer, ikinci bağımsız inceleme onaylar. Bu otomatik
 inceleme insan dinleme kontrolü veya hatasızlık garantisi değildir. İlk mevcut
 kayıtların geçişleri ayrıca incelenmelidir. Başarısız işaretleme günlük yayın
@@ -450,3 +450,14 @@ korur. Başka bölümün sayfasını incelemek sesi değiştirmez. Uzun oynatıc
 Konu listeleri satıra yayılır, kaymaz. Kategoriye özgü arama ve
 çoklu filtreler geri dönüşte korunur; filtre panelinde Uygula dışında kapatma
 seçimleri değiştirmez. Native dialog ve klavye odağı kullanılır.
+
+
+## Üretim maliyeti ölçümü
+
+Son inceleme: [PRODUCTION_AUDIT.md](PRODUCTION_AUDIT.md). Günlük çalışma özel
+`api-usage.jsonl` içine sağlayıcı token sayaçlarını ve giriş karakterlerini yazar;
+prompt/yanıt/anahtar içermez. Günlük Actions checkpoint'ine dahildir, public site
+ve Drive yayın ZIP'ine dahil değildir. Eksik sayaç sıfır maliyet anlamına gelmez.
+Ücretli TTS yanıtı dönüştürülemezse yalnız girdi ve içerik hash'i eşleşen ham yanıt
+kurtarılır. Bilinmeyen/bozuk ham içerik geçerli yayın sayılmaz; yerel dönüştürme
+hatası nedeniyle aynı alınmış yanıt tekrar servisten istenmez.

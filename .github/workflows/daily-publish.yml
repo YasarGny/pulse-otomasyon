@@ -200,7 +200,7 @@ jobs:
           PY
       - name: Optional final-audio chapter analysis (never regenerates voices)
         id: chapters
-        if: vars.PULSE_CHAPTERS_ENABLED == 'true'
+        if: vars.PULSE_CHAPTERS_ENABLED != 'false'
         continue-on-error: true
         timeout-minutes: 25
         env:
@@ -221,7 +221,7 @@ jobs:
               print('Chapter analysis skipped: preserving the publication-check window. Existing audio is unchanged.')
           PY
       - name: Report optional chapter availability
-        if: always() && vars.PULSE_CHAPTERS_ENABLED == 'true'
+        if: always() && vars.PULSE_CHAPTERS_ENABLED != 'false'
         env:
           CHAPTER_OUTCOME: ${{ steps.chapters.outcome }}
         run: |

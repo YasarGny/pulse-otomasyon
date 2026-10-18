@@ -71,7 +71,11 @@ def prepare(release, previous=None):
             missing.append((section, asset))
     if not missing:
         return
-    transcribe(release, release / 'chapter-transcripts')
+    try:
+        transcribe(release, release / 'chapter-transcripts', sections=[section for section, _ in missing])
+    except Exception as error:
+        print('Some transcripts unavailable:', type(error).__name__)
+        # Review surviving programs independently; never invent missing timings.
     failures = []
     for section, asset in missing:
         try:
