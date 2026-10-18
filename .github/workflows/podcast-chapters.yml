@@ -39,6 +39,26 @@ jobs:
               print('::error::' + detail[-2500:].replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
               raise
           PY
+      - name: Prepare and independently review topic markers from the transcript
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+        run: |
+          python -m pip install -r requirements.txt
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from pulse.editorial import gemini
+          from scripts.prepare_chapters import propose
+          for section in ('teknoloji', 'oyun'):
+              transcript = json.loads(Path('chapter-review', section + '.json').read_text())
+              asset = {'sha256': transcript['audio_sha256'], 'duration': transcript['duration']}
+              result = propose(transcript, asset, gemini)
+              Path('chapter-review', asset['sha256'] + '.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
+              # Public-safe metadata is also available to reviewers through check annotations.
+              notice = json.dumps({'section': section, 'data': result}, ensure_ascii=False)
+              print('::notice title=Verified chapter proposal::' + notice.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+          PYCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
