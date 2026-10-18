@@ -737,7 +737,9 @@
     const active = selected?.section === section && selected?.kind === kind &&
       selectedRelease?.editions[section]?.[kind]?.sha256 === sha && selectedRelease.manifest.publish_date === date;
     if (!active && (!asset || asset.sha256 !== sha || release.manifest.publish_date !== date || !configure(section,kind))) return;
-    hasStarted = true; failed = false;
+    hasStarted = true;
+    if (failed || audio.error) audio.load();
+    failed = false;
     if (audio.readyState && Number.isFinite(audio.duration)) {
       pendingPosition = 0; audio.currentTime = Math.min(time, Math.max(0,audio.duration - .1));
     } else pendingPosition = time;

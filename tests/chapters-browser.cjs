@@ -29,6 +29,10 @@ module.exports = async function(browser, run, base) {
     assert.equal(await page.locator('audio').count(),1);
     assert.equal(await page.locator('.player-chapters [data-start="28"]').getAttribute('aria-current'),'true');
     assert(await page.locator('.player-play').isVisible());
+    await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('error')));
+    await page.locator('.player-chapters [data-start="12"]').click();
+    await page.waitForFunction(()=>document.querySelector('audio').currentTime>=12 && !document.querySelector('audio').paused);
+    assert(await page.locator('.player .retry').isHidden());
     await page.keyboard.press('Escape');
     assert(await page.locator('.floating-panel').isHidden());
     assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
