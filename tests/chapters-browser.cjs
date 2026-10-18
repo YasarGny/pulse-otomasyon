@@ -129,6 +129,21 @@ module.exports = async function(browser, run, base) {
     await page.locator('.mini-close').click();
     assert(await page.locator('.persistent-audio').isHidden());
   });
+  await run('a second tab takes over playback instead of playing two recordings',async()=>{
+    await open('/teknoloji/dinle/');
+    await page.locator('.listen-player .audio-start').click();
+    await page.waitForFunction(()=>!document.querySelector('audio').paused);
+    const other = await context.newPage();
+    try {
+      await other.goto(base+'/oyun/dinle/');
+      await other.waitForFunction(()=>!!window.PULSE_RELEASE);
+      await other.locator('.listen-player .audio-start').click();
+      await other.waitForFunction(()=>!document.querySelector('audio').paused);
+      await page.waitForFunction(()=>document.querySelector('audio').paused);
+      assert.equal(await page.locator('audio').count(),1);
+      assert.equal(await other.locator('audio').count(),1);
+    } finally { await other.close(); }
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };

@@ -31,8 +31,8 @@
     function refresh() {
       animation?.cancel();
       animation = null;
-      const distance = Math.max(0, track.scrollWidth - viewport.clientWidth);
       viewport.classList.toggle("title-static", reduced.matches);
+      const distance = Math.max(0, track.scrollWidth - viewport.clientWidth);
       if (reduced.matches || distance <= 1 || !viewport.getClientRects().length) return;
       const travel = distance / 24 * 1000;
       const total = 2500 + travel + 3000 + travel + 4000;

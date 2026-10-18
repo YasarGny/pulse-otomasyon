@@ -1504,7 +1504,7 @@ async function run(name, fn) {
       assert.equal(await page.locator("#pulse-printing").count(), 0);
     });
     await run(
-      "next day 06:00 closes an open page and stops audio",
+      "next day 06:00 closes an open news page",
       async () => {
         serverTime = "Sat, 17 Oct 2026 03:00:00 GMT";
         await page.clock.runFor(61000);
