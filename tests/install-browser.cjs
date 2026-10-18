@@ -39,116 +39,171 @@ module.exports = async (browser, run, base) => {
       return e.defaultPrevented;
     });
   await run(
-    "install suggestion is eligible-only, responsive, accessible and dismissible",
+    "footer installation is explicit, responsive and remains available after cancellation",
     async () => {
       const { context, page } = await create();
       await open(page);
-      assert(await page.locator(".install-entry").isHidden());
+      assert(await page.locator(".foot-actions .install-entry").isVisible());
+      assert.equal(await page.locator(".install-card").count(), 0);
       for (const width of [1440, 390, 320]) {
         await page.setViewportSize({ width, height: 1000 });
-        assert(await offer(page));
-        await page.locator(".install-card").waitFor({ state: "visible" });
+        await page.locator(".foot").scrollIntoViewIfNeeded();
         for (const theme of ["dark", "light"]) {
-          await page.evaluate(
-            (theme) => (document.documentElement.dataset.theme = theme),
-            theme,
-          );
-          assert(
-            await page.evaluate(
-              () => document.documentElement.scrollWidth <= innerWidth,
-            ),
-          );
-          const report = await new AxeBuilder({ page })
-            .include(".install-card")
-            .analyze();
-          assert.deepEqual(
-            report.violations.map((v) => v.id),
-            [],
-          );
-          await page.screenshot({
-            path: `test-results/install-${width}-${theme}.png`,
-          });
+          await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
+          assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+          assert(await page.locator(".install-entry").evaluate(n => n.getBoundingClientRect().height >= 44));
+          const report = await new AxeBuilder({ page }).include(".foot").analyze();
+          assert.deepEqual(report.violations.map(v => v.id), []);
+          await page.screenshot({path: `test-results/install-footer-${width}-${theme}.png`});
         }
       }
-      await page.locator(".install-dismiss").click();
-      assert(await page.locator(".install-card").isHidden());
-      assert(await page.locator(".install-entry").isVisible());
-      await open(page);
-      await offer(page);
-      assert(await page.locator(".install-card").isHidden());
+      assert(await offer(page));
+      assert.equal(await page.evaluate(() => window.__prompts || 0), 0);
+      assert.equal(await page.locator(".install-card").count(), 0);
       await page.locator(".install-entry").click();
       assert.equal(await page.evaluate(() => window.__prompts), 1);
-      assert(await page.locator(".install-entry").isHidden());
+      assert(await page.locator(".install-entry").isVisible());
+      await page.locator(".install-entry").click();
+      assert(await page.locator(".install-help").isVisible());
+      await page.keyboard.press("Escape");
+      assert(await page.locator(".install-entry").evaluate(n => n === document.activeElement));
+      await offer(page);
+      await page.locator(".install-entry").click();
+      assert.equal(await page.evaluate(() => window.__prompts), 2);
+      await page.locator('.nav nav a[href*="teknoloji"]').click();
+      await page.waitForSelector("#stories");
+      assert.equal(await page.locator(".foot .install-entry").count(), 1);
+      assert(await page.locator(".install-entry").isVisible());
       await context.close();
     },
   );
   await run(
-    "installed event and standalone mode suppress installation on mobile and desktop",
+    "legacy install records cannot block reinstall and new eligibility supersedes an install event",
     async () => {
       const { context, page } = await create();
+      await page.addInitScript(() => {
+        localStorage.setItem("pulse-app-installed", "true");
+        localStorage.setItem("pulse-install-dismissed-until", String(Date.now()+30*86400000));
+      });
       await open(page);
-      await offer(page);
-      await page.locator(".install-card").waitFor({ state: "visible" });
-      await page.evaluate(() =>
-        window.dispatchEvent(new Event("appinstalled")),
-      );
-      assert(await page.locator(".install-card").isHidden());
+      assert(await page.locator(".install-entry").isVisible());
+      assert.equal(await page.evaluate(() => localStorage.getItem("pulse-app-installed")), null);
+      await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
       assert(await page.locator(".install-entry").isHidden());
+      await offer(page);
+      assert(await page.locator(".install-entry").isVisible());
+      await page.locator(".install-entry").click();
+      assert.equal(await page.evaluate(() => window.__prompts), 1);
       await open(page);
-      await offer(page);
-      assert(await page.locator(".install-entry").isHidden());
+      assert(await page.locator(".install-entry").isVisible());
+      assert.equal(await page.locator(".install-card").count(), 0);
       await context.close();
-      for (const width of [1440, 390]) {
-        const { context, page } = await create({
-          viewport: { width, height: 900 },
-        });
+    },
+  );
+  await run(
+    "standalone and confirmed related installation suppress the footer action",
+    async () => {
+      for (const width of [1440,390]) {
+        const { context, page } = await create({ viewport: {width,height:900} });
         await page.addInitScript(() => {
-          const match = window.matchMedia.bind(window);
-          window.matchMedia = (q) => {
-            const result = match(q);
-            if (q === "(display-mode: standalone)")
-              Object.defineProperty(result, "matches", { value: true });
+          const match=window.matchMedia.bind(window);
+          window.matchMedia=q=>{
+            const result=match(q);
+            if(q==="(display-mode: standalone)") Object.defineProperty(result,"matches",{value:true});
             return result;
           };
         });
         await open(page);
         await offer(page);
         assert(await page.locator(".install-entry").isHidden());
-        assert.equal(await page.locator(".install-card:visible").count(), 0);
+        assert.equal(await page.locator(".install-card").count(), 0);
         await context.close();
       }
+      const {context,page}=await create();
+      await page.addInitScript(()=>{
+        window.__relatedInstalled=true;
+        Object.defineProperty(navigator,"getInstalledRelatedApps",{
+          value:async()=>window.__relatedInstalled?[{platform:"webapp",id:location.origin+"/"}]:[],
+        });
+      });
+      await open(page);
+      await page.waitForFunction(()=>document.querySelector(".install-entry").hidden);
+      await page.evaluate(()=>{
+        window.__relatedInstalled=false;
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await page.waitForFunction(()=>!document.querySelector(".install-entry").hidden);
+      await context.close();
     },
   );
   await run(
-    "a related installed app suppresses the suggestion and denied storage does not break it",
+    "stale related-app checks cannot override fresh install eligibility",
     async () => {
-      let pair = await create();
-      await pair.page.addInitScript(() =>
-        Object.defineProperty(navigator, "getInstalledRelatedApps", {
-          value: async () => [
-            { platform: "webapp", id: location.origin + "/" },
-          ],
-        }),
-      );
-      await open(pair.page);
-      await offer(pair.page);
-      assert(await pair.page.locator(".install-entry").isHidden());
-      await pair.context.close();
-      pair = await create();
-      await pair.page.addInitScript(() => {
-        Storage.prototype.getItem = () => {
-          throw Error("blocked");
-        };
-        Storage.prototype.setItem = () => {
-          throw Error("blocked");
-        };
+      const {context,page}=await create();
+      await page.addInitScript(()=>Object.defineProperty(navigator,"getInstalledRelatedApps",{
+        value:()=>new Promise(resolve=>window.__resolveRelated=resolve),
+      }));
+      await open(page);
+      await offer(page);
+      await page.evaluate(()=>window.__resolveRelated([{platform:"webapp",id:location.origin+"/"}]));
+      assert(await page.locator(".install-entry").isVisible());
+      await page.locator(".install-entry").click();
+      assert.equal(await page.evaluate(()=>window.__prompts),1);
+      await context.close();
+    },
+  );
+  await run(
+    "prompt acceptance needs confirmation and native failure offers a manual guide",
+    async () => {
+      const {context,page}=await create();
+      await open(page);
+      await page.evaluate(()=>{
+        const e=new Event("beforeinstallprompt",{cancelable:true});
+        e.prompt=async()=>{};
+        e.userChoice=Promise.resolve({outcome:"accepted"});
+        window.dispatchEvent(e);
       });
-      await open(pair.page);
-      await offer(pair.page);
-      await pair.page.locator(".install-card").waitFor({ state: "visible" });
-      await pair.page.locator(".install-dismiss").click();
-      assert(await pair.page.locator(".install-card").isHidden());
-      await pair.context.close();
+      await page.locator(".install-entry").click();
+      assert(await page.locator(".install-entry").isVisible());
+      await page.evaluate(()=>window.dispatchEvent(new Event("appinstalled")));
+      assert(await page.locator(".install-entry").isHidden());
+      await page.evaluate(()=>{
+        const e=new Event("beforeinstallprompt",{cancelable:true});
+        e.prompt=async()=>{throw Error("expired prompt");};
+        window.dispatchEvent(e);
+      });
+      await page.locator(".install-entry").click();
+      assert(await page.locator(".install-help").isVisible());
+      await page.keyboard.press("Escape");
+      assert(await page.locator(".install-entry").isEnabled());
+      await context.close();
+    },
+  );
+  await run(
+    "manual Android and desktop guides work without eligibility or storage access",
+    async () => {
+      for (const mobile of [true,false]) {
+        const {context,page}=await create(mobile?{
+          viewport:{width:390,height:844},
+          userAgent:"Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36",
+        }:{});
+        await page.addInitScript(()=>{
+          for(const key of ["getItem","setItem","removeItem"])
+            Storage.prototype[key]=()=>{throw Error("blocked");};
+          Object.defineProperty(navigator,"getInstalledRelatedApps",{value:async()=>{throw Error("unavailable");}});
+        });
+        await open(page);
+        assert(await page.locator(".install-entry").isVisible());
+        assert.equal(await page.locator("dialog[open]").count(),0);
+        await page.locator(".install-entry").click();
+        assert(await page.locator(".install-help").isVisible());
+        assert.match(await page.locator(".install-help").innerText(),mobile?/Ana ekrana ekle/:/Adres çubuğundaki/);
+        const report=await new AxeBuilder({page}).analyze();
+        assert.deepEqual(report.violations.map(v=>v.id),[]);
+        await page.keyboard.press("Escape");
+        assert(await page.locator(".install-entry").evaluate(n=>n===document.activeElement));
+        await context.close();
+      }
     },
   );
   await run(
@@ -182,6 +237,13 @@ module.exports = async (browser, run, base) => {
       );
       await page.keyboard.press("Escape");
       assert(await page.locator(".install-help").isHidden());
+      await page.locator(".install-entry").click();
+      await page.evaluate(() => {
+        document.documentElement.classList.add("pulse-locked");
+        window.dispatchEvent(new Event("pulse:locked"));
+      });
+      assert(await page.locator(".install-help").isHidden());
+      assert(await page.locator(".install-entry").isHidden());
       await context.close();
     },
   );

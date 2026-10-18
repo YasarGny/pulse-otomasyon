@@ -114,7 +114,7 @@ class EditorViewsTests(unittest.TestCase):
                 (path.parent / href).resolve(),
                 (self.site / "manifest.webmanifest").resolve(),
             )
-            self.assertIn("install.js?v=2", html)
+            self.assertIn("install.js?v=3", html)
 
     def test_every_internal_article_and_navigation_link_has_a_real_destination(self):
         for page in self.site.rglob("*.html"):
