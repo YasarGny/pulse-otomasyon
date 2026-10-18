@@ -53,7 +53,7 @@ def propose(transcript, asset, generate, *, retry=True):
     raise ValueError('Topic review rejected: ' + reason)
 
 
-def prepare(release):
+def prepare(release, previous=None):
     from scripts.transcribe_podcasts import transcribe
     from pulse.editorial import gemini
     release = Path(release)
@@ -62,7 +62,12 @@ def prepare(release):
     missing = []
     for section in ('teknoloji', 'oyun'):
         asset = read_json(release / (section + '.json'))['podcast']
-        if not load_chapters(target, asset):
+        cached = load_chapters(target, asset)
+        if not cached:
+            cached = load_chapters(Path('site/assets/chapters'), asset) or (load_chapters(Path(previous) / 'assets/chapters', asset) if previous else None)
+            if cached:
+                write_json(target / (asset['sha256'] + '.json'), cached)
+        if not cached:
             missing.append((section, asset))
     if not missing:
         return
@@ -85,5 +90,6 @@ def prepare(release):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--release', required=True)
+    parser.add_argument('--previous')
     args = parser.parse_args()
-    prepare(args.release)
+    prepare(args.release, args.previous)

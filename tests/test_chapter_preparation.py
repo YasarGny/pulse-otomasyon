@@ -49,3 +49,24 @@ class ChapterPreparationTests(unittest.TestCase):
                 prepare(root)
             self.assertEqual(generate.call_count, 2)
             self.assertEqual(json.loads((root / 'chapters' / (self.asset['sha256'] + '.json')).read_text()), accepted)
+
+    def test_verified_published_metadata_is_reused_without_transcription_or_api_calls(self):
+        from scripts.prepare_chapters import prepare
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'work'
+            root.mkdir()
+            previous = Path(folder) / 'published'
+            cache = previous / 'assets/chapters'
+            cache.mkdir(parents=True)
+            accepted = {'schema_version': 1, 'reviewed': True, 'audio_sha256': self.asset['sha256'],
+                        'chapters': [{'start': 0.1, 'title': 'Açılış'}]}
+            (cache / (self.asset['sha256'] + '.json')).write_text(json.dumps(accepted))
+            for section in ('teknoloji', 'oyun'):
+                (root / (section + '.json')).write_text(json.dumps({'podcast': self.asset}))
+            with patch('scripts.transcribe_podcasts.transcribe') as transcribe, patch(
+                'scripts.prepare_chapters.propose'
+            ) as generate:
+                prepare(root, previous)
+            transcribe.assert_not_called()
+            generate.assert_not_called()
+            self.assertEqual(json.loads((root / 'chapters' / (self.asset['sha256'] + '.json')).read_text()), accepted)

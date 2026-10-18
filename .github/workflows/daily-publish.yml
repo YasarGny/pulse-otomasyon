@@ -216,7 +216,7 @@ jobs:
           # Optional metadata must not consume the final publication-check window.
           remaining = int((not_before(os.environ['PULSE_DATE']) - dt.timedelta(minutes=15) - now()).total_seconds())
           if remaining > 30:
-              subprocess.run([sys.executable, 'scripts/prepare_chapters.py', '--release', os.environ['RELEASE_PATH']], check=True, timeout=min(remaining, 24 * 60))
+              subprocess.run([sys.executable, 'scripts/prepare_chapters.py', '--release', os.environ['RELEASE_PATH'], '--previous', '.published'], check=True, timeout=min(remaining, 24 * 60))
           else:
               print('Chapter analysis skipped: preserving the publication-check window. Existing audio is unchanged.')
           PY
