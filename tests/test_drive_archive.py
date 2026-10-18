@@ -234,6 +234,24 @@ class BackupTests(unittest.TestCase):
             drive.request.assert_not_called()
             self.assertFalse(receipt.exists())
 
+    def test_preparation_retry_after_cleanup_has_nothing_to_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source, published = root / 'source', root / 'published'
+            state = {'status': 'preparing', 'publish_date': '2026-10-17'}
+            for tree in (source, published):
+                write_json(tree / 'data/publication.json', state)
+            drive = Mock()
+            receipts = root / 'receipts.json'
+            self.assertEqual(backup_releases(source, published, receipts, drive=drive, folder='root'), {})
+            self.assertEqual(prune(published, receipts), 0)
+            drive.upload.assert_not_called()
+            drive.existing.assert_not_called()
+            write_json(published / 'data/publication.json', self.manifest)
+            with self.assertRaises(ValueError):
+                backup_releases(source, published, receipts, drive=drive, folder='root')
+            self.assertFalse(receipts.exists())
+
     def test_invalid_publication_cannot_authorize_removing_active_release(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / 'site'

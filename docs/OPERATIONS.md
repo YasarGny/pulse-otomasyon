@@ -423,7 +423,9 @@ sonra emekliye ayrılır. Drive doğrulaması başarısızsa dağıtım durur.
 Hazırlık dağıtımında önceki günün tüm release klasörleri ve artık kullanılmayan
 haber yolları doğrulanmış Drive makbuzlarıyla kaldırılır. Hazır dağıtımda yalnız
 aktif release tutulur; aynı günün eski sürümleri de son günlük yedek doğrulanmışsa
-kaldırılır. Bütün adaylar silme başlamadan denetlenir. Yedekleme mevcut günlük
+kaldırılır. Bütün adaylar silme başlamadan denetlenir. Hazırlık tekrarında önceki temizlik
+tamamlanmışsa ve yedeklenecek yayın yoksa boş makbuzla devam edilir; eksik
+“hazır yayın” bu istisnadan yararlanamaz. Yedekleme mevcut günlük
 concurrency kilidi altındadır; kullanıcıdan yeni bir Drive izni gerektirmez.
 
 `data/source-history.json` haber metni, başlık veya görsel içermez. Sabit 512 KiB
