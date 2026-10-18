@@ -262,6 +262,40 @@ module.exports = async function(browser, run, base) {
       }
     }
   });
+  await run('transport stays precisely centered in both tabs and secondary controls share one row',async()=>{
+    await open('/teknoloji/dinle/');
+    await page.locator('.episode-chapters [data-start="12"]').click();
+    await page.waitForFunction(()=>!document.querySelector('audio').paused);
+    await page.locator('audio').evaluate(a=>a.pause());
+    await page.locator('.mini-more').click();
+    for(const theme of ['dark','light']) {
+      await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+      for(const [width,height] of [[320,568],[360,740],[390,844],[412,915],[768,600],[1440,900],[844,390]]) {
+        await page.setViewportSize({width,height});
+        for(const tab of ['#transport-tab','#chapters-tab']) {
+          await page.locator(tab).click();
+          const g=await page.evaluate(()=>{
+            const box=s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,cx:r.x+r.width/2,cy:r.y+r.height/2}};
+            return {panel:box('.floating-panel'),back:box('.player-skip:first-child'),play:box('.player-play'),forward:box('.player-skip:nth-child(3)'),seek:box('.player-seek'),mute:box('.player-mute'),volume:box('.player-volume'),speed:box('.player-speed'),overflow:document.documentElement.scrollWidth>innerWidth};
+          });
+          assert(Math.abs(g.play.cx-g.panel.cx)<1,JSON.stringify({width,height,tab,g}));
+          assert(Math.abs(g.play.cx-g.seek.cx)<1);
+          assert(Math.abs(g.play.cy-g.back.cy)<1&&Math.abs(g.play.cy-g.forward.cy)<1);
+          assert(Math.abs((g.play.cx-g.back.cx)-(g.forward.cx-g.play.cx))<1);
+          assert.equal(g.play.w,64);assert.equal(g.play.h,64);assert(!g.overflow);
+          if(tab==='#transport-tab') {
+            assert(Math.abs(g.mute.cy-g.volume.cy)<1&&Math.abs(g.volume.cy-g.speed.cy)<1);
+            assert(g.volume.x+g.volume.w<=g.speed.x-8);
+            assert(g.speed.h>=44&&g.mute.h>=44);
+            assert(await page.locator('.player-date').isHidden());
+          } else {
+            assert(await page.locator('.player-speed').isHidden());
+          }
+          if([390,1440].includes(width))await page.screenshot({path:`test-results/player-aligned-${theme}-${width}-${tab.slice(1)}.png`});
+        }
+      }
+    }
+  });
   await run('chapter UI has no runtime errors',async()=>assert.deepEqual(errors,[]));
   await context.close();
 };

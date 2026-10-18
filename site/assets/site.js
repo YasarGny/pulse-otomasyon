@@ -85,7 +85,7 @@
   const forward = button("player-skip", "forward", "10 saniye ileri al");
   const speed = make("button", "player-speed", "1×");
   speed.type = "button";
-  controls.append(back, play, forward, speed);
+  controls.append(back, play, forward);
   const seek = make("input", "player-seek");
   seek.type = "range";
   seek.min = "0";
@@ -100,6 +100,7 @@
   times.append(current, end);
   const bottom = make("div", "player-bottom");
   const episode = make("span", "player-date");
+  episode.hidden = true;
   const mute = button("player-mute", "volume", "Sesi kapat");
   mute.setAttribute("aria-pressed", "false");
   const volume = make("input", "player-volume");
@@ -117,7 +118,9 @@
     volume.hidden = true;
   const deviceVolume = make("span", "device-volume", "Ses: cihaz tuşları");
   deviceVolume.hidden = !volume.hidden;
-  bottom.append(mute, volume, deviceVolume, episode);
+  const volumeControls = make("div", "player-volume-controls");
+  volumeControls.append(mute, volume, deviceVolume);
+  bottom.append(volumeControls, speed, episode);
   const status = make("p", "audio-status");
   status.setAttribute("role", "status");
   const retry = make("button", "retry", "Tekrar dene");

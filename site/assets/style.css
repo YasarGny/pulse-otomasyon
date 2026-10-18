@@ -1983,31 +1983,46 @@ body.has-mini {
   max-width: 350px;
   font-size: clamp(30px, 5vw, 36px);
 }
-/* Keep the main transport on the card's centreline; speed occupies the outer rail. */
+/* One symmetric transport in both tabs; secondary controls have their own row. */
 .player-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px 64px 44px minmax(0, 1fr);
-  column-gap: 0;
+  grid-template-columns: 44px 64px 44px;
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  gap: 0 12px;
+  margin: 16px 0 8px;
 }
-.player-controls .player-skip:first-child {
-  grid-column: 2;
-  grid-row: 1;
+.player-controls .player-skip { width: 44px; height: 44px; padding: 0; }
+.player-controls .player-play { width: 64px; height: 64px; padding: 0; }
+.player .player-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
 }
-.player-controls .player-play {
-  grid-column: 3;
-  grid-row: 1;
+.player-volume-controls {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  align-items: center;
 }
-.player-controls .player-skip:nth-child(3) {
-  grid-column: 4;
-  grid-row: 1;
-}
-.player-controls .player-speed {
-  grid-column: 5;
-  grid-row: 1;
+.player-volume-controls .player-volume { width: 100%; min-width: 0; max-width: none; }
+.player-volume-controls .device-volume { line-height: 1.4; overflow-wrap: anywhere; }
+.player-bottom .player-speed {
+  width: 60px;
+  min-width: 60px;
+  height: 44px;
+  padding: 0 4px;
   justify-self: end;
-  min-width: 52px;
-  padding: 0 6px;
   font-size: 14px;
+}
+.transport-extras .player-restart {
+  display: block;
+  margin: 12px auto 0;
+  min-height: 44px;
 }
 
 /* The episode heading and transport form one card; do not repeat the cover/title. */
@@ -2411,14 +2426,7 @@ body.has-mini {
     opacity: 0.5;
   }
 }
-@media (max-width: 360px) {
-  .player-controls .player-speed {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: center;
-    margin-top: 8px;
-  }
-}
+
 
 /* Search and saved playback stay secondary to editorial content. */
 .sr-only {
@@ -2496,7 +2504,7 @@ body.has-mini {
 .player-tabs button[aria-selected="true"] { color: var(--text); background: var(--raised); border-color: var(--control); font-weight: 600; }
 .floating-panel { display: flex; flex-direction: column; overflow: hidden; }
 .floating-panel .mini-bar, .floating-panel > .mini-close { flex-shrink: 0; }
-.floating-panel .mini-details { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.floating-panel .mini-details { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; scrollbar-width: thin; }
 .floating-panel .mini-title { min-width: 0; }
 .floating-panel .mini-title a { white-space: normal; overflow-wrap: anywhere; }
 .scrolling-title { display: block; width: calc(100% - 16px); flex-shrink: 0; margin: 0 8px 8px; min-height: 44px; text-align: left; overflow: hidden; white-space: nowrap; padding: 8px 0; background: transparent; color: var(--text); border: 0; font: inherit; font-size: 14px; }
@@ -2514,9 +2522,7 @@ body.has-mini {
 .chapter-jump[aria-current="true"] .chapter-time, .chapter-jump.is-playing .chapter-indicator { color: var(--text); }
 .episode-chapters { margin-top: 28px; max-width: 680px; }
 .episode-chapters h2 { font-size: 20px; }
-.player.chapter-mode :is(.player-bottom,.player-restart,.player-speed) { display: none; }
-.player.chapter-mode .player-controls { margin: 0; }
-.player.chapter-mode .player-play { width: 48px; height: 48px; }
+.player.chapter-mode :is(.player-bottom,.player-restart) { display: none; }
 .player-chapters { max-height: min(260px, 32dvh); overflow-y: auto; overscroll-behavior: contain; margin: 0 8px; }
 @media(max-width: 640px) {
   .news-tools { display: flex; flex-wrap: wrap; }
