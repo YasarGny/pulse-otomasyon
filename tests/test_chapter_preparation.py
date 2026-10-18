@@ -13,6 +13,8 @@ class ChapterPreparationTests(unittest.TestCase):
     def generate(self, approved=True, index=1):
         responses = iter([{'chapters': [{'segment_id': 0, 'title': 'Açılış'},
                                        {'segment_id': index, 'title': 'Çip üretimi'}]},
+                          {'approved': approved},
+                          {'chapters': [{'segment_id': 0, 'title': 'Açılış'}, {'segment_id': index, 'title': 'Çip üretimi'}]},
                           {'approved': approved}])
         return lambda *args, **kwargs: next(responses)
 
