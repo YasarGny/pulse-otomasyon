@@ -458,6 +458,11 @@ ZIP açılıp `index.html` tarayıcıda açılarak dolaşılabilir; kaynak sitel
 Yüklenen ZIP tamamen geri indirilip hash/envanter denetlenmeden eski ZIP veya
 site dosyaları kaldırılmaz. Aynı günün eski sürümleri yalnız son sürüm doğrulandıktan
 sonra emekliye ayrılır. Drive doğrulaması başarısızsa dağıtım durur.
+Drive okuma ve mutlak metadata güncelleme (GET/PATCH) isteklerinde geçici
+408/429/500/502/503/504 veya bağlantı/zaman aşımı hataları en çok beş denemeyle,
+artan bekleme ve küçük rastgele gecikmeyle yeniden denenir. En fazla 30 saniyelik
+sayısal `Retry-After` dikkate alınır. Kalıcı hatalar dağıtımı yine durdurur;
+dosya oluşturan POST ve gövdeli PUT yüklemeleri körlemesine tekrarlanmaz.
 
 Hazırlık dağıtımında önceki günün tüm release klasörleri ve artık kullanılmayan
 haber yolları doğrulanmış Drive makbuzlarıyla kaldırılır. Hazır dağıtımda yalnız
