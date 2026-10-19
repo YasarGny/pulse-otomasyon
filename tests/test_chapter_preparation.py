@@ -1,6 +1,9 @@
 import unittest
 import tempfile
 import json
+import io
+import os
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 from scripts.prepare_chapters import propose
@@ -43,12 +46,16 @@ class ChapterPreparationTests(unittest.TestCase):
                 (root / 'chapter-transcripts' / (section + '.json')).write_text(json.dumps(self.transcript))
             accepted = {'schema_version': 1, 'reviewed': True, 'audio_sha256': self.asset['sha256'],
                         'chapters': [{'start': 0.1, 'title': 'Açılış'}]}
+            output = io.StringIO()
             with patch('scripts.transcribe_podcasts.transcribe'), patch(
-                'scripts.prepare_chapters.propose', side_effect=[ValueError('rejected'), accepted]
-            ) as generate, self.assertRaisesRegex(ValueError, 'teknoloji'):
+                'scripts.prepare_chapters.propose', side_effect=[ValueError('rejected fixture-only-secret https://service.test/private'), accepted]
+            ) as generate, patch.dict(os.environ, {'GEMINI_API_KEY': 'fixture-only-secret'}), redirect_stdout(output), self.assertRaisesRegex(ValueError, 'teknoloji'):
                 prepare(root)
             self.assertEqual(generate.call_count, 2)
             self.assertEqual(json.loads((root / 'chapters' / (self.asset['sha256'] + '.json')).read_text()), accepted)
+            self.assertIn('::warning title=PULSE chapter review incomplete::teknoloji', output.getvalue())
+            self.assertNotIn('fixture-only-secret', output.getvalue())
+            self.assertNotIn('https://service.test/private', output.getvalue())
 
     def test_verified_published_metadata_is_reused_without_transcription_or_api_calls(self):
         from scripts.prepare_chapters import prepare

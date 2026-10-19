@@ -71,6 +71,15 @@ def stage(previous, work, state):
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(release / name, destination)
     copy_state(state, work)
+    for section in SECTIONS:
+        asset = read_json(work / (section + '.json'))['podcast']
+        try:
+            transcript = read_json(work / 'chapter-transcripts' / (section + '.json'))
+        except (OSError, ValueError):
+            transcript = {}
+        segments = transcript.get('segments') if isinstance(transcript, dict) and transcript.get('audio_sha256') == asset['sha256'] else None
+        data = load_chapters(work / 'chapters', asset)
+        print(f'::notice title=PULSE chapter checkpoint::{section}: {len(segments) if isinstance(segments, list) else 0} cached transcript segments; {len(data["chapters"]) if data else 0} verified markers', flush=True)
     return manifest
 
 
