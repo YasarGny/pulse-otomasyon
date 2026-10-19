@@ -230,8 +230,24 @@ def selection_sources(sources):
     return [{'id': source['id'], 'original_title': source['original_title'],
              'source_name': source['source_name'],
              'source_published_at': source['source_published_at'],
-             'source_excerpt': source['source_excerpt'][:2200]}
+             'source_excerpt': (source.get('source_full_text') or source['source_excerpt'])[:2200]}
             for source in sources.values()]
+
+
+def enrich_selection_sources(sources):
+    """Read short feed excerpts at their trusted publisher before selecting news."""
+    from pulse.source_media import article_text
+    def enrich(source):
+        current = source.get('source_full_text') or source['source_excerpt']
+        if len(current) < 1200:
+            try:
+                extracted = article_text(source['source_url'])
+                if len(extracted) > len(current):
+                    source['source_full_text'] = extracted
+            except (requests.RequestException, ValueError, OSError):
+                pass
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        list(pool.map(enrich, sources.values()))
 
 
 def checked_selection(result, sources, section):
@@ -265,6 +281,7 @@ def create_edition(research_data, section, date, issue, game_start, article_cach
     if research_data["publish_date"] != date:
         raise ValueError("Research from another date")
     sources = {s["id"]: s for s in research_data["sections"][section]}
+    enrich_selection_sources(sources)
     from pulse.profile import TARGETS, MIN_STORIES, PROFILE
     low, high = TARGETS[section]
     prompt = f"""{date} tarihli PULSE {section} sayısı {issue:03d} için Türkçe haber seçkisi hazırla.

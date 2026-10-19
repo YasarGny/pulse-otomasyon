@@ -2,7 +2,7 @@ import copy
 import unittest
 from unittest.mock import patch
 
-from pulse.editorial import checked_selection, create_edition
+from pulse.editorial import checked_selection, create_edition, enrich_selection_sources
 
 
 class SelectionGateTests(unittest.TestCase):
@@ -24,6 +24,21 @@ class SelectionGateTests(unittest.TestCase):
             checked_selection({'stories': self.rows[:11]}, self.sources, 'teknoloji')
         self.assertEqual(len(checked_selection({'stories': self.rows[:12]}, self.sources, 'teknoloji')), 12)
         self.assertEqual(len(checked_selection({'stories': self.rows[:10]}, self.sources, 'oyun')), 10)
+
+    def test_short_source_is_enriched_before_selection_without_overwriting_feed(self):
+        source = copy.deepcopy(self.sources['0']); source['source_excerpt'] = 'Short factual RSS excerpt.'
+        with patch('pulse.source_media.article_text', return_value='Complete publisher evidence. ' * 80) as fetch:
+            enrich_selection_sources({'0': source})
+        fetch.assert_called_once_with(source['source_url'])
+        self.assertEqual(source['source_excerpt'], 'Short factual RSS excerpt.')
+        self.assertTrue(source['source_full_text'].startswith('Complete publisher'))
+
+    def test_failed_source_fetch_keeps_original_evidence(self):
+        source = copy.deepcopy(self.sources['0']); source['source_excerpt'] = 'Original RSS evidence.'
+        with patch('pulse.source_media.article_text', side_effect=ValueError('Not a trusted public source')):
+            enrich_selection_sources({'0': source})
+        self.assertEqual(source['source_excerpt'], 'Original RSS evidence.')
+        self.assertNotIn('source_full_text', source)
 
     def test_duplicates_cannot_fill_the_quota(self):
         for field, value in [('id', '0'), ('event_key', 'EVENT-0')]:

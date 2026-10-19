@@ -135,6 +135,13 @@ yetersizse sayı doldurulmaz, tam metin/ses üretimine geçilmez. Hata kategori,
 seçilen geçerli haber sayısı ve gereken aralığı bildirir. Son yayın doğrulaması
 ve bağımsız tam haber denetimi ayrıca korunur.
 
+Tamamlanmamış günlük iş tekrarında araştırma 30 dakikadan eskiyse RSS havuzu
+yenilenir; tamamlanmış kategorinin kaynak kanıtları korunur. Kısa RSS alıntıları
+seçimden önce izinli yayıncının tam metniyle zenginleştirilir. Modelin seçim
+girdisi yine kaynak başına en çok 2200 karakterdir; tam kanıt sonraki metin ve
+denetim adımlarında korunur. `research-diagnostics.yml` ücretli AI/ses çağrısı
+yapmadan eski/yeni havuz sayısını, kaynak hatalarını ve aday başlıkları inceler.
+
 RSS bazen yalnız kısa alıntı veya görselsiz veri verir. Kaynak desteği olmayan
 iddia eklenmemesi modele açıkça söylenir; bu, insan editoryal denetiminin veya
 olgusal doğruluk garantisinin yerini tutmaz. İlk canlı denemede haberleri

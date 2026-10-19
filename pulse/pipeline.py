@@ -256,6 +256,19 @@ def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=Fa
     sources = root / "research.json"
     if not sources.exists():
         research(date, sources)
+    elif any(not (root / (section + '.json')).exists() for section in SECTIONS):
+        # A failed morning selection must not freeze the first RSS snapshot all
+        # day. Refresh only unfinished editions and at most once per 30 minutes.
+        saved = read_json(sources)
+        stamp = dt.datetime.fromisoformat(saved['researched_at'])
+        if not stamp.tzinfo:
+            raise ValueError('Research timestamp must include a timezone')
+        if now() - stamp >= dt.timedelta(minutes=30):
+            refreshed = research(date, root / 'research-refreshed.json')
+            for section in SECTIONS:
+                if (root / (section + '.json')).exists():
+                    refreshed['sections'][section] = saved['sections'][section]
+            write_json(sources, refreshed)
     research_data = exclude_published(read_json(sources), previous, date)
     if scheduled:
         wait_for(date, "06:30")

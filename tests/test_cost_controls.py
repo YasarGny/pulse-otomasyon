@@ -19,13 +19,14 @@ class CostControlsTests(unittest.TestCase):
         source = {'id': 'a', 'original_title': 'Source headline', 'source_name': 'Publisher',
                   'source_published_at': '2026-10-18T03:00:00Z', 'source_excerpt': 'x'*5000,
                   'source_url': 'https://publisher.test/story', 'image_url': 'https://cdn.test/'+'y'*3000,
-                  'source_full_text': 'all of the source evidence'}
+                  'source_full_text': 'all of the source evidence ' * 200}
         original = json.dumps(source)
         packed = selection_sources({'a': source})
         self.assertLess(len(json.dumps(packed)), len(original)*0.4)
         self.assertEqual(packed[0]['id'], 'a')
         self.assertEqual(json.dumps(source), original)
         self.assertEqual(len(packed[0]['source_excerpt']), 2200)
+        self.assertTrue(packed[0]['source_excerpt'].startswith('all of the source evidence'))
         self.assertNotIn('image_url', packed[0])
         self.assertNotIn('source_full_text', packed[0])
 
