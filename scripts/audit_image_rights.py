@@ -26,12 +26,14 @@ def evidence(url):
         result['http'] = response.status_code
         if response.status_code != 200:
             return result
-        text = html.unescape(re.sub('<[^>]+>', ' ', response.text))
+        markup = response.content.decode('utf-8', errors='replace')
+        visible = re.sub(r'<(script|style|head)\b[^>]*>.*?</\1\s*>', ' ', markup, flags=re.I | re.S)
+        text = html.unescape(re.sub('<[^>]+>', ' ', visible))
         text = re.sub(r'\s+', ' ', text)
         result['excerpts'] = [text[max(0, m.start()-100):m.end()+350] for m in re.finditer(
             r'(?i)image credit|photo credit|image:|credit:|credits:|courtesy|licensed under|CC BY|creative commons|©|getty images|reuters|permission|re-use|republish|copyright', text)][:20]
         result['policy_links'] = [urljoin(url, link) for link in re.findall(
-            r'''href=["']([^"']*(?:terms|copyright|licens|permission)[^"']*)["']''', response.text, re.I)[-15:]]
+            r'''href=["']([^"']*(?:terms|copyright|licens|permission)[^"']*)["']''', markup, re.I)[-15:]]
     except requests.RequestException as error:
         result['error'] = type(error).__name__
     return result
@@ -61,10 +63,13 @@ def main():
     Path('image-rights-audit.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
     for section in manifest['editions']:
         compact = [{'n': r['number'], 'http': r['evidence'].get('http', r['evidence'].get('error')),
-                    'evidence': r['evidence'].get('excerpts', [])[:4],
-                    'links': r['evidence'].get('policy_links', [])[:3]} for r in rows if r['section'] == section]
-        annotation(section, json.dumps(compact, ensure_ascii=False))
-    annotation('publisher policies', json.dumps(policies, ensure_ascii=False))
+                    'evidence': [e[:220] for e in r['evidence'].get('excerpts', [])[:3]],
+                    'links': r['evidence'].get('policy_links', [])[:2]} for r in rows if r['section'] == section]
+        for start in range(0, len(compact), 4):
+            annotation(section + ' ' + str(start + 1), json.dumps(compact[start:start+4], ensure_ascii=False))
+    for start in range(0, len(policies), 3):
+        compact = [{**p, 'excerpts': [e[:300] for e in p.get('excerpts', [])[:3]]} for p in policies[start:start+3]]
+        annotation('publisher policies ' + str(start + 1), json.dumps(compact, ensure_ascii=False))
 
 
 def annotation(title, text):

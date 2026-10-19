@@ -505,8 +505,8 @@ hatası nedeniyle aynı alınmış yanıt tekrar servisten istenmez.
 
 Bağlantı geçmişi v3, SHA-256 parmak izlerini kesin bir kümede tutar. Yeni bir
 bağlantıyı Bloom çakışması yüzünden elemez. Eski v2 filtresi geri çözülemez;
-eski olasılıklı eşleşmeler yalnız tanısal bilgi olarak korunur. Mühürlü son günlük
-sürümlerden doğrulanarak alınan başlangıç parmak izleri `pulse/history-seed.json`
+eski olasılıklı eşleşmeler yalnız tanısal bilgi olarak korunur. Mühürlü geçmiş günlük
+sürümlerden (aynı günün yayımlanmış revizyonları dahil) doğrulanarak alınan başlangıç parmak izleri `pulse/history-seed.json`
 içindedir; bunlar önceki günleri yeni sisteme taşır. Yeni kayıtlar yaklaşık
 haber başına 67 bayt JSON'dur; 40 haber/gün yaklaşık 1 MB/yıl eder. 500.000
 parmak izinde sessizce sıfırlamak yerine açık hata verir.

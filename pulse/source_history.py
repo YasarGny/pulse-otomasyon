@@ -96,7 +96,6 @@ class SourceHistory:
 
     def add(self, url):
         self.exact.add(fingerprint(url))
-        # Raw identity also preserves compatibility with legacy SHA-256 records.
         # The legacy probabilistic filter is frozen, not extended.
 
     def contains(self, url):
@@ -118,7 +117,7 @@ class SourceHistory:
                 'bits': base64.b64encode(zlib.compress(raw, 9)).decode('ascii')}
 
     def record(self):
-        # 500k SHA-256 values fit ~250k articles: decades at today's cadence.
+        # 500k SHA-256 values fit ~500k new articles: decades at today's cadence.
         # Stop explicitly at capacity, never forget old exact identities.
         if len(self.exact) > 500000:
             raise ValueError('Exact source history capacity reached; migrate before publishing')
