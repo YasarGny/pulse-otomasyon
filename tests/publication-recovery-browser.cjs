@@ -20,7 +20,10 @@ module.exports = async function(browser, run, base) {
       await test({page, setOutage(value, code=0){outage=value;status=code;},
         get requests(){return requests;}, setDateOffset(value){dateOffset=value;}, setHeaderSkew(value){headerSkew=value;}});
       assert.deepEqual(errors, []);
-    } finally {await context.close();}
+    } finally {
+      await page.unrouteAll({behavior:'wait'});
+      await context.close();
+    }
   }
   const opened = page => page.waitForFunction(()=>window.PULSE_RELEASE &&
     !document.documentElement.classList.contains('pulse-locked') &&
@@ -92,7 +95,9 @@ module.exports = async function(browser, run, base) {
     assert.equal(await s.page.locator('#pulse-printing').count(),0);
     await opened(s.page);
     s.setHeaderSkew(0);
+    const count=await s.page.evaluate(()=>window.verifiedPolls);
     await s.page.evaluate(()=>dispatchEvent(new Event('online')));
+    await s.page.waitForFunction(n=>window.verifiedPolls>n,count);
     await opened(s.page);
   }));
   await run('temporary failure to replace stale HTML recovers without refreshing',()=>scenario(async s=>{
