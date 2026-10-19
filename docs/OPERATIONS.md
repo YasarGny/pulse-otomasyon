@@ -604,6 +604,10 @@ kayıt sırasına göre çalar; son dosyanın doğal bitişinde durur. Aradaki i
 konuşma oynatılmaz, dosyalar veya onaylanmış sınırlar yeniden üretilmez.
 Çoklu kesitte önceki/sonraki kesit düğmeleri ve “Kesit 1/2” bilgisi vardır.
 Tam bölüme geçiş o anda çalan kesitin özgün kayıttaki saniyesini kullanır.
-Haber değişimi tüm haber kesiti sırasını durdurur; tam podcast'i etkilemez.
+Haber değişimi veya sayfalar arasında gezinme dinlenen kesit sırasını durdurmaz.
+Başka haberin sesi açıkça başlatıldığında tek oynatıcı yeni kesite geçer.
+“Dinlenen habere dön” Akış içinde ilgili haberi bulur; kategori farklıysa doğru
+kategoriye geçer. Diğer sayfalarda ilgili haber ayrıntısını açar. Son kesitte
+oynatma durur; başka haber otomatik başlamaz. Tam podcast de gezinirken devam eder.
 Yeniden dinleme sıralamanın başından başlar. Bu arayüz güncellemesi model veya
 ses üretimi çağrısı yapmaz; `refresh-website.yml` ile yayımlanır.
