@@ -646,7 +646,7 @@
         });
       } catch (_) {}
       for (const [action, handler] of Object.entries({
-        play: () => audio.play().catch(() => {}),
+        play: () => {if (audio.paused || audio.ended || failed) toggle();},
         pause: () => {if (selectedClip) selectedClip.stopped = true; audio.pause();},
         stop: () => close.click(),
         seekbackward: () => jump(-10),
@@ -1036,6 +1036,9 @@
     const closeFlow = $('.flow-close', root), category = $('.flow-category', root);
     const stepNext = $('.flow-step-next', root), storyNavigation = $('.flow-story-navigation', root);
     const counter = $('.flow-count', root);
+    const nextImage = $('.flow-next-image', root);
+    nextImage.onerror = () => {nextImage.hidden = true; next.classList.remove('has-image');};
+    nextImage.onload = () => {nextImage.hidden = false; next.classList.add('has-image');};
     if (history.state?.flowReturn) closeFlow.href = history.state.flowReturn;
     let filter = state?.flow?.filter || '', index = Number.isInteger(state?.flow?.index) ? state.flow.index : 0;
     if (!['', 'teknoloji', 'oyun'].includes(filter)) filter = '';
@@ -1072,7 +1075,7 @@
       $('.flow-next-title', root).textContent = upcoming ? $('h1',upcoming).textContent : 'Akışı tamamla';
       $('.flow-next-category', root).textContent = upcoming ? $('.eyebrow',upcoming).textContent : '';
       const preview = $('.flow-next-image',root), image = upcoming?.querySelector('.story-image');
-      preview.hidden = !image;
+      preview.hidden = !image; next.classList.toggle('has-image', !!image);
       if (image) preview.src = image.src; else preview.removeAttribute('src');
       next.setAttribute('aria-label', upcoming ? 'Sonraki haber: ' + $('h1',upcoming).textContent : 'Akışı tamamla');
       announcement.textContent = complete ? 'Günün akışını tamamladın' : counter.textContent + ' · ' + $('h1',active).textContent;

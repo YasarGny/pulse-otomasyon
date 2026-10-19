@@ -129,8 +129,13 @@ module.exports = async (browser, run, base) => {
       await page.waitForSelector('.story-clip');
       assert.equal(await page.locator('.story-clip').count(),1);
       assert.match(await page.locator('.story-clip').innerText(),/2 kesit/);
+      await page.evaluate(()=>{window.clipActions={};navigator.mediaSession.setActionHandler=(name,fn)=>window.clipActions[name]=fn;});
       await page.locator('.story-clip-play').click();
       await page.waitForFunction(()=>document.querySelector('audio').readyState>=2);
+      await page.evaluate(()=>window.clipActions.pause());
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+      await page.evaluate(()=>window.clipActions.play());
+      await page.waitForFunction(()=>!document.querySelector('audio').paused);
       await page.locator('audio').evaluate(a=>a.currentTime=a.duration-.1);
       await page.waitForFunction(()=>document.querySelector('audio').src.includes('-30.000-32.000.mp3'));
       await page.waitForFunction(()=>document.querySelector('audio').ended);
