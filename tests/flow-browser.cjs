@@ -179,6 +179,15 @@ module.exports = async (browser, run, base) => {
         await page.waitForSelector('.flow-story:visible');
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
         assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.clientHeight>200),true);
+        const alignment=await page.evaluate(()=>{
+          const select=document.querySelector('.flow-category').getBoundingClientRect();
+          const icon=document.querySelector('.flow-category-label > svg').getBoundingClientRect();
+          const image=document.querySelector('.flow-next-image').getBoundingClientRect();
+          const copy=document.querySelector('.flow-next-copy').getBoundingClientRect();
+          return {chevronOffset:Math.abs(select.y+select.height/2-icon.y-icon.height/2),
+            imageLeft:image.right<=copy.left,within:copy.right<=innerWidth};
+        });
+        assert(alignment.chevronOffset<1);assert(alignment.imageLeft);assert(alignment.within);
         await page.screenshot({path:`test-results/flow-${width}.png`});
       }
       const results=await new AxeBuilder({page}).analyze();
