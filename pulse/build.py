@@ -31,6 +31,7 @@ PUBLIC_ROOTS = (
     "oyun",
     "haberler",
     "podcastler",
+    "akis",
     "gizlilik",
     "kosullar",
 )
@@ -112,6 +113,9 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
                 registry[asset['sha256']] = chapters
                 write_json(output / 'assets/chapters' / (asset['sha256'] + '.json'), chapters)
         write_json(output / 'assets/chapters/index.json', registry)
+        from pulse.clips import build_clips
+        editions = {s: read_json(output / 'releases' / manifest['release_id'] / (s + '.json')) for s in SECTIONS}
+        build_clips(output, manifest, editions, registry, previous)
         build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
     assert_public_tree(output)

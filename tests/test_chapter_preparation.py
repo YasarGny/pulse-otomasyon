@@ -1,3 +1,4 @@
+from pulse.clips import story_fingerprint
 import unittest
 import tempfile
 import json
@@ -46,6 +47,7 @@ class ChapterPreparationTests(unittest.TestCase):
                 (root / (section + '.json')).write_text(json.dumps({'podcast': asset, 'stories': []}))
             def accepted(asset):
                 return {'schema_version': 1, 'reviewed': True, 'audio_sha256': asset['sha256'],
+                        'clips_reviewed': True, 'story_ranges': [], 'stories_sha256': story_fingerprint([]),
                         'chapters': [{'start': 0, 'title': 'Açılış'}, {'start': 20, 'title': 'Konu'}]}
             with patch('scripts.transcribe_podcasts.transcribe'), patch('scripts.prepare_chapters.propose',
                     side_effect=[ChapterReviewRejected('Include the omitted main science topics'), accepted(other_asset)]), redirect_stdout(io.StringIO()):
@@ -76,6 +78,7 @@ class ChapterPreparationTests(unittest.TestCase):
                 (root / (section + '.json')).write_text(json.dumps({'podcast': self.asset}))
                 (root / 'chapter-transcripts' / (section + '.json')).write_text(json.dumps(self.transcript))
             accepted = {'schema_version': 1, 'reviewed': True, 'audio_sha256': self.asset['sha256'],
+                        'clips_reviewed': True, 'story_ranges': [], 'stories_sha256': story_fingerprint([]),
                         'chapters': [{'start': 0.1, 'title': 'Açılış'}]}
             output = io.StringIO()
             with patch('scripts.transcribe_podcasts.transcribe'), patch(
@@ -97,6 +100,7 @@ class ChapterPreparationTests(unittest.TestCase):
             cache = previous / 'assets/chapters'
             cache.mkdir(parents=True)
             accepted = {'schema_version': 1, 'reviewed': True, 'audio_sha256': self.asset['sha256'],
+                        'clips_reviewed': True, 'story_ranges': [], 'stories_sha256': story_fingerprint([]),
                         'chapters': [{'start': 0.1, 'title': 'Açılış'}]}
             (cache / (self.asset['sha256'] + '.json')).write_text(json.dumps(accepted))
             for section in ('teknoloji', 'oyun'):

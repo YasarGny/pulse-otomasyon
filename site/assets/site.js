@@ -187,7 +187,7 @@
       ? record : null;
   }
   function persistListening(force = false) {
-    if (!selected || !hasStarted || !audio.readyState || failed || pendingPosition)
+    if (selectedClip || !selected || !hasStarted || !audio.readyState || failed || pendingPosition)
       return;
     if (!force && Date.now() - lastProgressWrite < 5000) return;
     lastProgressWrite = Date.now();
@@ -307,6 +307,12 @@
       !hasStarted;
     document.body.classList.toggle("has-mini", !mini.hidden);
     icon(miniMore, "settings");
+    for (const start of all('.story-clip-play')) {
+      const active = selectedClip?.entry.file === start.dataset.clipFile;
+      icon($('.clip-action-icon', start), active && playing ? 'pause' : 'play');
+      $('.clip-action-label', start).textContent = active && playing ? 'Duraklat' : 'Dinle';
+      start.setAttribute('aria-pressed', String(!!active && playing));
+    }
     syncChapters();
     miniMore.setAttribute("aria-busy", String(loading));
     miniMore.dataset.state = failed
@@ -404,6 +410,7 @@
       selectedRelease.manifest.publish_date !== context.manifest.publish_date;
     if (changed) {
       persistListening(true);
+      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
       collapsePanel(false);
       audio.pause();
       playRequest++;
@@ -438,6 +445,7 @@
       .join(".");
     miniSubtitle.textContent = (section === "teknoloji" ? "Teknoloji" : "Oyun") +
       (kind === "podcast" ? " podcast’i · " : " · ") + episode.textContent;
+    if (selectedClip) miniSubtitle.textContent = 'Haber kesiti · ' + format(selectedClip.entry.duration);
     miniLink.textContent = title();
     miniLink.href = new URL(
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
@@ -489,6 +497,7 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
+    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
     selectedRelease = null;
     playRequest++;
     syncMediaSession();
@@ -652,6 +661,99 @@
     }
     update();
   });
+  // Story clips are actual short files. Native EOF also stops in background tabs.
+  let selectedClip = null, clipIndexPromise = null;
+  const fullEpisode = make('button', 'clip-full-episode', 'Tam bölümü dinle');
+  fullEpisode.type = 'button'; fullEpisode.hidden = true; full.append(fullEpisode);
+  const clipTopic = make('p', 'clip-topic'); clipTopic.hidden = true;
+  full.insertBefore(clipTopic, controls);
+  const clipNotice = make('p', 'clip-notice'); clipNotice.hidden = true; full.append(clipNotice);
+  fullEpisode.onclick = () => {
+    if (!selectedClip) return;
+    const clip = selectedClip, position = clip.entry.start + audio.currentTime;
+    const rate = audio.playbackRate;
+    selectedClip = null;
+    configure(clip.section, 'podcast', clip.context);
+    pendingPosition = position;
+    if (audio.readyState) { audio.currentTime = position; pendingPosition = 0; }
+    audio.playbackRate = rate;
+    fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
+    toggle();
+  };
+  audio.addEventListener('ended', () => {
+    if (selectedClip) {
+      clipNotice.textContent = 'Kesit tamamlandı. Tekrar dinlemek için oynat.';
+      clipNotice.hidden = false;
+    }
+  });
+  function stopArticleClip() {
+    if (!selectedClip) return;
+    audio.pause(); playRequest++; loading = false; collapsePanel(false); update();
+  }
+  async function clipsForStories() {
+    if (!clipIndexPromise) clipIndexPromise = (async () => {
+      const embedded = window.PULSE_RELEASE?.clips;
+      if (embedded) return embedded;
+      const response = await fetch(new URL('assets/clips/index.json', base), {cache:'no-store', signal:AbortSignal.timeout(12000)});
+      if (!response.ok) throw Error('Kesit bilgisi yüklenemedi');
+      return response.json();
+    })().catch(() => { clipIndexPromise = null; return null; });
+    return clipIndexPromise;
+  }
+  async function hydrateStoryClips() {
+    const slots = all('.story-clip-slot');
+    if (!slots.length || !release) return;
+    const context = release;
+    const index = await clipsForStories();
+    if (context !== release || index?.schema_version !== 1 || index.release_id !== context.manifest.release_id) return;
+    for (const slot of slots) {
+      if (!slot.isConnected || slot.childElementCount) continue;
+      const section = slot.dataset.section || document.body.dataset.section;
+      const story = slot.dataset.story || document.body.dataset.story;
+      const asset = context.editions[section]?.podcast;
+      if (!asset) continue;
+      const entries = index.stories?.[section + ':' + story];
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries.slice(0, 80)) {
+        if (!entry || entry.audio_sha256 !== asset.sha256 ||
+          !/^releases\/[A-Za-z0-9_-]+\/clips\/[a-f0-9]{64}-[0-9.]+-[0-9.]+\.mp3$/.test(entry.file) ||
+          !entry.file.startsWith('releases/' + context.manifest.release_id + '/clips/') ||
+          !/^[a-f0-9]{64}$/.test(entry.sha256) || !Number.isFinite(entry.duration) || entry.duration < 1 ||
+          !Number.isFinite(entry.start) || !Number.isFinite(entry.end) || entry.start < 0 || entry.end > asset.duration ||
+          entry.end <= entry.start || Math.abs(entry.duration - (entry.end - entry.start)) > .2) continue;
+        const strip = make('div', 'story-clip');
+        const cover = make('img'); cover.alt = ''; cover.width = cover.height = 48;
+        cover.src = new URL('assets/covers/' + (section === 'teknoloji' ? 'yeni-sekme' : 'moradon-fm') + '-192.webp', base).href;
+        const copy = make('div', 'story-clip-copy');
+        copy.append(make('strong', '', 'Podcast’te bu konu'), make('span', '', asset.title + ' · ' + format(entry.duration)));
+        const start = make('button', 'story-clip-play'); start.type = 'button';
+        const actionIcon = make('span', 'clip-action-icon'); icon(actionIcon, 'play');
+        start.append(actionIcon, make('span', 'clip-action-label', 'Dinle'));
+        start.dataset.clipFile = entry.file;
+        start.setAttribute('aria-label', asset.title + ': Bu haberin kesitini dinle');
+        start.onclick = () => {
+          if (release !== context) return;
+          lastAudioTrigger = start;
+          if (selectedClip?.entry.file === entry.file && selectedClip.context === context) { toggle(); return; }
+          const rate = audio.playbackRate;
+          const clipContext = {...context, url:base, editions:{...context.editions,
+            [section]:{...context.editions[section], podcast:{...asset, ...entry}}}};
+          selectedClip = null;
+          configure(section, 'podcast', clipContext);
+          selectedClip = {entry, section, context};
+          clipTopic.textContent = context.editions[section].stories.find(item => item.id === story)?.title || '';
+          clipTopic.hidden = !clipTopic.textContent;
+          pendingPosition = 0; audio.playbackRate = rate;
+          playerSubtitle.textContent = miniSubtitle.textContent = 'Haber kesiti · ' + format(entry.duration);
+          fullEpisode.hidden = false; clipNotice.hidden = true;
+          chapterAsset = null; tabs.hidden = true; chooseTab(false);
+          toggle();
+        };
+        strip.append(cover, copy, start); slot.append(strip);
+      }
+    }
+  }
+
   const chapterCache = new Map();
   let chapterRegistry = null;
   let chapterRegistryAt = 0, missingChapterRefreshAt = -Infinity;
@@ -808,13 +910,15 @@
   async function refreshMissingChapters() {
     if (!release || window.PULSE_ARCHIVE || document.hidden ||
         performance.now() - missingChapterRefreshAt < 50000) return;
-    const missingPlayer = selected?.kind === "podcast" && !currentChapters &&
+    const missingPlayer = !selectedClip && selected?.kind === "podcast" && !currentChapters &&
       selectedRelease.manifest.release_id === release.manifest.release_id;
     const missingPage = $(".listen-player") &&
       new URLSearchParams(location.search).get("ses") !== "ozet" && !$(".episode-chapters");
-    if (!missingPlayer && !missingPage) return;
+    const missingClips = all('.story-clip-slot').some(slot => !slot.childElementCount);
+    if (!missingPlayer && !missingPage && !missingClips) return;
     missingChapterRefreshAt = performance.now();
     chapterRegistry = null;
+    clipIndexPromise = null; hydrateStoryClips();
     if (missingPlayer) {
       chapterAsset = null;
       await loadSelectedChapters();
@@ -844,6 +948,7 @@
             releaseId: release?.manifest.release_id,
             scroll: readingScroll(),
             list: listState,
+            flow: flowSnapshot,
             focusStory:
               document.activeElement?.closest(".story")?.dataset.story || null,
           },
@@ -878,6 +983,114 @@
     return null;
   }
   const categoryStates = new Map();
+  let flowSnapshot = null;
+  function setupFlow(state) {
+    document.body.classList.toggle('in-news-flow', document.body.dataset.page === 'flow');
+    const root = $('.news-flow');
+    if (!root) { flowSnapshot = null; return; }
+    const viewport = $('.flow-viewport', root), stories = all('.flow-story', root);
+    const next = $('.flow-next', root), previous = $('.flow-previous', root);
+    const endPanel = $('.flow-end', root), announcement = $('.flow-announcement', root);
+    const closeFlow = $('.flow-close', root);
+    if (history.state?.flowReturn) closeFlow.href = history.state.flowReturn;
+    let filter = state?.flow?.filter || '', index = Number.isInteger(state?.flow?.index) ? state.flow.index : 0;
+    if (!['', 'teknoloji', 'oyun'].includes(filter)) filter = '';
+    const positions = {...state?.flow?.positions};
+    let visible = [], active = null, wheelAt = -Infinity, gesture = null, lastWheel = -Infinity;
+    const save = () => {
+      if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
+      flowSnapshot = {filter, index, positions}; saveState();
+    };
+    const atTop = () => viewport.scrollTop <= 2;
+    const atBottom = () => viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 3;
+    function show(target, restore = true) {
+      if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
+      stopArticleClip();
+      const complete = target >= visible.length;
+      index = Math.max(0, Math.min(visible.length, target));
+      stories.forEach(story => story.hidden = true);
+      active = complete ? null : visible[index];
+      endPanel.hidden = !complete; viewport.hidden = complete;
+      if (active) {
+        active.hidden = false;
+        viewport.scrollTop = restore ? positions[active.dataset.section + ':' + active.dataset.story] || 0 : 0;
+        const image = $('img', active); if (image) image.loading = 'eager';
+        const upcoming = visible[index + 1]?.querySelector('img'); if (upcoming) upcoming.loading = 'eager';
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+          active.animate([{opacity:.5, transform:'translateY(12px)'}, {opacity:1, transform:'translateY(0)'}], {duration:180, easing:'ease-out'});
+      }
+      $('.flow-count', root).textContent = complete ? visible.length + ' / ' + visible.length : (index + 1) + ' / ' + visible.length;
+      previous.disabled = index === 0; next.disabled = complete;
+      announcement.textContent = complete ? 'Akış tamamlandı' : (matchMedia('(pointer: coarse)').matches ? 'Yukarı kaydır' : 'Haber sonunda PgDn');
+      save();
+    }
+    function filterStories() {
+      visible = stories.filter(story => !filter || story.dataset.section === filter);
+      for (const b of all('[data-flow-filter]', root)) b.setAttribute('aria-pressed', String(b.dataset.flowFilter === filter));
+      show(index);
+    }
+    next.onclick = () => show(index + 1);
+    previous.onclick = () => show(index - 1);
+    $('.flow-restart', root).onclick = () => { index = 0; show(0, false); viewport.focus(); };
+    for (const b of all('[data-flow-filter]', root)) b.onclick = () => {
+      filter = b.dataset.flowFilter; index = 0; filterStories();
+    };
+    let scrollSaveTimer = null, lastFlowWrite = 0;
+    viewport.addEventListener('scroll', () => {
+      if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
+      flowSnapshot = {filter, index, positions};
+      if (performance.now() - lastFlowWrite > 500) {saveState(); lastFlowWrite = performance.now();}
+      clearTimeout(scrollSaveTimer);
+      scrollSaveTimer = setTimeout(saveState, 220);
+    }, {passive:true, signal:pageEvents.signal});
+    pageEvents.signal.addEventListener('abort', () => clearTimeout(scrollSaveTimer), {once:true});
+    viewport.addEventListener('touchstart', event => {
+      if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
+      gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};
+    }, {passive:true, signal:pageEvents.signal});
+    viewport.addEventListener('touchmove', event => {
+      if (!gesture || event.touches.length !== 1) return;
+      const dx = event.touches[0].clientX - gesture.x, dy = event.touches[0].clientY - gesture.y;
+      // Consume only a new outward boundary gesture. Native momentum must not
+      // scroll the next article immediately after the content swap.
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.5 &&
+          ((dy < 0 && gesture.bottom) || (dy > 0 && gesture.top && index > 0)))
+        if (event.cancelable) event.preventDefault();
+    }, {passive:false, signal:pageEvents.signal});
+    viewport.addEventListener('touchend', event => {
+      if (!gesture || !event.changedTouches.length) return;
+      const dx = event.changedTouches[0].clientX - gesture.x, dy = event.changedTouches[0].clientY - gesture.y;
+      if (Math.abs(dy) >= 70 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+        if (dy < 0 && gesture.bottom) show(index + 1);
+        else if (dy > 0 && gesture.top && index > 0) show(index - 1);
+      }
+      gesture = null;
+    }, {passive:true, signal:pageEvents.signal});
+    viewport.addEventListener('touchcancel', () => gesture = null, {signal:pageEvents.signal});
+    viewport.addEventListener('wheel', event => {
+      const now = performance.now(), fresh = now - lastWheel > 260;
+      lastWheel = now;
+      // Require a new wheel gesture at the boundary, never the tail of inertia.
+      if (!fresh || now - wheelAt < 700 || Math.abs(event.deltaY) < 12 || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      if ((event.deltaY > 0 && atBottom()) || (event.deltaY < 0 && atTop() && index > 0)) {
+        event.preventDefault(); wheelAt = now; show(index + (event.deltaY > 0 ? 1 : -1));
+      }
+    }, {passive:false, signal:pageEvents.signal});
+    document.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.target.closest('input,textarea,select,[contenteditable],.audio-session') || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === 'PageDown') {
+        event.preventDefault();
+        if (!viewport.hidden && atBottom()) show(index + 1);
+        else viewport.scrollBy({top:viewport.clientHeight * .85, behavior:'instant'});
+      } else if (event.key === 'PageUp') {
+        event.preventDefault();
+        if ((viewport.hidden || atTop()) && index > 0) show(index - 1);
+        else viewport.scrollBy({top:-viewport.clientHeight * .85, behavior:'instant'});
+      }
+    }, {signal:pageEvents.signal});
+    filterStories();
+  }
+
   function setupList(state) {
     const stories = $("#stories");
     if (!stories) { listState = null; return; }
@@ -987,6 +1200,7 @@
     return document.body.dataset.section === "teknoloji" ? "Teknoloji yayınına dön" : document.body.dataset.section === "oyun" ? "Oyun yayınına dön" : "Haberlere dön";
   }
   function hydrate(state) {
+    stopArticleClip();
     pageEvents?.abort();
     pageEvents = new AbortController();
     const articleBack = $(".article-reader .back");
@@ -1031,6 +1245,8 @@
       if (image.complete && !image.naturalWidth) show();
     }
     setupList(state?.list);
+    setupFlow(state);
+    hydrateStoryClips();
     hydrateChapters();
     for (const start of all(".audio-start"))
       start.addEventListener(
@@ -1201,6 +1417,8 @@
         state = {
           pulse: true, releaseId: release.manifest.release_id,
           scroll: 0, readerReturn: origin, listeningReturn: listeningOrigin,
+          flowReturn: doc.body.dataset.page === "flow" ? location.href : null,
+          flow: doc.body.dataset.page === "flow" ? {filter:document.body.dataset.section || "",index:0,positions:{}} : null,
         };
         history.pushState(state, "", url);
       }
@@ -1257,6 +1475,7 @@
     )
       return;
     event.preventDefault();
+    if (a.matches(".flow-close") && history.state?.flowReturn) { history.back(); return; }
     if (a.matches(".article-reader .back") && readerReturn()) {
       history.back();
       return;
@@ -1277,7 +1496,7 @@
     // A verified new issue must not replace the listener’s active immutable recording.
     release = next;
     if (selected) configure(selected.section, selected.kind, selectedRelease);
-    chapterRegistry = null; chapterCache.clear();
+    chapterRegistry = null; chapterCache.clear(); clipIndexPromise = null;
     const allowed = new Set(Object.keys(next.editions).flatMap((section) =>
       ["podcast", "summary"].map((kind) => assetKey(section, kind))));
     if (selected) allowed.add(assetKey(selected.section, selected.kind, selectedRelease));

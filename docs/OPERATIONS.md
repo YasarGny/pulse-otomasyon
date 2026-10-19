@@ -547,3 +547,38 @@ sıfırlanır. Sayfa değiştirme/render hataları da aynı toparlanma yoluna gi
 CDN Date/Age yanıtı geriden gelirse zaman geri alınmaz: son doğrulanmış sunucu
 zamanı + monotonik süre alt sınırı kullanılır. Bu, geriden gelen yanıtın sekmeyi
 kalıcı hata döngüsüne sokmasını ve eski saatin 06:00 kapanışını ertelemesini önler.
+
+## Akış ve haber podcast kesitleri
+
+`/akis/` günlük yayının ayrı dikey okuma görünümüdür; normal sayfalar korunur.
+Metin kendi içinde kayar. Sınırda yeni bir dokunma/kaydırma hareketi gerekir;
+kaydırma ivmesi haber değiştirmez. Önceki/sonraki düğmeleri ve haber sınırında
+PageUp/PageDown desteği vardır. Okuma konumları sekmenin geçmiş durumunda tutulur.
+
+Haber kesitleri **ses sentezi değildir**. `prepare_chapters.py` mevcut son MP3'ün
+zamanlı dökümünü kullanır. Aynı öneri ve bağımsız denetleme çağrısında `story_id`,
+başlangıç ve dahil son döküm segmenti seçilir. Başlık benzerliği eşleşme sayılmaz.
+Bölüm işaretlerinin sonraki konu başlangıcı kesit bitişi diye varsayılmaz.
+`clips_reviewed`, özgün kayıt SHA-256 ve haber kataloğu SHA-256 gerekir; belirsiz,
+yer almayan veya ayrıştırılamayan habere kesit atanmaz. Bir habere birden çok,
+birbiriyle çakışmayan kesit atanabilir. Onaylı boş liste geçerli bir sonuçtur.
+
+`pulse.clips.build_clips` doğrulanmış aralıkları FFmpeg stream-copy ile kısa MP3'e
+ayırır; orijinal kayıtları değiştirmez ve yeniden kodlamaz. MP3 kare sınırları
+nedeniyle en fazla 0,2 saniye süre farkına izin verilir; her çıktı ffprobe ve tam
+ses çözümlemesinden geçer. Arayüz saniye sayaçlarına güvenerek tam podcast'i
+kesmeye çalışmaz: kısa dosyanın doğal sonu arka planda da oynatmayı bitirir.
+Kesitler önceden topluca indirilmez. Oynatma için mevcut tek `audio` ve yüzen
+oynatıcı kullanılır; hız, ses ve medya kontrolleri aynı kalır. Tam bölüme geçiş
+kesitteki karşılık gelen saniyeden devam eder. Haber değişimi kesiti durdurur,
+tam podcast'i durdurmaz. Tam podcast'in dinleme konumu kesitle ezilmez.
+
+`assets/clips/index.json` güncel yayın kimliğine bağlıdır. İndekse yalnız güncel, doğrulanmış eşleşmeler eklenir. Kısa dosyalar
+`releases/<yayın>/clips/` altındadır; eski yayın klasörüyle birlikte yalnız
+Drive yedeği doğrulandıktan sonra kaldırılır. Aynı
+kesit aynı gün yeniden derlendiğinde hash doğrulamasıyla tekrar kullanılır.
+Drive taşınabilir ZIP'i Akış sayfasını, kesit indeksini ve kısa MP3'leri de içerir;
+mevcut yedek doğrulama ve temizleme sırası değişmez. Geçmiş haber menüsü eklenmez.
+Eski, yalnız başlık içeren chapter sidecar'ları okuma/oynatmayı bozmaz; bağımsız
+chapter tamamlama işi katalog bağlı eşleşmeler eksikse özel kontrol noktasından
+kayıt dökümünü tekrar kullanarak yükseltir. Ses üretme iş akışı elle başlatılmaz.

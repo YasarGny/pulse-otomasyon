@@ -69,7 +69,7 @@ runs:
         cd .published
         git config user.name 'pulse-publisher[bot]'
         git config user.email 'pulse-publisher[bot]@users.noreply.github.com'
-        for path in index.html 404.html robots.txt sitemap.xml manifest.webmanifest sw.js .nojekyll assets teknoloji oyun haberler podcastler gizlilik kosullar data releases; do
+        for path in index.html 404.html robots.txt sitemap.xml manifest.webmanifest sw.js .nojekyll assets teknoloji oyun haberler podcastler akis gizlilik kosullar data releases; do
           if [ -e "$path" ]; then git add -- "$path"; fi
         done
         if ! git diff --cached --quiet; then

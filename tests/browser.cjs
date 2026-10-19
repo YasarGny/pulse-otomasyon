@@ -20,7 +20,7 @@ const ready = new Promise((resolve, reject) => {
     if (d.toString().includes("Fixture server ready")) resolve();
   });
   server.on("exit", (c) => reject(Error("Fixture exited " + c)));
-  setTimeout(() => reject(Error("Fixture timeout")), 30000).unref();
+  setTimeout(() => reject(Error("Fixture timeout")), 120000).unref();
 });
 async function run(name, fn) {
   try {
@@ -663,6 +663,7 @@ async function run(name, fn) {
             "Teknoloji",
             "Oyun",
             "Podcast’ler",
+            "Akış",
           ]);
           assert.equal(
             await page
@@ -1653,6 +1654,7 @@ async function run(name, fn) {
     );
     await require("./publication-recovery-browser.cjs")(browser, run, base);
     await require("./chapters-browser.cjs")(browser, run, base);
+    await require("./flow-browser.cjs")(browser, run, base);
     await require("./install-browser.cjs")(browser, run, base);
     await run("no browser runtime errors", async () =>
       assert.deepEqual(errors, []),

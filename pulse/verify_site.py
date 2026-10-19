@@ -24,7 +24,7 @@ def check_site(session, base, expected):
     response.raise_for_status()
     if response.json() != expected:
         raise ValueError("Pages is still serving another manifest")
-    routes = ("", "teknoloji/", "oyun/", "haberler/", "podcastler/")
+    routes = ("", "teknoloji/", "oyun/", "haberler/", "podcastler/", "akis/")
     if expected["status"] == "ready":
         routes += ("teknoloji/dinle/", "oyun/dinle/")
     for route in routes:
@@ -84,6 +84,7 @@ def check_assets(session, base, tree):
     tree = Path(tree)
     paths = [tree / "manifest.webmanifest", tree / "sw.js"]
     paths.extend(sorted((tree / "assets").rglob("*")))
+    paths.extend(sorted((tree / "releases").glob("*/clips/*.mp3")))
     for path in paths:
         if not path.is_file():
             continue
