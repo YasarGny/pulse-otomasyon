@@ -2627,3 +2627,6 @@ body.in-news-flow { overflow:hidden; }
 .flow-heading h1 { font-size:16px; font-weight:500; }
 .clip-topic { margin:8px 0 16px; font-size:15px; line-height:1.45; overflow-wrap:anywhere; }
 .story-clip-play, .flow-filters button[aria-pressed="true"] { color:var(--on-accent); }
+.story-clip-play { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.clip-action-icon { display:flex; }
+.clip-action-icon svg { display:block; width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; }

@@ -309,7 +309,8 @@
     icon(miniMore, "settings");
     for (const start of all('.story-clip-play')) {
       const active = selectedClip?.entry.file === start.dataset.clipFile;
-      start.textContent = active && playing ? 'Ⅱ Duraklat' : '▶ Dinle';
+      icon($('.clip-action-icon', start), active && playing ? 'pause' : 'play');
+      $('.clip-action-label', start).textContent = active && playing ? 'Duraklat' : 'Dinle';
       start.setAttribute('aria-pressed', String(!!active && playing));
     }
     syncChapters();
@@ -724,7 +725,9 @@
         cover.src = new URL('assets/covers/' + (section === 'teknoloji' ? 'yeni-sekme' : 'moradon-fm') + '-192.webp', base).href;
         const copy = make('div', 'story-clip-copy');
         copy.append(make('strong', '', 'Podcast’te bu konu'), make('span', '', asset.title + ' · ' + format(entry.duration)));
-        const start = make('button', 'story-clip-play', '▶ Dinle'); start.type = 'button';
+        const start = make('button', 'story-clip-play'); start.type = 'button';
+        const actionIcon = make('span', 'clip-action-icon'); icon(actionIcon, 'play');
+        start.append(actionIcon, make('span', 'clip-action-label', 'Dinle'));
         start.dataset.clipFile = entry.file;
         start.setAttribute('aria-label', asset.title + ': Bu haberin kesitini dinle');
         start.onclick = () => {
@@ -1031,7 +1034,15 @@
     for (const b of all('[data-flow-filter]', root)) b.onclick = () => {
       filter = b.dataset.flowFilter; index = 0; filterStories();
     };
-    viewport.addEventListener('scroll', save, {passive:true, signal:pageEvents.signal});
+    let scrollSaveTimer = null, lastFlowWrite = 0;
+    viewport.addEventListener('scroll', () => {
+      if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
+      flowSnapshot = {filter, index, positions};
+      if (performance.now() - lastFlowWrite > 500) {saveState(); lastFlowWrite = performance.now();}
+      clearTimeout(scrollSaveTimer);
+      scrollSaveTimer = setTimeout(saveState, 220);
+    }, {passive:true, signal:pageEvents.signal});
+    pageEvents.signal.addEventListener('abort', () => clearTimeout(scrollSaveTimer), {once:true});
     viewport.addEventListener('touchstart', event => {
       if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
       gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};

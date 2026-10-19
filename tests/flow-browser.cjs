@@ -6,6 +6,7 @@ module.exports = async (browser, run, base) => {
   page.on('pageerror', e => errors.push(e.message));
   await context.route('https://images.example.test/**', r => r.fulfill({path:'site/assets/covers/teknoloji-768.webp',contentType:'image/webp'}));
   const open = async route => {
+    if (page.url().startsWith('http')) await page.evaluate(() => history.replaceState(null, '', location.href));
     await page.goto(base + route);
     await page.waitForFunction(() => window.PULSE_RELEASE && !document.documentElement.classList.contains('pulse-loading') && !document.documentElement.classList.contains('pulse-locked'));
   };
@@ -48,6 +49,26 @@ module.exports = async (browser, run, base) => {
       assert.equal(await page.locator('.flow-end').isVisible(),true);
       await page.locator('.flow-restart').click();
       assert.equal(await page.locator('.flow-count').innerText(),'1 / 3');
+    });
+    await run('a fresh vertical touch is required after finishing a long article',async()=>{
+      await open('/akis/');
+      await page.locator('.flow-story:visible .article-text').evaluate(el=>{
+        for(let i=0;i<20;i++){const p=document.createElement('p');p.textContent='Haberi okumaya devam ederken başka habere geçilmez.';el.append(p);}
+      });
+      await page.locator('.flow-viewport').evaluate(el=>{
+        el.scrollTop=100;
+        const touch=y=>new Touch({identifier:1,target:el,clientX:120,clientY:y});
+        el.dispatchEvent(new TouchEvent('touchstart',{touches:[touch(450)]}));
+        el.scrollTop=el.scrollHeight;
+        el.dispatchEvent(new TouchEvent('touchend',{changedTouches:[touch(250)]}));
+      });
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 6');
+      await page.locator('.flow-viewport').evaluate(el=>{
+        const touch=y=>new Touch({identifier:2,target:el,clientX:120,clientY:y});
+        el.dispatchEvent(new TouchEvent('touchstart',{touches:[touch(450)]}));
+        el.dispatchEvent(new TouchEvent('touchend',{changedTouches:[touch(250)]}));
+      });
+      assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
     });
     await run('a real bounded clip uses the single audio session and stops at native EOF',async()=>{
       await open('/akis/');
