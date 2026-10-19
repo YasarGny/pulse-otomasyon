@@ -84,7 +84,11 @@ module.exports = async function(browser, run, base) {
   await run('an older CDN Date header cannot trap an already verified tab',()=>scenario(async s=>{
     await s.page.goto(base); await opened(s.page);
     s.setHeaderSkew(-180000);
-    await s.page.clock.runFor(181000);
+    await s.page.evaluate(()=>{window.verifiedPolls=0;addEventListener('pulse:verified',()=>window.verifiedPolls++);});
+    for (let i=0;i<3;i++) {
+      await s.page.clock.runFor(61000);
+      await s.page.waitForFunction(n=>window.verifiedPolls>n,i);
+    }
     assert.equal(await s.page.locator('#pulse-printing').count(),0);
     await opened(s.page);
     s.setHeaderSkew(0);
@@ -110,14 +114,16 @@ module.exports = async function(browser, run, base) {
   await run('connection grace never keeps yesterday open past 06:00',()=>scenario(async s=>{
     await s.page.goto(base); await opened(s.page);
     // Move trusted server time to 05:59:59 next morning before losing network.
-    s.setDateOffset(Date.UTC(2026,9,17,2,59,59)-Date.UTC(2026,9,16,8)-await s.page.evaluate(()=>performance.now()));
-    await s.page.evaluate(()=>new Promise(resolve=>{
-      addEventListener('pulse:verified',resolve,{once:true});
+    s.setDateOffset(Date.UTC(2026,9,17,2,59,50)-Date.UTC(2026,9,16,8)-await s.page.evaluate(()=>performance.now()));
+    await s.page.evaluate(()=>{
+      window.nearClosingVerified=false;
+      addEventListener('pulse:verified',()=>window.nearClosingVerified=true,{once:true});
       dispatchEvent(new Event('online'));
-    }));
+    });
+    await s.page.waitForFunction(()=>window.nearClosingVerified);
     assert.ok(await s.page.locator('.site-shell').isVisible());
     s.setOutage(true);
-    await s.page.clock.runFor(2100);
+    await s.page.clock.runFor(11000);
     await s.page.waitForFunction(()=>!window.PULSE_RELEASE);
     assert.ok(await s.page.locator('#pulse-printing').isVisible());
   }));
