@@ -29,6 +29,7 @@
     volume:
       '<path d="m11 5-5 4H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>',
     mute: '<path d="m11 5-5 4H3v6h3l5 4ZM16 9l6 6m0-6-6 6"/>',
+    headphones: '<path d="M4 14v-3a8 8 0 0 1 16 0v3M4 12H3v7h4v-7Zm16 0h1v7h-4v-7Z"/>',
     settings: '<path d="M4 7h16M4 17h16M8 4v6m8 4v6"/>',
     close: '<path d="m6 6 12 12M18 6 6 18"/>',
   };
@@ -306,9 +307,9 @@
       !selected ||
       !hasStarted;
     document.body.classList.toggle("has-mini", !mini.hidden);
-    icon(miniMore, "settings");
+    icon(miniMore, document.body.dataset.page === "flow" ? "headphones" : "settings");
     for (const start of all('.story-clip-play')) {
-      const active = selectedClip?.entry.file === start.dataset.clipFile;
+      const active = selectedClip && selectedClip.key === start.dataset.clipKey && selectedClip.context === release;
       icon($('.clip-action-icon', start), active && playing ? 'pause' : 'play');
       $('.clip-action-label', start).textContent = active && playing ? 'Duraklat' : 'Dinle';
       start.setAttribute('aria-pressed', String(!!active && playing));
@@ -410,7 +411,7 @@
       selectedRelease.manifest.publish_date !== context.manifest.publish_date;
     if (changed) {
       persistListening(true);
-      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
+      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = clipParts.hidden = true;
       collapsePanel(false);
       audio.pause();
       playRequest++;
@@ -445,7 +446,7 @@
       .join(".");
     miniSubtitle.textContent = (section === "teknoloji" ? "Teknoloji" : "Oyun") +
       (kind === "podcast" ? " podcast’i · " : " · ") + episode.textContent;
-    if (selectedClip) miniSubtitle.textContent = 'Haber kesiti · ' + format(selectedClip.entry.duration);
+    if (selectedClip) miniSubtitle.textContent = clipCaption(selectedClip);
     miniLink.textContent = title();
     miniLink.href = new URL(
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
@@ -462,6 +463,7 @@
     if (document.getElementById("main").contains(document.activeElement))
       lastAudioTrigger = document.activeElement;
     if (!audio.paused && !failed) {
+      if (selectedClip) selectedClip.stopped = true;
       playRequest++;
       audio.pause();
       loading = false;
@@ -472,7 +474,13 @@
       pendingPosition = audio.currentTime || pendingPosition;
       audio.load();
     }
+    if (audio.ended && selectedClip?.entries.length > 1) {
+      const clip = selectedClip;
+      playStoryClip(clip.entries, 0, clip.section, clip.story, clip.context);
+      return;
+    }
     if (audio.ended) { pendingPosition = 0; audio.currentTime = 0; }
+    if (selectedClip) selectedClip.stopped = false;
     hasStarted = true;
     loading = true;
     failed = false;
@@ -497,7 +505,7 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
-    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
+    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = clipParts.hidden = true;
     selectedRelease = null;
     playRequest++;
     syncMediaSession();
@@ -638,8 +646,8 @@
         });
       } catch (_) {}
       for (const [action, handler] of Object.entries({
-        play: () => audio.play().catch(() => {}),
-        pause: () => audio.pause(),
+        play: () => {if (audio.paused || audio.ended || failed) toggle();},
+        pause: () => {if (selectedClip) selectedClip.stopped = true; audio.pause();},
         stop: () => close.click(),
         seekbackward: () => jump(-10),
         seekforward: () => jump(10),
@@ -667,27 +675,67 @@
   fullEpisode.type = 'button'; fullEpisode.hidden = true; full.append(fullEpisode);
   const clipTopic = make('p', 'clip-topic'); clipTopic.hidden = true;
   full.insertBefore(clipTopic, controls);
+  const clipParts = make('div', 'clip-parts'); clipParts.hidden = true;
+  const previousPart = make('button', 'clip-part-previous', '←');
+  const nextPart = make('button', 'clip-part-next', '→');
+  previousPart.type = nextPart.type = 'button';
+  previousPart.setAttribute('aria-label', 'Önceki kesit'); nextPart.setAttribute('aria-label', 'Sonraki kesit');
+  const partLabel = make('span', 'clip-part-label'); partLabel.setAttribute('role', 'status');
+  clipParts.append(previousPart, partLabel, nextPart); full.insertBefore(clipParts, controls);
   const clipNotice = make('p', 'clip-notice'); clipNotice.hidden = true; full.append(clipNotice);
+  const clipCaption = clip => 'Haber kesiti' + (clip.entries.length > 1 ? ' · ' + (clip.index + 1) + '/' + clip.entries.length : '') + ' · ' + format(clip.entry.duration);
+  function playStoryClip(entries, index, section, story, context) {
+    if (!entries[index]) return;
+    const entry = entries[index], asset = context.editions[section].podcast;
+    const rate = audio.playbackRate, expanded = !panel.hidden;
+    const clipContext = {...context, url:base, editions:{...context.editions,
+      [section]:{...context.editions[section], podcast:{...asset, ...entry}}}};
+    configure(section, 'podcast', clipContext);
+    selectedClip = {entries, index, entry, section, story, context, key:section + ':' + story};
+    clipTopic.textContent = context.editions[section].stories.find(item => item.id === story)?.title || '';
+    clipTopic.hidden = !clipTopic.textContent;
+    pendingPosition = 0; if (audio.readyState) audio.currentTime = 0;
+    audio.playbackRate = rate;
+    playerSubtitle.textContent = miniSubtitle.textContent = clipCaption(selectedClip);
+    fullEpisode.hidden = false; clipNotice.hidden = true;
+    clipParts.hidden = entries.length < 2;
+    previousPart.disabled = index === 0; nextPart.disabled = index === entries.length - 1;
+    partLabel.textContent = 'Kesit ' + (index + 1) + '/' + entries.length;
+    chapterAsset = null; tabs.hidden = true; chooseTab(false);
+    if (expanded) {panel.hidden = miniDetails.hidden = false; miniMore.setAttribute('aria-expanded','true'); mount();}
+    toggle();
+  }
+  previousPart.onclick = () => {
+    if (!selectedClip) return;
+    const clip = selectedClip; playStoryClip(clip.entries,clip.index - 1,clip.section,clip.story,clip.context);
+  };
+  nextPart.onclick = () => {
+    if (!selectedClip) return;
+    const clip = selectedClip; playStoryClip(clip.entries,clip.index + 1,clip.section,clip.story,clip.context);
+  };
   fullEpisode.onclick = () => {
     if (!selectedClip) return;
     const clip = selectedClip, position = clip.entry.start + audio.currentTime;
     const rate = audio.playbackRate;
-    selectedClip = null;
     configure(clip.section, 'podcast', clip.context);
     pendingPosition = position;
     if (audio.readyState) { audio.currentTime = position; pendingPosition = 0; }
     audio.playbackRate = rate;
-    fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
     toggle();
   };
   audio.addEventListener('ended', () => {
-    if (selectedClip) {
-      clipNotice.textContent = 'Kesit tamamlandı. Tekrar dinlemek için oynat.';
+    if (!selectedClip || selectedClip.stopped || failed) return;
+    const clip = selectedClip;
+    if (clip.index + 1 < clip.entries.length) {
+      playStoryClip(clip.entries,clip.index + 1,clip.section,clip.story,clip.context);
+    } else {
+      clipNotice.textContent = clip.entries.length > 1 ? 'Kesitler tamamlandı. Tekrar dinlemek için oynat.' : 'Kesit tamamlandı. Tekrar dinlemek için oynat.';
       clipNotice.hidden = false;
     }
   });
   function stopArticleClip() {
     if (!selectedClip) return;
+    selectedClip.stopped = true;
     audio.pause(); playRequest++; loading = false; collapsePanel(false); update();
   }
   async function clipsForStories() {
@@ -714,43 +762,37 @@
       if (!asset) continue;
       const entries = index.stories?.[section + ':' + story];
       if (!Array.isArray(entries)) continue;
-      for (const entry of entries.slice(0, 80)) {
-        if (!entry || entry.audio_sha256 !== asset.sha256 ||
-          !/^releases\/[A-Za-z0-9_-]+\/clips\/[a-f0-9]{64}-[0-9.]+-[0-9.]+\.mp3$/.test(entry.file) ||
-          !entry.file.startsWith('releases/' + context.manifest.release_id + '/clips/') ||
-          !/^[a-f0-9]{64}$/.test(entry.sha256) || !Number.isFinite(entry.duration) || entry.duration < 1 ||
-          !Number.isFinite(entry.start) || !Number.isFinite(entry.end) || entry.start < 0 || entry.end > asset.duration ||
-          entry.end <= entry.start || Math.abs(entry.duration - (entry.end - entry.start)) > .2) continue;
-        const strip = make('div', 'story-clip');
-        const cover = make('img'); cover.alt = ''; cover.width = cover.height = 48;
-        cover.src = new URL('assets/covers/' + (section === 'teknoloji' ? 'yeni-sekme' : 'moradon-fm') + '-192.webp', base).href;
-        const copy = make('div', 'story-clip-copy');
-        copy.append(make('strong', '', 'Podcast’te bu konu'), make('span', '', asset.title + ' · ' + format(entry.duration)));
-        const start = make('button', 'story-clip-play'); start.type = 'button';
-        const actionIcon = make('span', 'clip-action-icon'); icon(actionIcon, 'play');
-        start.append(actionIcon, make('span', 'clip-action-label', 'Dinle'));
-        start.dataset.clipFile = entry.file;
-        start.setAttribute('aria-label', asset.title + ': Bu haberin kesitini dinle');
-        start.onclick = () => {
-          if (release !== context) return;
-          lastAudioTrigger = start;
-          if (selectedClip?.entry.file === entry.file && selectedClip.context === context) { toggle(); return; }
-          const rate = audio.playbackRate;
-          const clipContext = {...context, url:base, editions:{...context.editions,
-            [section]:{...context.editions[section], podcast:{...asset, ...entry}}}};
-          selectedClip = null;
-          configure(section, 'podcast', clipContext);
-          selectedClip = {entry, section, context};
-          clipTopic.textContent = context.editions[section].stories.find(item => item.id === story)?.title || '';
-          clipTopic.hidden = !clipTopic.textContent;
-          pendingPosition = 0; audio.playbackRate = rate;
-          playerSubtitle.textContent = miniSubtitle.textContent = 'Haber kesiti · ' + format(entry.duration);
-          fullEpisode.hidden = false; clipNotice.hidden = true;
-          chapterAsset = null; tabs.hidden = true; chooseTab(false);
-          toggle();
-        };
-        strip.append(cover, copy, start); slot.append(strip);
-      }
+      const valid = entries.slice(0, 80).filter(entry => entry && entry.audio_sha256 === asset.sha256 &&
+        /^releases\/[A-Za-z0-9_-]+\/clips\/[a-f0-9]{64}-[0-9.]+-[0-9.]+\.mp3$/.test(entry.file) &&
+        entry.file.startsWith('releases/' + context.manifest.release_id + '/clips/') &&
+        /^[a-f0-9]{64}$/.test(entry.sha256) && Number.isFinite(entry.duration) && entry.duration >= 1 &&
+        Number.isFinite(entry.start) && Number.isFinite(entry.end) && entry.start >= 0 && entry.end <= asset.duration &&
+        entry.end > entry.start && Math.abs(entry.duration - (entry.end - entry.start)) <= .2)
+        .sort((a,b) => a.start - b.start);
+      // Deduplicate retries, reject overlaps, never turn another story into a queue entry.
+      const seen = new Set();
+      const queue = valid.filter(entry => {if (seen.has(entry.file)) return false; seen.add(entry.file); return true;});
+      if (!queue.length || queue.some((entry,i) => i > 0 && entry.start < queue[i-1].end)) continue;
+      const strip = make('div', 'story-clip');
+      const cover = make('img'); cover.alt = ''; cover.width = cover.height = 48;
+      cover.src = new URL('assets/covers/' + (section === 'teknoloji' ? 'yeni-sekme' : 'moradon-fm') + '-192.webp', base).href;
+      const copy = make('div', 'story-clip-copy');
+      const total = Math.round(queue.reduce((sum, entry) => sum + entry.duration, 0));
+      const durationText = (total >= 60 ? Math.floor(total/60) + ' dk ' : '') + (total%60 ? total%60 + ' sn' : '');
+      copy.append(make('strong', '', 'Podcast’te bu konu'), make('span', '', asset.title + ' · ' + (queue.length > 1 ? queue.length + ' kesit · ' : '') + durationText.trim()));
+      const start = make('button', 'story-clip-play'); start.type = 'button';
+      const actionIcon = make('span', 'clip-action-icon'); icon(actionIcon, 'play');
+      start.append(actionIcon, make('span', 'clip-action-label', 'Dinle'));
+      start.dataset.clipKey = section + ':' + story;
+      start.setAttribute('aria-label', asset.title + ': Bu haberin ' + (queue.length > 1 ? queue.length + ' kesitini' : 'kesitini') + ' dinle');
+      start.onclick = () => {
+        if (release !== context) return;
+        lastAudioTrigger = start;
+        if (selectedClip?.key === start.dataset.clipKey && selectedClip.context === context) { toggle(); return; }
+        playStoryClip(queue, 0, section, story, context);
+      };
+      strip.append(cover, copy, start); slot.append(strip);
+
     }
   }
 
@@ -931,7 +973,7 @@
   });
   let playbackChannel = null;
   try { playbackChannel = new BroadcastChannel("pulse-audio-session-v1");
-    playbackChannel.onmessage = event => { if (event.data === "playing") { audio.pause(); playRequest++; } };
+    playbackChannel.onmessage = event => { if (event.data === "playing") { if (selectedClip) selectedClip.stopped = true; audio.pause(); playRequest++; } };
     audio.addEventListener("play",()=>playbackChannel.postMessage("playing"));
   } catch (_) {}
   function saveState() {
@@ -991,7 +1033,12 @@
     const viewport = $('.flow-viewport', root), stories = all('.flow-story', root);
     const next = $('.flow-next', root), previous = $('.flow-previous', root);
     const endPanel = $('.flow-end', root), announcement = $('.flow-announcement', root);
-    const closeFlow = $('.flow-close', root);
+    const closeFlow = $('.flow-close', root), category = $('.flow-category', root);
+    const stepNext = $('.flow-step-next', root), storyNavigation = $('.flow-story-navigation', root);
+    const counter = $('.flow-count', root);
+    const nextImage = $('.flow-next-image', root);
+    nextImage.onerror = () => {nextImage.hidden = true; next.classList.remove('has-image');};
+    nextImage.onload = () => {nextImage.hidden = false; next.classList.add('has-image');};
     if (history.state?.flowReturn) closeFlow.href = history.state.flowReturn;
     let filter = state?.flow?.filter || '', index = Number.isInteger(state?.flow?.index) ? state.flow.index : 0;
     if (!['', 'teknoloji', 'oyun'].includes(filter)) filter = '';
@@ -1019,21 +1066,35 @@
         if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
           active.animate([{opacity:.5, transform:'translateY(12px)'}, {opacity:1, transform:'translateY(0)'}], {duration:180, easing:'ease-out'});
       }
-      $('.flow-count', root).textContent = complete ? visible.length + ' / ' + visible.length : (index + 1) + ' / ' + visible.length;
-      previous.disabled = index === 0; next.disabled = complete;
-      announcement.textContent = complete ? 'Akış tamamlandı' : (matchMedia('(pointer: coarse)').matches ? 'Yukarı kaydır' : 'Haber sonunda PgDn');
+      counter.textContent = complete ? visible.length + ' / ' + visible.length : (index + 1) + ' / ' + visible.length;
+      if (active) ($('.news-figure',active) || active).append(counter);
+      previous.disabled = index === 0; next.disabled = stepNext.disabled = complete;
+      storyNavigation.hidden = complete;
+      const upcoming = visible[index + 1];
+      $('.flow-next-label', root).textContent = upcoming ? 'Sıradaki haber' : 'Günün son haberi';
+      $('.flow-next-title', root).textContent = upcoming ? $('h1',upcoming).textContent : 'Akışı tamamla';
+      $('.flow-next-category', root).textContent = upcoming ? $('.eyebrow',upcoming).textContent : '';
+      const preview = $('.flow-next-image',root), image = upcoming?.querySelector('.story-image');
+      preview.hidden = !image; next.classList.toggle('has-image', !!image);
+      if (image) preview.src = image.src; else preview.removeAttribute('src');
+      next.setAttribute('aria-label', upcoming ? 'Sonraki haber: ' + $('h1',upcoming).textContent : 'Akışı tamamla');
+      announcement.textContent = complete ? 'Günün akışını tamamladın' : counter.textContent + ' · ' + $('h1',active).textContent;
+
       save();
     }
     function filterStories() {
       visible = stories.filter(story => !filter || story.dataset.section === filter);
-      for (const b of all('[data-flow-filter]', root)) b.setAttribute('aria-pressed', String(b.dataset.flowFilter === filter));
+      category.value = filter;
       show(index);
     }
     next.onclick = () => show(index + 1);
     previous.onclick = () => show(index - 1);
+    $('.flow-end-previous', root).onclick = () => show(Math.max(0, visible.length - 1));
     $('.flow-restart', root).onclick = () => { index = 0; show(0, false); viewport.focus(); };
-    for (const b of all('[data-flow-filter]', root)) b.onclick = () => {
-      filter = b.dataset.flowFilter; index = 0; filterStories();
+    stepNext.onclick = () => show(index + 1);
+    category.onchange = () => {
+      if (category.value === filter) return;
+      filter = category.value; index = 0; filterStories();
     };
     let scrollSaveTimer = null, lastFlowWrite = 0;
     viewport.addEventListener('scroll', () => {
