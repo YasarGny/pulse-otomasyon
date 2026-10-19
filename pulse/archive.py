@@ -27,6 +27,9 @@ def package(site, destination, *, fetch=fetch_public):
         # Exactly this day's public tree, never other archives or private generation state.
         for name in ('index.html', 'assets', 'teknoloji', 'oyun', 'haberler', 'akis', 'podcastler', 'gizlilik', 'kosullar'):
             origin = site / name
+            # Older verified publications predate the optional Akış route.
+            if name == 'akis' and not origin.exists():
+                continue
             if origin.is_dir():
                 shutil.copytree(origin, root / name)
             else:

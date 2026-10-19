@@ -24,7 +24,7 @@ jobs:
           sudo apt-get install -y ffmpeg
           npm ci
           npx playwright install --with-deps chromium
-      - run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - run: python tests/run_python.py
       - run: npm test
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4

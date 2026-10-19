@@ -84,6 +84,7 @@ def check_assets(session, base, tree):
     tree = Path(tree)
     paths = [tree / "manifest.webmanifest", tree / "sw.js"]
     paths.extend(sorted((tree / "assets").rglob("*")))
+    paths.extend(sorted((tree / "releases").glob("*/clips/*.mp3")))
     for path in paths:
         if not path.is_file():
             continue

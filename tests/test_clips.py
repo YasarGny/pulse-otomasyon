@@ -76,3 +76,25 @@ class ClipTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             propose(transcript,self.asset,generate,retry=False)
         self.assertEqual(generate.call_count, 2)
+
+    def test_deployed_clip_bytes_are_verified_alongside_interface_assets(self):
+        from pulse.verify_site import check_assets
+        from unittest.mock import Mock
+        import requests
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'assets').mkdir()
+            (root / 'manifest.webmanifest').write_text('{}')
+            (root / 'sw.js').write_text('// worker')
+            clip = root / 'releases/day/clips/clip.mp3'
+            clip.parent.mkdir(parents=True); clip.write_bytes(b'checked clip bytes')
+            def fetch(url, **kwargs):
+                response = requests.Response(); response.status_code = 200
+                relative = url.removeprefix('https://example.test/')
+                response._content = (root / relative).read_bytes()
+                response.headers['Content-Type'] = 'application/javascript'
+                if relative.endswith('clip.mp3'):
+                    response._content = b'corrupted CDN clip'
+                return response
+            with self.assertRaisesRegex(ValueError, 'clip.mp3'):
+                check_assets(Mock(get=fetch), 'https://example.test/', root)
