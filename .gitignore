@@ -16,3 +16,6 @@ node_modules/
 *credentials*.json
 
 .pulse-media/
+.chapter-work/
+.chapter-state/
+.daily-chapter-state/

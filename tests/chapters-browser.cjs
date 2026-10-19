@@ -8,6 +8,47 @@ module.exports = async function(browser, run, base) {
     await page.goto(base+path);
     await page.waitForFunction(()=>!!window.PULSE_RELEASE && !document.documentElement.classList.contains('pulse-locked'));
   };
+  await run('late published chapters appear in the open page and player without interrupting audio',async()=>{
+    const lateContext = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+    const latePage = await lateContext.newPage();
+    let available = false, emptyRequests = 0;
+    await lateContext.route('**/assets/chapters/index.json',async route=>{
+      if (available) return route.continue();
+      emptyRequests++;
+      return route.fulfill({status:200,contentType:'application/json',body:'{}'});
+    });
+    await latePage.goto(base+'/teknoloji/dinle/');
+    await latePage.waitForFunction(()=>!!window.PULSE_RELEASE && !document.documentElement.classList.contains('pulse-locked'));
+    await latePage.waitForFunction(()=>document.querySelector('.listen-player .audio-start'));
+    await latePage.locator('.listen-player .audio-start').click();
+    await latePage.waitForFunction(()=>!document.querySelector('audio').paused);
+    await latePage.waitForFunction(()=>document.querySelector('.player-tabs').hidden);
+    assert.ok(emptyRequests>0);
+    assert.equal(await latePage.locator('.episode-chapters').count(),0);
+    const before = await latePage.evaluate(()=>{
+      const audio=document.querySelector('audio');
+      return {src:audio.src,time:audio.currentTime,scroll:scrollY};
+    });
+    available = true;
+    await latePage.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:verified',{
+      detail:{release_id:window.PULSE_RELEASE.manifest.release_id}
+    })));
+    await latePage.waitForSelector('.episode-chapters');
+    await latePage.waitForFunction(()=>!document.querySelector('.player-tabs').hidden);
+    const after=await latePage.evaluate(()=>{
+      const audio=document.querySelector('audio');
+      return {src:audio.src,time:audio.currentTime,paused:audio.paused,scroll:scrollY};
+    });
+    assert.equal(after.src,before.src);
+    assert.equal(after.paused,false);
+    assert.ok(after.time>=before.time);
+    assert.equal(after.scroll,before.scroll);
+    await latePage.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:verified',{
+      detail:{release_id:window.PULSE_RELEASE.manifest.release_id}
+    })));
+    assert.equal(await latePage.locator('.episode-chapters').count(),1);
+    await lateContext.close();
+  });
   await run('chapter clicks seek the same audio without moving the article or reading position',async()=>{
     await open('/teknoloji/dinle/');
     await page.waitForSelector('.episode-chapters');

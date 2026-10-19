@@ -1,5 +1,6 @@
 """Optional final-audio transcription + independent topic review; no synthesis."""
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -8,6 +9,33 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pulse.chapters import validate_chapters, load_chapters
 from pulse.publication import write_json, read_json
+
+
+def cached_editor(folder, generate, model, *, context=None):
+    """Reuse exact paid responses after interruptions without skipping review."""
+    folder = Path(folder)
+    def request(prompt, **kwargs):
+        identity = hashlib.sha256(json.dumps({'model': model, 'prompt': prompt, 'options': kwargs, 'context': context},
+                                             ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+        path = folder / (identity + '.json')
+        request.last_path = path
+        try:
+            saved = read_json(path)
+            checksum = hashlib.sha256(json.dumps(saved['response'], ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            if saved.get('request_sha256') == identity and saved.get('response_sha256') == checksum:
+                return saved['response']
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        response = generate(prompt, **kwargs)
+        checksum = hashlib.sha256(json.dumps(response, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+        write_json(path, {'request_sha256': identity, 'response_sha256': checksum, 'response': response})
+        return response
+    def invalidate():
+        path = getattr(request, 'last_path', None)
+        if path:
+            path.unlink(missing_ok=True)
+    request.invalidate = invalidate
+    return request
 
 
 def propose(transcript, asset, generate, *, retry=True):
@@ -28,22 +56,38 @@ def propose(transcript, asset, generate, *, retry=True):
                         'Başlıklar anlaşılır, kısa ve yorumsuz olsun. '
                         'JSON: {"chapters":[{"segment_id":0,"title":"Açılış"}]}.\n'
                         + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide}, ensure_ascii=False), system=system)
+    def invalid(message):
+        # Structurally invalid proposals must not trap future recovery in a bad
+        # cached response. Valid proposals survive a later review/network failure.
+        discard = getattr(generate, 'invalidate', None)
+        if callable(discard):
+            discard()
+        raise ValueError(message)
+    if not isinstance(response, dict):
+        invalid('Invalid proposed topics response')
     rows = response.get('chapters')
     if not isinstance(rows, list) or not 2 <= len(rows) <= 16:
-        raise ValueError('Invalid proposed topics')
+        invalid('Invalid proposed topics')
     chapters = []
     for row in rows:
+        if not isinstance(row, dict):
+            invalid('Invalid proposed topic')
         index = row.get('segment_id')
         if type(index) is not int or not 0 <= index < len(segments):
-            raise ValueError('Unknown transcript sentence')
+            invalid('Unknown transcript sentence')
         chapters.append({'start': segments[index]['start'], 'title': row.get('title')})
-    result = validate_chapters({'schema_version': 1, 'reviewed': True,
-                                'audio_sha256': asset['sha256'], 'chapters': chapters}, asset)
+    try:
+        result = validate_chapters({'schema_version': 1, 'reviewed': True,
+                                    'audio_sha256': asset['sha256'], 'chapters': chapters}, asset)
+    except ValueError as error:
+        invalid(str(error))
     review = generate('Aşağıdaki öneriyi döküme karşı bağımsız denetle. '
                       'Her başlık ilgili segmentte başlayan konuyu gerçekten anlatmalı, '
                       'önemli geçişler kapsanmalı, önceki cümlenin ortasından başlanmamalı. '
                       'Emin değilsen reddet. JSON {"approved":true/false,"reason":"..."}.\n'
                       + json.dumps({'proposal': rows, 'transcript': evidence, 'spelling_guide': spelling_guide}, ensure_ascii=False), system=system)
+    if not isinstance(review, dict) or type(review.get('approved')) is not bool:
+        invalid('Invalid independent chapter review')
     if review.get('approved') is True:
         return result
     reason = str(review.get('reason', 'No review reason supplied'))[:600]
@@ -56,7 +100,7 @@ def propose(transcript, asset, generate, *, retry=True):
 
 def prepare(release, previous=None):
     from scripts.transcribe_podcasts import transcribe
-    from pulse.editorial import gemini
+    from pulse.editorial import gemini, MODEL
     release = Path(release)
     target = release / 'chapters'
     target.mkdir(exist_ok=True)
@@ -82,7 +126,10 @@ def prepare(release, previous=None):
         try:
             transcript = read_json(release / 'chapter-transcripts' / (section + '.json'))
             transcript['canonical_headlines'] = [story['title'] for story in read_json(release / (section + '.json')).get('stories', [])]
-            result = propose(transcript, asset, gemini)
+            generate = cached_editor(release / 'chapter-requests', gemini, MODEL,
+                                     context={'audio_sha256': asset['sha256'],
+                                              'transcript_sha256': hashlib.sha256(json.dumps(transcript, ensure_ascii=False, sort_keys=True).encode()).hexdigest()})
+            result = propose(transcript, asset, generate)
             write_json(target / (asset['sha256'] + '.json'), result)
             print(section, 'audio-aligned chapter metadata prepared; voices unchanged')
         except Exception as error:

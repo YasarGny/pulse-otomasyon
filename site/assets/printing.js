@@ -192,6 +192,9 @@
       window.dispatchEvent(
         new CustomEvent("pulse:ready", { detail: window.PULSE_RELEASE }),
       );
+    else window.dispatchEvent(new CustomEvent("pulse:verified", {
+      detail: { release_id: manifest.release_id },
+    }));
   }
   window.addEventListener("pulse:rendered", (event) => {
     if (event.detail?.release_id === active) reveal();

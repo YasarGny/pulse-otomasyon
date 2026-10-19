@@ -44,7 +44,9 @@ def unpack(raw, target, date):
                 dest.write_bytes(archive.read(member))
 
 
-def restore(repo, date, target):
+def restore(repo, date, target, *, artifact_prefix='pulse-state-',
+            workflow_path='.github/workflows/daily-publish.yml',
+            allowed_events=('schedule', 'workflow_dispatch')):
     session = requests.Session()
     session.headers.update(
         {
@@ -60,13 +62,13 @@ def restore(repo, date, target):
     matches = [
         a
         for a in response.json()["artifacts"]
-        if a["name"].startswith("pulse-state-" + date + "-")
+        if a["name"].startswith(artifact_prefix + date + "-")
         and not a["expired"]
         and a.get("workflow_run", {}).get("head_branch") == "main"
     ]
     if not matches:
-        print("No checkpoint today; starting a fresh issue")
-        return
+        print("No matching checkpoint today")
+        return False
     artifact = max(matches, key=lambda a: a["created_at"])
     run = session.get(
         "https://api.github.com/repos/"
@@ -76,14 +78,15 @@ def restore(repo, date, target):
         timeout=30,
     )
     run.raise_for_status()
-    if run.json()["path"] != ".github/workflows/daily-publish.yml" or run.json()[
+    if run.json()["path"] != workflow_path or run.json()[
         "event"
-    ] not in ("schedule", "workflow_dispatch"):
+    ] not in allowed_events:
         raise ValueError("Checkpoint from untrusted workflow")
     archive = session.get(artifact["archive_download_url"], timeout=120)
     archive.raise_for_status()
     unpack(archive.content, target, date)
     print("Restored verified workflow checkpoint for", date)
+    return True
 
 
 if __name__ == "__main__":
