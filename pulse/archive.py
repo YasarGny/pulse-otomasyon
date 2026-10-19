@@ -25,7 +25,7 @@ def package(site, destination, *, fetch=fetch_public):
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         # Exactly this day's public tree, never other archives or private generation state.
-        for name in ('index.html', 'assets', 'teknoloji', 'oyun', 'haberler', 'podcastler', 'gizlilik', 'kosullar'):
+        for name in ('index.html', 'assets', 'teknoloji', 'oyun', 'haberler', 'akis', 'podcastler', 'gizlilik', 'kosullar'):
             origin = site / name
             if origin.is_dir():
                 shutil.copytree(origin, root / name)
@@ -66,7 +66,7 @@ def package(site, destination, *, fetch=fetch_public):
                 chapter_data = load_chapters(site / 'assets/chapters', asset)
                 if chapter_data:
                     chapters[asset['sha256']] = chapter_data
-            embedded = json.dumps({'manifest': manifest, 'editions': editions, 'chapters': chapters}, ensure_ascii=False).replace('<', chr(92) + 'u003c')
+            embedded = json.dumps({'manifest': manifest, 'editions': editions, 'chapters': chapters, 'clips': read_json(site / 'assets/clips/index.json') if (site / 'assets/clips/index.json').is_file() else None}, ensure_ascii=False).replace('<', chr(92) + 'u003c')
             script = f'<script>window.PULSE_ARCHIVE=true;window.PULSE_RELEASE={embedded};window.PULSE_RELEASE.url=new URL("{prefix}releases/{manifest["release_id"]}/",location.href);</script>'
             content = re.sub(r'(?=<script src="[^\"]*site\.js)', lambda m: script, content, count=1)
             path.write_text(content)

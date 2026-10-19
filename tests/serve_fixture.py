@@ -26,6 +26,15 @@ for section in ('teknoloji', 'oyun'):
         story['image_url'] = f'https://images.example.test/{section}-{i}.webp'
     write_json(release / (section + '.json'), data)
 seal_release(release, DATE, DATE)
+# One real short synthetic clip, never a production voice or inferred boundary.
+from pulse.clips import story_fingerprint
+fixture_edition = read_json(release / 'teknoloji.json')
+fixture_asset = fixture_edition['podcast']
+clip_metadata = {'schema_version':1, 'reviewed':True, 'audio_sha256':fixture_asset['sha256'],
+    'chapters':[{'start':0,'title':'Açılış'}, {'start':12,'title':'Teknoloji'}],
+    'section':'teknoloji', 'clips_reviewed':True, 'stories_sha256':story_fingerprint(fixture_edition['stories']),
+    'story_ranges':[{'story_id':'teknoloji0', 'start':12, 'end':14}]}
+write_json(release / 'chapters' / (fixture_asset['sha256'] + '.json'), clip_metadata)
 build("site", root / "site", release=release, at=not_before(DATE))
 
 # Synthetic chapter metadata exercises final-audio binding, never production times.

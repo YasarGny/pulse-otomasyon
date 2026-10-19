@@ -14,6 +14,7 @@ from pulse.chapter_completion import bootstrap_daily, copy_state, current, missi
 from pulse.publication import audio_info, digest, not_before, read_json, seal_release, write_json
 from scripts.prepare_chapters import cached_editor
 from scripts.prepare_chapters import propose
+from pulse.clips import story_fingerprint
 
 
 class ChapterResponseCacheTests(unittest.TestCase):
@@ -160,6 +161,8 @@ class ChapterCompletionTests(unittest.TestCase):
     def metadata(self, section):
         asset = read_json(self.release / (section + '.json'))['podcast']
         return {'schema_version': 1, 'reviewed': True, 'audio_sha256': asset['sha256'],
+                'clips_reviewed': True, 'story_ranges': [],
+                'stories_sha256': story_fingerprint(read_json(self.release / (section + '.json'))['stories']),
                 'chapters': [{'start': 0, 'title': 'Açılış'}, {'start': 12, 'title': 'Günün konusu'}]}
 
     def prepare_metadata(self, section):

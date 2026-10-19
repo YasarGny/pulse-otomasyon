@@ -24,7 +24,7 @@ def check_site(session, base, expected):
     response.raise_for_status()
     if response.json() != expected:
         raise ValueError("Pages is still serving another manifest")
-    routes = ("", "teknoloji/", "oyun/", "haberler/", "podcastler/")
+    routes = ("", "teknoloji/", "oyun/", "haberler/", "podcastler/", "akis/")
     if expected["status"] == "ready":
         routes += ("teknoloji/dinle/", "oyun/dinle/")
     for route in routes:

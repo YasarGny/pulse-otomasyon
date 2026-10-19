@@ -124,13 +124,14 @@ def navigation(root, page="", section=""):
     active = (
         "podcasts"
         if page in ("podcasts", "listen")
-        else (section or ("home" if page == "home" else ""))
+        else ("flow" if page == "flow" else section or ("home" if page == "home" else ""))
     )
     entries = [
         ("home", "index.html", "Günün seçkisi"),
         ("teknoloji", "teknoloji/index.html", "Teknoloji"),
         ("oyun", "oyun/index.html", "Oyun"),
         ("podcasts", "podcastler/index.html", "Podcast’ler"),
+        ("flow", "akis/index.html", "Akış"),
     ]
     return (
         '<nav aria-label="Ana menü">'
@@ -193,7 +194,7 @@ def shell(
     attrs = f'data-page="{page}" data-section="{section}" data-story="{e(story_id)}"'
     return symbols(
         f"""<!doctype html>
-<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg?v=2" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png?v=2"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=20"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=9" defer></script><script src="{root}assets/listening.js?v=1" defer></script><script src="{root}assets/site.js?v=20" defer></script><script src="{root}assets/install.js?v=3" defer></script></head>
+<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg?v=2" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png?v=2"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=21"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=9" defer></script><script src="{root}assets/listening.js?v=1" defer></script><script src="{root}assets/site.js?v=21" defer></script><script src="{root}assets/install.js?v=3" defer></script></head>
 <body data-design="{DESIGN}" {attrs}><noscript><style>.pulse-loading .site-shell{{visibility:visible!important}}.site-shell{{display:block!important}}[data-audio-section],.audio-start,.listen-player,.theme-toggle,.news-tools,.news-more{{display:none!important}}</style><p class="nojs-note">Bu kayıt {e(stamp)} tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak için JavaScript’i etkinleştirin.</p></noscript><div class="site-shell"><a class="skip" href="#main">İçeriğe geç</a><header class="nav"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><span class="nav-issue">{e(stamp)}</span>{navigation(root, page, section)}<button type="button" class="theme-toggle" aria-label="Açık temaya geç"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></header><main id="main" tabindex="-1" data-release="{e(release_id)}">{main}</main><footer class="foot"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><div class="foot-actions"><button type="button" class="install-entry" aria-haspopup="dialog" hidden>Uygulamayı yükle <span aria-hidden="true">↗</span></button><a href="{root}gizlilik/index.html">Gizlilik</a></div></footer></div></body></html>"""
     )
 
@@ -245,6 +246,18 @@ def build_views(output, manifest):
     )
     home = f"""<section class="daily-selection" aria-labelledby="selection-title"><div class="sectiontop"><h1 id="selection-title">Günün seçkisi</h1><span class="morning">Her sabah 07:30</span></div><div class="selection-grid">{lead_html}</div></section><a class="mobile-news-jump" href="haberler/index.html">Tüm haberlere git ↓</a><div class="desk-grid"><section class="other-news" aria-labelledby="other-title"><div class="sectiontop"><h2 id="other-title">Diğer haberler</h2><a href="haberler/index.html">Tüm haberler ↗</a></div><div class="home-news">{''.join(story_card(s, story, './') for s, story in remaining[:4])}</div><div class="edition-links"><a href="teknoloji/index.html">Teknoloji yayını ↗</a><a href="oyun/index.html">Oyun yayını ↗</a></div></section>{listening(editions, './')}</div>"""
     save("", home)
+    flow_items = lead + remaining
+    flow_html = ''.join(
+        f'<article class="flow-story" data-section="{section}" data-story="{e(story["id"])}" hidden>'
+        + picture(story, eager=i == 0, detail=True)
+        + f'<div class="flow-copy"><p class="eyebrow">{e(story["category"])}</p><h1>{e(story["title"])}</h1>'
+        + f'<a class="source-link" href="{e(story["source_url"])}" target="_blank" rel="noopener noreferrer">{e(story["source_name"])} ↗</a>'
+        + f'<div class="story-clip-slot" data-section="{section}" data-story="{e(story["id"])}"></div>'
+        + '<div class="article-text">' + ''.join('<p>' + e(paragraph) + '</p>' for paragraph in story.get('body', [story['summary']]))
+        + '</div></div></article>'
+        for i, (section, story) in enumerate(flow_items))
+    save("akis/", '<section class="news-flow" aria-label="Haber akışı"><header class="flow-header"><div class="flow-heading"><a class="brand" href="../index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><h1>Akış</h1><a class="flow-close" href="../index.html" aria-label="Akışı kapat">×</a></div><div class="flow-options"><div class="flow-filters" role="group" aria-label="Haber kategorisi"><button data-flow-filter="" aria-pressed="true">Tümü</button><button data-flow-filter="teknoloji" aria-pressed="false">Teknoloji</button><button data-flow-filter="oyun" aria-pressed="false">Oyun</button></div><span class="flow-count" aria-live="polite"></span></div></header><div class="flow-viewport" tabindex="0" aria-label="Haberi oku">'
+         + flow_html + '</div><footer class="flow-navigation"><button class="flow-previous" aria-label="Önceki haber">↑ Önceki</button><span class="flow-announcement" role="status"></span><button class="flow-next" aria-label="Sonraki haber">Sonraki ↓</button></footer><div class="flow-end" hidden><h2>Günün akışını tamamladın</h2><button class="flow-restart">Başa dön</button></div></section>', page="flow", title="Akış · PULSE")
     for section in (None, *SECTIONS):
         route = "haberler/" if section is None else section + "/"
         root = "../"
@@ -314,6 +327,7 @@ def build_views(output, manifest):
     routes = [
         "",
         "haberler/",
+        "akis/",
         "podcastler/",
         "teknoloji/",
         "oyun/",

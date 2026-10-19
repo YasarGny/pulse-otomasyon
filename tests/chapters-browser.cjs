@@ -219,7 +219,7 @@ module.exports = async function(browser, run, base) {
     await page.setViewportSize({width:320,height:844});
     await page.locator('.nav nav a').evaluateAll(links=>links.forEach(a=>a.style.fontSize='26px'));
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-    assert.equal(await page.locator('.nav nav a').count(),4);
+    assert.equal(await page.locator('.nav nav a').count(),5);
   });
   await run('brief and sustained buffering never move player controls or resize the panel',async()=>{
     await page.setViewportSize({width:390,height:844});

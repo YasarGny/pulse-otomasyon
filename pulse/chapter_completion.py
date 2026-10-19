@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from pulse.chapters import load_chapters
+from pulse.clips import validate_ranges
 from pulse.publication import SECTIONS, digest, expected_date, now, read_json, verify_manifest
 
 
@@ -25,14 +26,31 @@ def missing(previous, manifest, release):
         registry = read_json(previous / 'assets/chapters/index.json')
     except (OSError, ValueError):
         registry = {}
+    try:
+        clips = read_json(previous / 'assets/clips/index.json')
+    except (OSError, ValueError):
+        clips = {}
     result = []
     for section in SECTIONS:
         entry = manifest['editions'][section]
         if entry['file'] != section + '.json' or digest(release / entry['file']) != entry['sha256']:
             raise ValueError('Edition identity/hash mismatch')
-        asset = read_json(release / entry['file'])['podcast']
+        edition = read_json(release / entry['file'])
+        asset = edition['podcast']
         data = load_chapters(previous / 'assets/chapters', asset)
-        if not data or not isinstance(registry, dict) or registry.get(asset['sha256']) != data:
+        try:
+            validate_ranges(data or {}, asset, edition['stories'])
+            ranges_valid = clips.get('release_id') == manifest['release_id']
+            for row in data['story_ranges']:
+                entries = clips.get('stories', {}).get(section + ':' + row['story_id'], [])
+                name = f"releases/{manifest['release_id']}/clips/{asset['sha256']}-{row['start']:.3f}-{row['end']:.3f}.mp3"
+                entry = next((c for c in entries if c.get('file') == name and c.get('start') == row['start'] and c.get('end') == row['end'] and c.get('audio_sha256') == asset['sha256']), None)
+                path = previous / name
+                if not entry or not path.is_file() or path.is_symlink() or digest(path) != entry.get('sha256'):
+                    ranges_valid = False
+        except (ValueError, TypeError):
+            ranges_valid = False
+        if not data or not ranges_valid or not isinstance(registry, dict) or registry.get(asset['sha256']) != data:
             result.append(section)
     return result
 
@@ -121,7 +139,10 @@ def rebuild(previous, work, output='dist'):
         published = load_chapters(Path(previous) / 'assets/chapters', asset)
         if (prepared and prepared != published) or ((prepared or published) and section in missing_before):
             changed = True
-        if not prepared and not published:
+        candidate = prepared or published
+        try:
+            validate_ranges(candidate or {}, asset, read_json(work / (section + '.json'))['stories'])
+        except (ValueError, TypeError):
             complete = False
     if changed:
         result = build('site', output, release=work, previous=previous)
