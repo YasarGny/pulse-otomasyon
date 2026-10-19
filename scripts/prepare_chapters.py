@@ -160,7 +160,7 @@ def prepare(release, previous=None):
                 write_json(target / (asset['sha256'] + '.json'), cached)
         from pulse.clips import validate_ranges
         try:
-            validate_ranges(cached or {}, asset, read_json(release / (section + '.json'))['stories'])
+            validate_ranges(cached or {}, asset, read_json(release / (section + '.json')).get('stories', []))
             complete = True
         except (ValueError, TypeError):
             complete = False
