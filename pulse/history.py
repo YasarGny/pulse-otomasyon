@@ -4,17 +4,33 @@ import shutil
 from pathlib import Path
 
 from pulse.publication import SECTIONS, digest, read_json, verify_manifest
-from pulse.source_history import SourceHistory
+from pulse.source_history import SourceHistory, fingerprint
+from pulse.event_history import EventHistory
+
+
+def histories(previous):
+    """Merge verified migration seeds with durable history, never erase either."""
+    source_path = Path(previous) / 'data/source-history.json'
+    event_path = Path(previous) / 'data/event-history.json'
+    sources = SourceHistory(read_json(source_path) if source_path.exists() else None)
+    events = EventHistory(read_json(event_path) if event_path.exists() else None)
+    seed_path = Path(__file__).with_name('history-seed.json')
+    if seed_path.exists():
+        seed = read_json(seed_path)
+        sources.exact.update(SourceHistory(seed['sources']).exact)
+        for row in EventHistory(seed['events']).rows.values():
+            events.add(row['section'], row['date'], row)
+    return sources, events
 
 
 def exclude_published(research, previous, date):
     if previous is None:
         return research
-    ledger_path = Path(previous) / "data/source-history.json"
-    ledger = SourceHistory(read_json(ledger_path) if ledger_path.exists() else None)
+    ledger, events = histories(previous)
+    same_day = set()
     for manifest_path in (Path(previous) / "releases").glob("*/release.json"):
         manifest = read_json(manifest_path)
-        if manifest.get("status") != "ready" or manifest["publish_date"] >= date:
+        if manifest.get("status") != "ready" or manifest["publish_date"] > date:
             continue
         for section in SECTIONS:
             entry = manifest["editions"][section]
@@ -30,13 +46,23 @@ def exclude_published(research, previous, date):
             ):
                 raise ValueError("Historical edition identity mismatch")
             for story in data["stories"]:
-                ledger.add(story["source_url"])
-    clean = {**research, "sections": {}}
+                if manifest['publish_date'] == date:
+                    # Revisions may retain today's approved news; only previous
+                    # days are forbidden. Ordinary reruns restore the release.
+                    same_day.add(fingerprint(story['source_url']))
+                else:
+                    ledger.add(story["source_url"])
+                    events.add(section, manifest["publish_date"], story)
+    clean = {**research, "sections": {}, "previous_events": {
+        section: [r for r in events.record(date)['events'] if r['section'] == section and r['date'] < date]
+        for section in SECTIONS}}
+    clean['legacy_history_uncertain'] = sum(ledger.uncertain(s['source_url'])
+        for section in SECTIONS for s in research['sections'][section])
     for section in SECTIONS:
         clean["sections"][section] = [
             s
             for s in research["sections"][section]
-            if not ledger.contains(s["source_url"])
+            if fingerprint(s["source_url"]) in same_day or not ledger.contains(s["source_url"])
         ]
         if len(clean["sections"][section]) < 3:
             raise ValueError(

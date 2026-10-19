@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pulse.publication import SECTIONS, read_json, write_json, verify_manifest
-from pulse.source_history import SourceHistory
+from pulse.history import histories
 
 
 def prune(target, receipts):
@@ -39,12 +39,14 @@ def prune(target, receipts):
         if receipt.get('verified') is not True or receipt.get('release_id') != archived_id or receipt.get('publish_date') != manifest['publish_date'] or not receipt.get('file_id') or not isinstance(receipt.get('sha256'), str) or len(receipt['sha256']) != 64:
             raise ValueError('No verified Drive readback receipt; nothing removed')
     ledger_path = target / 'data/source-history.json'
-    ledger = SourceHistory(read_json(ledger_path) if ledger_path.exists() else None)
-    for root, manifest in candidates:
+    ledger, events = histories(target)
+    event_path = target / 'data/event-history.json'
+    for root, manifest in manifests:
         for section in SECTIONS:
             stories = read_json(root / f'{section}.json')['stories']
             for story in stories:
                 ledger.add(story['source_url'])
+                events.add(section, manifest['publish_date'], story)
     retained_ids = {s: set() for s in SECTIONS}
     candidate_roots = {root for root, _ in candidates}
     for root, manifest in manifests:
@@ -63,8 +65,11 @@ def prune(target, receipts):
                     if detail.exists():
                         details.add(detail)
     # Validate every receipt, route and ledger before removing the first file.
-    if candidates:
-        write_json(ledger_path, ledger.record())
+    # Persist even the active edition: recovery works after its files are pruned.
+    history_record = ledger.record()
+    event_record = events.record(current['publish_date'])
+    write_json(ledger_path, history_record)
+    write_json(event_path, event_record)
     for detail in details:
         shutil.rmtree(detail)
     for root, _ in candidates:

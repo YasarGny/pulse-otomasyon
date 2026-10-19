@@ -721,6 +721,21 @@ class ReleaseTests(unittest.TestCase):
             )
         )
 
+    def test_same_day_revision_may_retain_approved_news_even_after_history_persistence(self):
+        from pulse.source_history import SourceHistory
+        site = self.root / 'published'
+        build(ROOT / 'site', site, release=self.release, at=not_before(DATE))
+        ledger = SourceHistory()
+        raw = {'sections': {}}
+        for section in ('teknoloji', 'oyun'):
+            rows = read_json(self.release / (section + '.json'))['stories']
+            raw['sections'][section] = rows
+            for story in rows:
+                ledger.add(story['source_url'])
+        write_json(site / 'data/source-history.json', ledger.record())
+        clean = exclude_published(raw, site, DATE)
+        self.assertEqual(clean['sections'], raw['sections'])
+
     def test_insufficient_new_stories_blocks_instead_of_reusing_old_news(self):
         site = self.root / "published"
         build(ROOT / "site", site, release=self.release, at=not_before(DATE))

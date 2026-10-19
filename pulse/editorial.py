@@ -250,12 +250,14 @@ def enrich_selection_sources(sources):
         list(pool.map(enrich, sources.values()))
 
 
-def checked_selection(result, sources, section):
+def checked_selection(result, sources, section, previous_events=()):
     """Check selection before paying for full articles; never lower the news floor."""
     from pulse.profile import MIN_STORIES
     rows = result.get('stories') if isinstance(result, dict) else None
     if not isinstance(rows, list):
         raise ValueError(f'{section}: selection must contain a stories list')
+    from pulse.event_history import event_key
+    previous_keys = {event_key(r['event_key']) for r in previous_events}
     selected, ids, urls, events = [], set(), set(), set()
     for row in rows:
         if not isinstance(row, dict):
@@ -266,9 +268,14 @@ def checked_selection(result, sources, section):
         event = row.get('event_key')
         if not isinstance(event, str) or not 4 <= len(event) <= 120:
             raise ValueError(f'{section}: missing or invalid event identity')
-        if row['id'] in ids or source['source_url'] in urls or event.casefold() in events:
+        normalized_event = event_key(event)
+        if not normalized_event:
+            raise ValueError(f'{section}: empty normalized event identity')
+        if normalized_event in previous_keys:
+            continue
+        if row['id'] in ids or source['source_url'] in urls or normalized_event in events:
             raise ValueError(f'{section}: duplicate source or event in selection')
-        ids.add(row['id']); urls.add(source['source_url']); events.add(event.casefold())
+        ids.add(row['id']); urls.add(source['source_url']); events.add(normalized_event)
         selected.append(row)
     minimum = MIN_STORIES[section]
     if not minimum <= len(selected) <= 24:
@@ -284,6 +291,9 @@ def create_edition(research_data, section, date, issue, game_start, article_cach
     enrich_selection_sources(sources)
     from pulse.profile import TARGETS, MIN_STORIES, PROFILE
     low, high = TARGETS[section]
+    from pulse.event_history import relevant_events
+    previous_events = research_data.get('previous_events', {}).get(section, [])
+    event_context = relevant_events(previous_events, sources)
     prompt = f"""{date} tarihli PULSE {section} sayısı {issue:03d} için Türkçe haber seçkisi hazırla.
 {low}–{high} güncel, önemli, birbirinden farklı olay seç. En az {MIN_STORIES[section]} geçerli haber gerekir. Aynı olayın farklı kaynaklardaki kopyalarını birleştir. Güçlü kaynak yoksa sayı doldurma. Teknoloji: yapay zekâ, bilim, uzay,
 yazılım, siber güvenlik, dijital dünya; otomobil kotası yok. Oyun: yalnızca PC/konsol,
@@ -300,11 +310,17 @@ haberi özetle. Yorum, önem açıklaması, çıkarım ve tavsiye ekleme; başl�
 JSON: {{"stories":[{{"id":"kaynak id", "category":"KISA KATEGORİ", "title":"...",
 "event_key":"olayin-kisa-ortak-kimligi", "summary":"2–4 cümle", "brief":"Yorumsuz, tek cümlelik sesli haber özeti",
 "why":"Neden önemli? 1–2 cümle"}}]}}.
+Geçmiş yayımlanmış olaylar (yalnız tekrar denetimi için, yeni haber kaynağı değildir):
+{json.dumps(event_context, ensure_ascii=False)}
+Bu olayların başka yayıncıda veya başka başlıkla tekrar anlatımını seçme.
+Aynı şirket/oyun/konu tek başına tekrar değildir: yalnız somut YENİ gelişme varsa seç.
+Geçmiş olayla aynı olguysa eski event_key kimliğini koru; farklı ad vererek tekrar yayımlama.
+Yeni gelişme varsa event_key içine yeni somut gelişmeyi dahil et; tarihi değiştirerek yeni olay yapma.
 Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sources), ensure_ascii=False)}"""
     system = "Sen dikkatli bir Türkçe haber editörüsün. Yalnızca sağlanan kaynaklara dayan. Çıktı yalnızca JSON olsun."
     generated = gemini(prompt, system=system)
     try:
-        selected = checked_selection(generated, sources, section)
+        selected = checked_selection(generated, sources, section, previous_events)
     except ValueError as error:
         # One bounded editorial repair, before article generation. Insufficient
         # evidence must still return too few items and fail, never invent filler.
@@ -313,7 +329,7 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sourc
                            'güncel ve farklı olayları seç. Kotayı doldurmak için haber uydurma, '
                            'aynı olayı bölme veya zayıf kaynak seçme. Yeterli kanıt yoksa boş stories döndür. '
                            'Önceki seçki: ' + json.dumps(generated, ensure_ascii=False), system=system)
-        selected = checked_selection(generated, sources, section)
+        selected = checked_selection(generated, sources, section, previous_events)
     stories = []
     for story in selected:
         if not category_allowed(section, story.get("category")):

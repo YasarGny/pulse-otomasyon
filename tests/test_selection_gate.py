@@ -74,3 +74,18 @@ class SelectionGateTests(unittest.TestCase):
             self.assertEqual(generate.call_count, 2)
             self.assertEqual(len(articles.call_args.args[0]), 15)
 
+
+    def test_previous_events_reach_existing_selection_without_an_extra_call(self):
+        prior = {'date': '2026-10-18', 'section': 'teknoloji', 'event_key': 'older-launch',
+                 'title': 'Previously published launch', 'brief': 'Already reported facts'}
+        research = {'publish_date': '2026-10-19',
+                    'sections': {'teknoloji': list(self.sources.values())},
+                    'previous_events': {'teknoloji': [prior]}}
+        with patch('pulse.editorial.gemini', return_value={'stories': self.rows}) as generate, \
+             patch('pulse.articles.full_articles', return_value=[]), \
+             patch('pulse.editorial.validate_content', side_effect=ValueError('Final gate preserved')):
+            with self.assertRaisesRegex(ValueError, 'Final gate preserved'):
+                create_edition(research, 'teknoloji', '2026-10-19', 4, '2026-10-16')
+        self.assertEqual(generate.call_count, 1)
+        self.assertIn('Already reported facts', generate.call_args.args[0])
+        self.assertIn('somut YENİ gelişme', generate.call_args.args[0])
