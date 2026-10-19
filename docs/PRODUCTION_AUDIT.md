@@ -27,8 +27,11 @@ hatasızlık iddiası değildir.
 Ses yöntemleri, Gemini özel sunucu kimlikleri ve Edge TTS sesi değiştirilmedi.
 Mevcut kayıtlar yeniden üretilmedi. Yeni kod sonraki onaylı günlük üretimde kullanılır.
 Bölüm işaretleri, canlı geçiş onayı sonrası günlük akışta varsayılan açık;
-`PULSE_CHAPTERS_ENABLED=false` kapatır. Son kontrol penceresi ve 25 dakikalık
-üst sınır korunur. Doğrulanamayan işaretler atlanır; ses yayını engellenmez.
+`PULSE_CHAPTERS_ENABLED=false` kapatır. Sabah ilk denemesinin son kontrol penceresi
+ve 25 dakikalık üst sınırı korunur. 19.10.2026 düzeltmesiyle geç kalan veya eksik
+işaretler `complete-chapters.yml` üzerinden dağıtım sonrası/saatlik tamamlanır;
+kalıcı olarak sessizce atlanmaz. Ses yayını engellenmez; eksik tamamlama işi
+başarısız görünür, doğrulanmış kısmi metadata ve özel ara kayıtlar korunur.
 
 ## Korunan doğruluk kontrolleri
 

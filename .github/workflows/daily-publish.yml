@@ -218,7 +218,7 @@ jobs:
           if remaining > 30:
               subprocess.run([sys.executable, 'scripts/prepare_chapters.py', '--release', os.environ['RELEASE_PATH'], '--previous', '.published'], check=True, timeout=min(remaining, 24 * 60))
           else:
-              print('Chapter analysis skipped: preserving the publication-check window. Existing audio is unchanged.')
+              print('Chapter analysis deferred to the independent post-publication completion workflow. Existing audio is unchanged.')
           PY
       - name: Report optional chapter availability
         if: always() && vars.PULSE_CHAPTERS_ENABLED != 'false'

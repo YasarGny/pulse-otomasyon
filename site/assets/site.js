@@ -654,6 +654,7 @@
   });
   const chapterCache = new Map();
   let chapterRegistry = null;
+  let chapterRegistryAt = 0, missingChapterRefreshAt = -Infinity;
   async function chaptersFor(asset) {
     if (!asset || !/^[a-f0-9]{64}$/.test(asset.sha256)) return null;
     if (!chapterCache.has(asset.sha256)) chapterCache.set(asset.sha256, (async () => {
@@ -661,17 +662,23 @@
         const embedded = window.PULSE_RELEASE?.chapters?.[asset.sha256];
         if (embedded) return PulseListening.validate(embedded, asset);
         if (window.PULSE_ARCHIVE) return null;
-        if (!chapterRegistry) chapterRegistry = fetch(new URL("assets/chapters/index.json", base),
+        if (!chapterRegistry || performance.now() - chapterRegistryAt >= 50000) {
+          chapterRegistryAt = performance.now();
+          chapterRegistry = fetch(new URL("assets/chapters/index.json", base),
           { cache: "no-cache", signal: AbortSignal.timeout(10000) }).then(async response => {
             if (!response.ok) return {};
             const text = await response.text();
             return text.length < 200000 ? JSON.parse(text) : {};
           }).catch(() => ({}));
+        }
         const registry = await chapterRegistry;
         return PulseListening.validate(registry[asset.sha256], asset);
       } catch (_) { return null; }
     })());
-    return chapterCache.get(asset.sha256);
+    const pending = chapterCache.get(asset.sha256);
+    const data = await pending;
+    if (!data && chapterCache.get(asset.sha256) === pending) chapterCache.delete(asset.sha256);
+    return data;
   }
   const tabs = make("div", "player-tabs");
   tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "Oynatıcı görünümü");
@@ -786,18 +793,38 @@
   }
   async function hydrateChapters() {
     const listen = $(".listen-player");
-    if (!listen) return;
+    if (!listen || listen.closest(".episode")?.querySelector(".episode-chapters")) return;
     const section = listen.dataset.listenSection;
     const kind = new URLSearchParams(location.search).get("ses") === "ozet" ? "summary" : "podcast";
     if (kind !== "podcast") return;
     const asset = release.editions[section].podcast;
     const data = await chaptersFor(asset);
-    if (!data || !listen.isConnected) return;
+    if (!data || !listen.isConnected || listen.closest(".episode")?.querySelector(".episode-chapters")) return;
     const container = make("section","episode-chapters");
     const heading = make("h2","","Bu bölümde"), list = make("ol","chapter-list");
     list.append(...chapterRows(data,section,kind)); container.append(heading,list);
     listen.closest(".episode").append(container); syncChapters();
   }
+  async function refreshMissingChapters() {
+    if (!release || window.PULSE_ARCHIVE || document.hidden ||
+        performance.now() - missingChapterRefreshAt < 50000) return;
+    const missingPlayer = selected?.kind === "podcast" && !currentChapters &&
+      selectedRelease.manifest.release_id === release.manifest.release_id;
+    const missingPage = $(".listen-player") &&
+      new URLSearchParams(location.search).get("ses") !== "ozet" && !$(".episode-chapters");
+    if (!missingPlayer && !missingPage) return;
+    missingChapterRefreshAt = performance.now();
+    chapterRegistry = null;
+    if (missingPlayer) {
+      chapterAsset = null;
+      await loadSelectedChapters();
+    }
+    if (missingPage) await hydrateChapters();
+  }
+  window.addEventListener("pulse:verified", event => {
+    if (event.detail?.release_id === release?.manifest.release_id)
+      refreshMissingChapters().catch(() => {});
+  });
   let playbackChannel = null;
   try { playbackChannel = new BroadcastChannel("pulse-audio-session-v1");
     playbackChannel.onmessage = event => { if (event.data === "playing") { audio.pause(); playRequest++; } };

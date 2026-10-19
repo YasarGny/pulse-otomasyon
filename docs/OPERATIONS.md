@@ -413,6 +413,26 @@ eklenmez. PyAV 19, faster-whisper 1.2.1 ile uyumsuz olduğundan 16.0.1 sabittir.
 
 Canlı geçiş onayı sonrasında bölüm işaretleri günlük akışta varsayılan açıktır;
 `PULSE_CHAPTERS_ENABLED=false` isteğe bağlı son-ses çözümlemesini kapatır.
+Sabah 07:15 sınırı yalnız yayını bekletmeyen ilk denemenin sınırıdır; işaretlemeyi
+günün geri kalanı için iptal etmez. `complete-chapters.yml`, başarılı günlük iş
+sonrasında ve Türkiye saatiyle 08:17–23:17 arasında her saat güncel yayını
+kontrol eder. Elle de çalıştırılabilir; haber veya ses üretmez. Hazırlık/eski
+yayınlarda ve iki podcastin indeksli işaretleri zaten hazırsa ücretli çağrı yapmaz.
+Günlük dağıtımla aynı concurrency kilidini kullanır; yanlış gün/ses kimliğiyle
+tamamlama engellenir. Bir programın onaylı işaretleri diğerinin hatası nedeniyle
+kaybolmaz. Yeni işaretler mevcut yayın kimliği ve dört MP3 korunarak yeniden
+derlenir; günün Drive ZIP'i yenilenip doğrulandıktan sonra Pages'e gönderilir.
+Eksik işaret veya dağıtım hatası workflow'u başarısız bırakır; saatlik telafi
+hazır özel aşamalardan devam eder. Döküm, başarılı öneri/denetim yanıtları ve
+onaylı işaretler üç günlük `pulse-chapter-state-...` artifact'ında saklanır.
+Yalnız bu workflow'un main dalındaki güvenilir tetikleyicileri geri yüklenir.
+Yanıt önbelleği tam girdi, model, talimat ve yanıt hash'leriyle bağlıdır;
+yapısal olarak geçersiz öneriler önbellekten çıkarılır. Döküm, özel denetim
+yanıtları ve kullanım kayıtları public siteye veya Drive yayın ZIP'ine girmez.
+İlk tamamlama, aynı yayın kimliğinin güvenilir günlük checkpoint'indeki hazır
+döküm ve denetim aşamalarını da devralır. Açık sekmeler, aynı yayın kimliğine
+sonradan eklenen işaretleri başarılı manifest kontrollerinden sonra yeniden
+arar; oynatma ve okuma konumu değiştirilmez.
 Konu işaretleri yayının zorunlu ses/JSON kapısından ayrıdır. Zamanları model tahmin etmez: Whisper'ın gerçek segment
 başlangıçlarını metin editörü seçer, ikinci bağımsız inceleme onaylar. Bu otomatik
 inceleme insan dinleme kontrolü veya hatasızlık garantisi değildir. İlk mevcut
