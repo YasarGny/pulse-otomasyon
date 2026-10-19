@@ -10,9 +10,10 @@ import requests
 
 ROOT = 'https://yasargny.github.io/'
 POLICIES = [
-    'https://news.mit.edu/terms-use',
+    'https://news.mit.edu/terms-of-use',
     'https://www.nasa.gov/nasa-brand-center/images-and-media/',
     'https://www.sciencedaily.com/terms.htm',
+    'https://www.sciencedaily.com/copyright.htm',
     'https://www.bbc.co.uk/usingthebbc/terms/',
     'https://www.bleepingcomputer.com/terms-of-use/',
     'https://futureplc.com/terms-conditions/',
