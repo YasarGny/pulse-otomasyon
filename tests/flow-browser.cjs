@@ -5,9 +5,10 @@ module.exports = async (browser, run, base) => {
   const page = await context.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await context.route('https://images.example.test/**', r => r.fulfill({path:'site/assets/covers/teknoloji-768.webp',contentType:'image/webp'}));
+  let visit = 0;
   const open = async route => {
-    if (page.url().startsWith('http')) await page.evaluate(() => history.replaceState(null, '', location.href));
-    await page.goto(base + route);
+    const url = new URL(route, base); url.searchParams.set('flow_check', String(++visit));
+    await page.goto(url.href);
     await page.waitForFunction(() => window.PULSE_RELEASE && !document.documentElement.classList.contains('pulse-loading') && !document.documentElement.classList.contains('pulse-locked'));
   };
   try {
@@ -45,6 +46,10 @@ module.exports = async (browser, run, base) => {
       await page.waitForTimeout(750);
       await page.locator('.flow-viewport').dispatchEvent('wheel',{deltaY:80,bubbles:true,cancelable:true});
       assert.equal(await page.locator('.flow-count').innerText(),'2 / 3');
+      await page.reload();
+      await page.waitForFunction(()=>!document.documentElement.classList.contains('pulse-loading'));
+      assert.equal(await page.locator('.flow-count').innerText(),'2 / 3');
+      assert.equal(await page.locator('[data-flow-filter="teknoloji"]').getAttribute('aria-pressed'),'true');
       await page.locator('.flow-next').click(); await page.locator('.flow-next').click();
       assert.equal(await page.locator('.flow-end').isVisible(),true);
       await page.locator('.flow-restart').click();
