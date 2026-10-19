@@ -54,6 +54,8 @@ def build_clips(output, manifest, editions, registry, previous=None):
             old = read_json(Path(previous) / 'assets/clips/index.json')
         except (OSError, ValueError):
             pass
+    if not isinstance(old, dict) or not isinstance(old.get('stories', {}), dict):
+        old = {}
     for section, edition in editions.items():
         asset = edition['podcast']
         data = registry.get(asset['sha256'], {})
@@ -69,8 +71,9 @@ def build_clips(output, manifest, editions, registry, previous=None):
             target = folder / name
             reused = False
             if previous and old.get('release_id') == manifest['release_id']:
-                for entry in old.get('stories', {}).get(identity, []):
-                    if entry.get('file') == 'releases/' + manifest['release_id'] + '/clips/' + name:
+                candidates = old.get('stories', {}).get(identity, [])
+                for entry in candidates if isinstance(candidates, list) else []:
+                    if isinstance(entry, dict) and entry.get('file') == 'releases/' + manifest['release_id'] + '/clips/' + name:
                         candidate = Path(previous) / 'releases' / manifest['release_id'] / 'clips' / name
                         if candidate.is_file() and digest(candidate) == entry.get('sha256'):
                             shutil.copyfile(candidate, target)

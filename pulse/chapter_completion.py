@@ -30,6 +30,8 @@ def missing(previous, manifest, release):
         clips = read_json(previous / 'assets/clips/index.json')
     except (OSError, ValueError):
         clips = {}
+    if not isinstance(clips, dict) or not isinstance(clips.get('stories', {}), dict):
+        clips = {}
     result = []
     for section in SECTIONS:
         entry = manifest['editions'][section]
@@ -44,7 +46,9 @@ def missing(previous, manifest, release):
             for row in data['story_ranges']:
                 entries = clips.get('stories', {}).get(section + ':' + row['story_id'], [])
                 name = f"releases/{manifest['release_id']}/clips/{asset['sha256']}-{row['start']:.3f}-{row['end']:.3f}.mp3"
-                entry = next((c for c in entries if c.get('file') == name and c.get('start') == row['start'] and c.get('end') == row['end'] and c.get('audio_sha256') == asset['sha256']), None)
+                if not isinstance(entries, list):
+                    entries = []
+                entry = next((c for c in entries if isinstance(c, dict) and c.get('file') == name and c.get('start') == row['start'] and c.get('end') == row['end'] and c.get('audio_sha256') == asset['sha256']), None)
                 path = previous / name
                 if not entry or not path.is_file() or path.is_symlink() or digest(path) != entry.get('sha256'):
                     ranges_valid = False

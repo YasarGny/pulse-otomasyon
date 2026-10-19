@@ -53,6 +53,10 @@ class ClipTests(unittest.TestCase):
             self.assertEqual(content.count('class="flow-story"'), 6)
             rebuilt = root / 'again'; build('site', rebuilt, release=release, previous=output, at=not_before(DATE))
             self.assertEqual(read_json(rebuilt / 'assets/clips/index.json'), index)
+            write_json(output / 'assets/clips/index.json', [])
+            repaired = root / 'repaired'
+            build('site', repaired, release=release, previous=output, at=not_before(DATE))
+            self.assertEqual(read_json(repaired / 'assets/clips/index.json'), index)
             # Absent mappings remove old clips instead of leaking yesterday's content.
             (release / 'chapters' / (asset['sha256'] + '.json')).unlink()
             build('site', root / 'empty', release=release, at=not_before(DATE))
