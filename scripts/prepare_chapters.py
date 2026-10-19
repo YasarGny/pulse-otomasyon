@@ -34,7 +34,14 @@ def cached_editor(folder, generate, model, *, context=None):
         path = getattr(request, 'last_path', None)
         if path:
             path.unlink(missing_ok=True)
+    def reject(proposal):
+        # Keep approved work, but never retry forever from a known-rejected
+        # proposal/review pair or re-review it until the model happens to agree.
+        invalidate()
+        if proposal is not None and proposal.parent == folder:
+            proposal.unlink(missing_ok=True)
     request.invalidate = invalidate
+    request.reject = reject
     return request
 
 
@@ -56,6 +63,7 @@ def propose(transcript, asset, generate, *, retry=True):
                         'Başlıklar anlaşılır, kısa ve yorumsuz olsun. '
                         'JSON: {"chapters":[{"segment_id":0,"title":"Açılış"}]}.\n'
                         + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide}, ensure_ascii=False), system=system)
+    proposal_path = getattr(generate, 'last_path', None)
     def invalid(message):
         # Structurally invalid proposals must not trap future recovery in a bad
         # cached response. Valid proposals survive a later review/network failure.
@@ -90,6 +98,9 @@ def propose(transcript, asset, generate, *, retry=True):
         invalid('Invalid independent chapter review')
     if review.get('approved') is True:
         return result
+    reject = getattr(generate, 'reject', None)
+    if callable(reject):
+        reject(proposal_path)
     reason = str(review.get('reason', 'No review reason supplied'))[:600]
     if retry:
         revised = dict(transcript)

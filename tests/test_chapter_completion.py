@@ -91,6 +91,21 @@ class ChapterResponseCacheTests(unittest.TestCase):
                         workflow_path='.github/workflows/complete-chapters.yml', allowed_events=('workflow_run',))
             self.assertEqual(session.get.call_count, 2)
 
+    def test_rejected_proposals_do_not_trap_later_recovery_in_cached_failures(self):
+        asset = {'sha256': 'a' * 64, 'duration': 100}
+        transcript = {'audio_sha256': asset['sha256'], 'segments': [
+            {'start': 0, 'text': 'Açılış'}, {'start': 20, 'text': 'Konu'}]}
+        proposal = {'chapters': [{'segment_id': 0, 'title': 'Açılış'}, {'segment_id': 1, 'title': 'Konu'}]}
+        rejected = {'approved': False, 'reason': 'Topic needs a better boundary'}
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = Mock(side_effect=[proposal, rejected, proposal, rejected, proposal, {'approved': True}])
+            generate = cached_editor(tmp, provider, 'fixture-model')
+            with self.assertRaisesRegex(ValueError, 'Topic review rejected'):
+                propose(transcript, asset, generate)
+            self.assertFalse(list(Path(tmp).glob('*.json')))
+            self.assertTrue(propose(transcript, asset, generate)['reviewed'])
+            self.assertEqual(provider.call_count, 6)
+
 
 class ChapterCompletionTests(unittest.TestCase):
     @classmethod
