@@ -445,6 +445,7 @@
       .join(".");
     miniSubtitle.textContent = (section === "teknoloji" ? "Teknoloji" : "Oyun") +
       (kind === "podcast" ? " podcast’i · " : " · ") + episode.textContent;
+    if (selectedClip) miniSubtitle.textContent = 'Haber kesiti · ' + format(selectedClip.entry.duration);
     miniLink.textContent = title();
     miniLink.href = new URL(
       section + "/dinle/index.html" + (kind === "summary" ? "?ses=ozet" : ""),
@@ -743,7 +744,7 @@
           clipTopic.textContent = context.editions[section].stories.find(item => item.id === story)?.title || '';
           clipTopic.hidden = !clipTopic.textContent;
           pendingPosition = 0; audio.playbackRate = rate;
-          playerSubtitle.textContent = 'Haber kesiti · ' + format(entry.duration);
+          playerSubtitle.textContent = miniSubtitle.textContent = 'Haber kesiti · ' + format(entry.duration);
           fullEpisode.hidden = false; clipNotice.hidden = true;
           chapterAsset = null; tabs.hidden = true; chooseTab(false);
           toggle();

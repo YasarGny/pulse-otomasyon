@@ -2630,3 +2630,4 @@ body.in-news-flow { overflow:hidden; }
 .story-clip-play { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
 .clip-action-icon { display:flex; }
 .clip-action-icon svg { display:block; width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; }
+.in-news-flow.has-mini .flow-copy { padding-bottom:112px; }

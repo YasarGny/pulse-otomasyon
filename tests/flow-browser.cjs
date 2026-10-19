@@ -88,6 +88,7 @@ module.exports = async (browser, run, base) => {
       await page.locator('.mini-more').click();
       assert.equal(await page.locator('.clip-notice').isVisible(),true);
       assert.equal(await page.locator('.clip-full-episode').isVisible(),true);
+      assert.match(await page.locator('.mini-subtitle').innerText(), /Haber kesiti/);
       await page.locator('.clip-full-episode').click();
       await page.waitForFunction(()=>!document.querySelector('audio').paused && document.querySelector('audio').currentTime>=14);
       assert.match(await page.locator('audio').getAttribute('src'),/teknoloji\/podcast.mp3/);
