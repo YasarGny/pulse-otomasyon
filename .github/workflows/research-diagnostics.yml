@@ -44,6 +44,10 @@ jobs:
               clean = exclude_published(data, '.published', date)
               for section, rows in clean['sections'].items():
                   notice(label + ' ' + section, json.dumps({'researched_at': data.get('researched_at'), 'count': len(rows), 'sources': dict(Counter(s['source_name'] for s in rows))}, ensure_ascii=False))
-                  for row in rows:
-                      notice(label + ' candidate', json.dumps({'section': section, 'publisher': row['source_name'], 'title': row['original_title'], 'excerpt_chars': len(row['source_excerpt']), 'excerpt': row['source_excerpt'][:350]}, ensure_ascii=False))
+                  # GitHub limits notice annotations per step. Keep a single
+                  # bounded report per category instead of losing later rows.
+                  notice(label + ' ' + section + ' candidates', json.dumps([
+                      {'publisher': row['source_name'], 'title': row['original_title'],
+                       'excerpt_chars': len(row['source_excerpt'])} for row in rows
+                  ], ensure_ascii=False))
           PY
