@@ -75,6 +75,15 @@ module.exports = async (browser, run, base) => {
       });
       assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
     });
+    await run('PageDown and PageUp work immediately without an extra focus step',async()=>{
+      await open('/akis/');
+      await page.locator('.flow-viewport').evaluate(el=>el.scrollTop=el.scrollHeight);
+      await page.locator('#main').focus();
+      await page.keyboard.press('PageDown');
+      assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
+      await page.keyboard.press('PageUp');
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 6');
+    });
     await run('a real bounded clip uses the single audio session and stops at native EOF',async()=>{
       await open('/akis/');
       await page.waitForSelector('.flow-story:visible .story-clip-play');

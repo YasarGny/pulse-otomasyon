@@ -1067,10 +1067,17 @@
         event.preventDefault(); wheelAt = now; show(index + (event.deltaY > 0 ? 1 : -1));
       }
     }, {passive:false, signal:pageEvents.signal});
-    root.addEventListener('keydown', event => {
-      if (event.target.closest('button,a,input') || event.altKey || event.ctrlKey || event.metaKey) return;
-      if (event.key === 'PageDown' && atBottom()) {event.preventDefault(); show(index + 1);}
-      else if (event.key === 'PageUp' && atTop() && index > 0) {event.preventDefault(); show(index - 1);}
+    document.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.target.closest('input,textarea,select,[contenteditable],.audio-session') || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === 'PageDown') {
+        event.preventDefault();
+        if (!viewport.hidden && atBottom()) show(index + 1);
+        else viewport.scrollBy({top:viewport.clientHeight * .85, behavior:'instant'});
+      } else if (event.key === 'PageUp') {
+        event.preventDefault();
+        if ((viewport.hidden || atTop()) && index > 0) show(index - 1);
+        else viewport.scrollBy({top:-viewport.clientHeight * .85, behavior:'instant'});
+      }
     }, {signal:pageEvents.signal});
     filterStories();
   }
