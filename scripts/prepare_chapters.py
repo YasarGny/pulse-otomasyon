@@ -12,6 +12,12 @@ from pulse.chapters import validate_chapters, load_chapters
 from pulse.publication import write_json, read_json
 
 
+class ChapterReviewRejected(ValueError):
+    def __init__(self, reason):
+        self.reason = reason
+        super().__init__('Topic review rejected: ' + reason)
+
+
 def cached_editor(folder, generate, model, *, context=None):
     """Reuse exact paid responses after interruptions without skipping review."""
     folder = Path(folder)
@@ -58,9 +64,11 @@ def propose(transcript, asset, generate, *, retry=True):
               'Özel adların yazımında spelling_guide içindeki kaynak başlıklarını kullan; '
               'yalnız yazım rehberidir, konuşulmayan habere işaret ekleme.')
     feedback = transcript.get('review_feedback', '')
-    response = generate(('Önceki önerinin denetim gerekçesi: ' + feedback + '\nDöküme sadık yeni bir öneri hazırla.\n' if feedback else '') + 'Bu zamanlı dökümden 4–10 anlamlı ana sohbet geçişi seç. '
+    response = generate(('Önceki önerinin denetim gerekçesi: ' + feedback + '\nDöküme sadık yeni bir öneri hazırla; belirtilen eksikleri gider.\n' if feedback else '') + 'Bu zamanlı dökümde konuşulan BÜTÜN ana sohbet konularının geçişlerini seç. '
+                        'Sayısal bir hedefe sığdırmak için önemli konu atlama. '
                         'Her kısa değinmeye ayrı işaret koyma. Konuyu açan cümlenin '
                         'başındaki segment_id seç. Doğal açılış/kapanış varsa ekle. '
+                        'Liste kronolojik olsun; açılış ve kapanış dahil en çok 40 işaret kullan. '
                         'Başlıklar anlaşılır, kısa ve yorumsuz olsun. '
                         'JSON: {"chapters":[{"segment_id":0,"title":"Açılış"}]}.\n'
                         + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide}, ensure_ascii=False), system=system)
@@ -75,7 +83,7 @@ def propose(transcript, asset, generate, *, retry=True):
     if not isinstance(response, dict):
         invalid('Invalid proposed topics response')
     rows = response.get('chapters')
-    if not isinstance(rows, list) or not 2 <= len(rows) <= 16:
+    if not isinstance(rows, list) or not 2 <= len(rows) <= 40:
         invalid('Invalid proposed topics')
     chapters = []
     for row in rows:
@@ -107,7 +115,7 @@ def propose(transcript, asset, generate, *, retry=True):
         revised = dict(transcript)
         revised['review_feedback'] = reason
         return propose(revised, asset, generate, retry=False)
-    raise ValueError('Topic review rejected: ' + reason)
+    raise ChapterReviewRejected(reason)
 
 
 def prepare(release, previous=None):
@@ -137,18 +145,35 @@ def prepare(release, previous=None):
         # Review surviving programs independently; never invent missing timings.
     failures = []
     for section, asset in missing:
+        feedback_path = release / 'chapter-feedback' / (asset['sha256'] + '.json')
+        transcript_sha = None
         try:
             transcript = read_json(release / 'chapter-transcripts' / (section + '.json'))
             transcript['canonical_headlines'] = [story['title'] for story in read_json(release / (section + '.json')).get('stories', [])]
+            transcript_sha = hashlib.sha256(json.dumps(transcript, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            try:
+                saved_feedback = read_json(feedback_path)
+            except (OSError, ValueError):
+                saved_feedback = {}
+            if (isinstance(saved_feedback, dict) and saved_feedback.get('audio_sha256') == asset['sha256']
+                    and saved_feedback.get('transcript_sha256') == transcript_sha
+                    and saved_feedback.get('model') == MODEL
+                    and isinstance(saved_feedback.get('reason'), str)):
+                transcript['review_feedback'] = saved_feedback['reason'][:600]
             generate = cached_editor(release / 'chapter-requests', gemini, MODEL,
                                      context={'audio_sha256': asset['sha256'],
-                                              'transcript_sha256': hashlib.sha256(json.dumps(transcript, ensure_ascii=False, sort_keys=True).encode()).hexdigest()})
+                                              'transcript_sha256': transcript_sha})
             result = propose(transcript, asset, generate)
             write_json(target / (asset['sha256'] + '.json'), result)
+            feedback_path.unlink(missing_ok=True)
             print(section, 'audio-aligned chapter metadata prepared; voices unchanged')
             print(f'::notice title=PULSE verified chapters::{section}: {len(result["chapters"])} markers; audio {asset["sha256"]}', flush=True)
         except Exception as error:
             failures.append(section)
+            if isinstance(error, ChapterReviewRejected) and transcript_sha:
+                write_json(feedback_path, {'audio_sha256': asset['sha256'],
+                                          'transcript_sha256': transcript_sha,
+                                          'model': MODEL, 'reason': error.reason[:600]})
             print(section, 'chapter metadata omitted:', type(error).__name__)
             detail = re.sub(r'(?:https?|wss?)://\S+', '[service URL]', str(error))
             secret = os.environ.get('GEMINI_API_KEY')

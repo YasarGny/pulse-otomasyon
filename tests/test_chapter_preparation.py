@@ -6,7 +6,7 @@ import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
-from scripts.prepare_chapters import propose
+from scripts.prepare_chapters import ChapterReviewRejected, prepare, propose
 
 
 class ChapterPreparationTests(unittest.TestCase):
@@ -28,6 +28,37 @@ class ChapterPreparationTests(unittest.TestCase):
     def test_start_times_come_from_final_audio_sentences_not_model_numbers(self):
         result = propose(self.transcript, self.asset, self.generate())
         self.assertEqual([x['start'] for x in result['chapters']], [0.1, 12.8])
+
+    def test_all_main_topics_can_be_covered_without_a_ten_topic_quota(self):
+        transcript = {'audio_sha256': self.asset['sha256'], 'segments': [
+            {'start': i * 5, 'text': f'Ana konu {i}'} for i in range(17)]}
+        responses = iter([{'chapters': [{'segment_id': i, 'title': f'Ana konu {i}'} for i in range(17)]}, {'approved': True}])
+        result = propose(transcript, self.asset, lambda *args, **kwargs: next(responses))
+        self.assertEqual(len(result['chapters']), 17)
+
+    def test_recovery_receives_previous_reviewer_feedback_and_skips_approved_program(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            other_asset = {**self.asset, 'sha256': 'b' * 64}
+            for section, asset in [('teknoloji', self.asset), ('oyun', other_asset)]:
+                path = root / 'chapter-transcripts' / (section + '.json'); path.parent.mkdir(exist_ok=True)
+                path.write_text(json.dumps({**self.transcript, 'audio_sha256': asset['sha256']}))
+                (root / (section + '.json')).write_text(json.dumps({'podcast': asset, 'stories': []}))
+            def accepted(asset):
+                return {'schema_version': 1, 'reviewed': True, 'audio_sha256': asset['sha256'],
+                        'chapters': [{'start': 0, 'title': 'Açılış'}, {'start': 20, 'title': 'Konu'}]}
+            with patch('scripts.transcribe_podcasts.transcribe'), patch('scripts.prepare_chapters.propose',
+                    side_effect=[ChapterReviewRejected('Include the omitted main science topics'), accepted(other_asset)]), redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError, 'teknoloji'):
+                    prepare(root)
+            feedback_path = root / 'chapter-feedback' / (self.asset['sha256'] + '.json')
+            self.assertTrue(feedback_path.exists())
+            with patch('scripts.transcribe_podcasts.transcribe'), patch('scripts.prepare_chapters.propose',
+                    return_value=accepted(self.asset)) as review, redirect_stdout(io.StringIO()):
+                prepare(root)
+            self.assertEqual(review.call_count, 1)
+            self.assertEqual(review.call_args.args[0]['review_feedback'], 'Include the omitted main science topics')
+            self.assertFalse(feedback_path.exists())
 
     def test_rejected_review_unknown_sentence_or_changed_audio_is_not_published(self):
         for generate in (self.generate(False), self.generate(index=99)):
