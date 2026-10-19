@@ -65,6 +65,60 @@
       "hosts": [
         "techcrunch.com"
       ]
+    },
+    {
+      "name": "BBC Technology",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "hosts": [
+        "www.bbc.com",
+        "www.bbc.co.uk",
+        "bbc.com"
+      ]
+    },
+    {
+      "name": "BBC Science",
+      "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+      "hosts": [
+        "www.bbc.com",
+        "www.bbc.co.uk",
+        "bbc.com"
+      ]
+    },
+    {
+      "name": "MIT News",
+      "url": "https://news.mit.edu/rss/feed",
+      "hosts": [
+        "news.mit.edu"
+      ]
+    },
+    {
+      "name": "ScienceDaily",
+      "url": "https://www.sciencedaily.com/rss/all.xml",
+      "hosts": [
+        "www.sciencedaily.com"
+      ]
+    },
+    {
+      "name": "Phys.org",
+      "url": "https://phys.org/rss-feed/technology-news/",
+      "hosts": [
+        "phys.org"
+      ]
+    },
+    {
+      "name": "IEEE Spectrum",
+      "url": "https://spectrum.ieee.org/feeds/feed.rss",
+      "hosts": [
+        "spectrum.ieee.org"
+      ]
+    },
+    {
+      "name": "Engadget",
+      "url": "https://www.engadget.com/rss.xml",
+      "hosts": [
+        "www.engadget.com",
+        "engadget.com"
+      ]
     }
   ],
   "oyun": [
