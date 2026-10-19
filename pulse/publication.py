@@ -97,7 +97,8 @@ def validate_content(data, section, date, game_start):
     from pulse.profile import MIN_STORIES, expanded
     minimum = MIN_STORIES[section] if expanded(data) else 3
     if not isinstance(stories, list) or not minimum <= len(stories) <= 24:
-        raise ValueError("Edition needs sufficient distinct sourced stories (maximum 24)")
+        count = len(stories) if isinstance(stories, list) else 'invalid list'
+        raise ValueError(f"{section}: edition has {count} stories; required {minimum}–24 distinct sourced stories")
     ids, urls, events = set(), set(), set()
     if data.get("content_revision", 1) >= 3:
         from pulse.source_media import trusted_hosts

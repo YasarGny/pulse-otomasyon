@@ -234,6 +234,33 @@ def selection_sources(sources):
             for source in sources.values()]
 
 
+def checked_selection(result, sources, section):
+    """Check selection before paying for full articles; never lower the news floor."""
+    from pulse.profile import MIN_STORIES
+    rows = result.get('stories') if isinstance(result, dict) else None
+    if not isinstance(rows, list):
+        raise ValueError(f'{section}: selection must contain a stories list')
+    selected, ids, urls, events = [], set(), set(), set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError(f'{section}: invalid selection item')
+        source = sources[row['id']]  # Unknown model IDs must never become news.
+        if not category_allowed(section, row.get('category')):
+            continue
+        event = row.get('event_key')
+        if not isinstance(event, str) or not 4 <= len(event) <= 120:
+            raise ValueError(f'{section}: missing or invalid event identity')
+        if row['id'] in ids or source['source_url'] in urls or event.casefold() in events:
+            raise ValueError(f'{section}: duplicate source or event in selection')
+        ids.add(row['id']); urls.add(source['source_url']); events.add(event.casefold())
+        selected.append(row)
+    minimum = MIN_STORIES[section]
+    if not minimum <= len(selected) <= 24:
+        raise ValueError(f'{section}: selected {len(selected)} eligible distinct stories; '
+                         f'required {minimum}–24; available source candidates {len(sources)}')
+    return selected
+
+
 def create_edition(research_data, section, date, issue, game_start, article_cache=None):
     if research_data["publish_date"] != date:
         raise ValueError("Research from another date")
@@ -257,12 +284,21 @@ JSON: {{"stories":[{{"id":"kaynak id", "category":"KISA KATEGORİ", "title":"...
 "event_key":"olayin-kisa-ortak-kimligi", "summary":"2–4 cümle", "brief":"Yorumsuz, tek cümlelik sesli haber özeti",
 "why":"Neden önemli? 1–2 cümle"}}]}}.
 Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sources), ensure_ascii=False)}"""
-    generated = gemini(
-        prompt,
-        system="Sen dikkatli bir Türkçe haber editörüsün. Yalnızca sağlanan kaynaklara dayan. Çıktı yalnızca JSON olsun.",
-    )
+    system = "Sen dikkatli bir Türkçe haber editörüsün. Yalnızca sağlanan kaynaklara dayan. Çıktı yalnızca JSON olsun."
+    generated = gemini(prompt, system=system)
+    try:
+        selected = checked_selection(generated, sources, section)
+    except ValueError as error:
+        # One bounded editorial repair, before article generation. Insufficient
+        # evidence must still return too few items and fail, never invent filler.
+        generated = gemini(prompt + '\nÖnceki seçki doğrulanamadı: ' + str(error)
+                           + '\nSeçkiyi aynı kaynaklardan yeniden değerlendir. Yalnız gerçek, '
+                           'güncel ve farklı olayları seç. Kotayı doldurmak için haber uydurma, '
+                           'aynı olayı bölme veya zayıf kaynak seçme. Yeterli kanıt yoksa boş stories döndür. '
+                           'Önceki seçki: ' + json.dumps(generated, ensure_ascii=False), system=system)
+        selected = checked_selection(generated, sources, section)
     stories = []
-    for story in generated["stories"]:
+    for story in selected:
         if not category_allowed(section, story.get("category")):
             continue
         source = sources[
