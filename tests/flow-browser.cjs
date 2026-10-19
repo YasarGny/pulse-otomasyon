@@ -71,6 +71,9 @@ module.exports = async (browser, run, base) => {
       await page.locator('.flow-viewport').evaluate(el=>{
         const touch=y=>new Touch({identifier:2,target:el,clientX:120,clientY:y});
         el.dispatchEvent(new TouchEvent('touchstart',{touches:[touch(450)]}));
+        const move = new TouchEvent('touchmove',{touches:[touch(250)],cancelable:true});
+        el.dispatchEvent(move);
+        if (!move.defaultPrevented) throw Error('Boundary gesture must consume native momentum');
         el.dispatchEvent(new TouchEvent('touchend',{changedTouches:[touch(250)]}));
       });
       assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');

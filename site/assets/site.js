@@ -1048,6 +1048,15 @@
       if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
       gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};
     }, {passive:true, signal:pageEvents.signal});
+    viewport.addEventListener('touchmove', event => {
+      if (!gesture || event.touches.length !== 1) return;
+      const dx = event.touches[0].clientX - gesture.x, dy = event.touches[0].clientY - gesture.y;
+      // Consume only a new outward boundary gesture. Native momentum must not
+      // scroll the next article immediately after the content swap.
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.5 &&
+          ((dy < 0 && gesture.bottom) || (dy > 0 && gesture.top && index > 0)))
+        if (event.cancelable) event.preventDefault();
+    }, {passive:false, signal:pageEvents.signal});
     viewport.addEventListener('touchend', event => {
       if (!gesture || !event.changedTouches.length) return;
       const dx = event.changedTouches[0].clientX - gesture.x, dy = event.changedTouches[0].clientY - gesture.y;
