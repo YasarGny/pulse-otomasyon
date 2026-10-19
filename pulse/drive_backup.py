@@ -3,7 +3,9 @@ import argparse
 import hashlib
 import json
 import os
+import random
 import tempfile
+import time
 from pathlib import Path
 
 import requests
@@ -31,10 +33,34 @@ class Drive:
         self.session.headers['Authorization'] = 'Bearer ' + response.json()['access_token']
 
     def request(self, method, url=API, **kwargs):
-        response = self.session.request(method, url, timeout=(15, 180), **kwargs)
-        if not response.ok:
-            raise RuntimeError('Drive operation failed: HTTP ' + str(response.status_code))
-        return response
+        method = method.upper()
+        # Listing/readback and our absolute metadata updates are safe to repeat.
+        # Creation and streaming upload bodies must not be blindly replayed.
+        attempts = 5 if method in ('GET', 'PATCH') else 1
+        for attempt in range(attempts):
+            try:
+                response = self.session.request(method, url, timeout=(15, 180), **kwargs)
+            except (requests.ConnectionError, requests.Timeout):
+                if attempt + 1 == attempts:
+                    raise RuntimeError('Drive operation failed: connection unavailable') from None
+                response = None
+            if response is not None:
+                if response.ok:
+                    return response
+                if response.status_code not in (408, 429, 500, 502, 503, 504) or attempt + 1 == attempts:
+                    status = response.status_code
+                    response.close()
+                    raise RuntimeError('Drive operation failed: HTTP ' + str(status))
+            delay = 2 ** attempt + random.uniform(0, 1)
+            if response is not None:
+                try:
+                    retry_after = float(response.headers.get('Retry-After', ''))
+                    if 0 <= retry_after <= 30:
+                        delay = max(delay, retry_after)
+                except (ValueError, TypeError):
+                    pass
+                response.close()
+            time.sleep(delay)
 
     def children(self, parent, name):
         # Values originate from our own date/release identities or the configured folder ID.
