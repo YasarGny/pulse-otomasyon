@@ -33,7 +33,9 @@ fixture_asset = fixture_edition['podcast']
 clip_metadata = {'schema_version':1, 'reviewed':True, 'audio_sha256':fixture_asset['sha256'],
     'chapters':[{'start':0,'title':'Açılış'}, {'start':12,'title':'Teknoloji'}],
     'section':'teknoloji', 'clips_reviewed':True, 'stories_sha256':story_fingerprint(fixture_edition['stories']),
-    'story_ranges':[{'story_id':'teknoloji0', 'start':12, 'end':14}]}
+    'story_ranges':[{'story_id':'teknoloji0', 'start':12, 'end':14},
+                    {'story_id':'teknoloji1', 'start':20, 'end':22},
+                    {'story_id':'teknoloji1', 'start':30, 'end':32}]}
 write_json(release / 'chapters' / (fixture_asset['sha256'] + '.json'), clip_metadata)
 build("site", root / "site", release=release, at=not_before(DATE))
 

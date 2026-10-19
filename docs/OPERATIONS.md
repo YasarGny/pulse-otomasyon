@@ -582,3 +582,23 @@ mevcut yedek doğrulama ve temizleme sırası değişmez. Geçmiş haber menüs�
 Eski, yalnız başlık içeren chapter sidecar'ları okuma/oynatmayı bozmaz; bağımsız
 chapter tamamlama işi katalog bağlı eşleşmeler eksikse özel kontrol noktasından
 kayıt dökümünü tekrar kullanarak yükseltir. Ses üretme iş akışı elle başlatılmaz.
+
+
+### Sürükleyici Akış ve habere ait kesit sırası
+
+Akış'ın tek satırlı başlığında kapatma solda, başlık ekran merkezinde, yerel
+kategori seçimi sağdadır. Mobilde sabit alt araç çubuğu yoktur; sıradaki haberin
+başlığı ve görseli okuma içeriğinin sonunda tıklanabilir bir önizlemedir.
+Önceki habere dönüş içerikte, masaüstü oklarında ve PageUp ile erişilebilirdir.
+Başlık okurken hareket ederek içerik sıçratmaz. Tarayıcı tam ekran izni istenmez;
+kullanılabilir `dvh` alanı ve cihazın güvenli kenar boşlukları kullanılır.
+
+Aynı habere ait birden çok doğrulanmış aralık tek “Podcast’te bu konu” alanında,
+kesit sayısı ve toplam süreyle gösterilir. Mevcut tek ses öğesi bu kısa dosyaları
+kayıt sırasına göre çalar; son dosyanın doğal bitişinde durur. Aradaki ilgisiz
+konuşma oynatılmaz, dosyalar veya onaylanmış sınırlar yeniden üretilmez.
+Çoklu kesitte önceki/sonraki kesit düğmeleri ve “Kesit 1/2” bilgisi vardır.
+Tam bölüme geçiş o anda çalan kesitin özgün kayıttaki saniyesini kullanır.
+Haber değişimi tüm haber kesiti sırasını durdurur; tam podcast'i etkilemez.
+Yeniden dinleme sıralamanın başından başlar. Bu arayüz güncellemesi model veya
+ses üretimi çağrısı yapmaz; `refresh-website.yml` ile yayımlanır.

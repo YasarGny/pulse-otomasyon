@@ -27,15 +27,15 @@ module.exports = async (browser, run, base) => {
     });
     await run('flow category stays selected, full text scroll restores, and wheel inertia cannot flip articles', async () => {
       await open('/akis/');
-      await page.locator('[data-flow-filter="teknoloji"]').click();
+      await page.locator('.flow-category').selectOption('teknoloji');
       assert.equal(await page.locator('.flow-count').innerText(), '1 / 3');
       await page.locator('.flow-story:visible .article-text').evaluate(el => {
         for(let i=0;i<18;i++){const p=document.createElement('p');p.textContent='Uzun haberin ayrıntıları okunmaya devam ediyor.';el.append(p);}
       });
       await page.locator('.flow-viewport').evaluate(el=>el.scrollTop=250);
-      await page.locator('.flow-next').click();
+      await page.locator('.flow-next').evaluate(n=>n.click());
       assert.equal(await page.locator('.flow-story:visible').getAttribute('data-section'), 'teknoloji');
-      await page.locator('.flow-previous').click();
+      await page.locator('.flow-previous').evaluate(n=>n.click());
       assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),250);
       await page.locator('.flow-viewport').evaluate(el=>{
         el.dispatchEvent(new WheelEvent('wheel',{deltaY:80,bubbles:true,cancelable:true}));
@@ -49,7 +49,7 @@ module.exports = async (browser, run, base) => {
       await page.reload();
       await page.waitForFunction(()=>!document.documentElement.classList.contains('pulse-loading'));
       assert.equal(await page.locator('.flow-count').innerText(),'2 / 3');
-      assert.equal(await page.locator('[data-flow-filter="teknoloji"]').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.locator('.flow-category').inputValue(),'teknoloji');
       await page.locator('.flow-next').click(); await page.locator('.flow-next').click();
       assert.equal(await page.locator('.flow-end').isVisible(),true);
       await page.locator('.flow-restart').click();
@@ -123,6 +123,49 @@ module.exports = async (browser, run, base) => {
       await page.waitForSelector('.story-clip');
       assert.equal(await page.locator('.story-clip').count(),1);
       assert.match(await page.locator('.story-clip').innerText(),/Podcast’te bu konu/);
+    });
+    await run('one story card queues only its own cuts, stops at the last and can replay or select a cut',async()=>{
+      await open('/teknoloji/haber/teknoloji1/');
+      await page.waitForSelector('.story-clip');
+      assert.equal(await page.locator('.story-clip').count(),1);
+      assert.match(await page.locator('.story-clip').innerText(),/2 kesit/);
+      await page.locator('.story-clip-play').click();
+      await page.waitForFunction(()=>document.querySelector('audio').readyState>=2);
+      await page.locator('audio').evaluate(a=>a.currentTime=a.duration-.1);
+      await page.waitForFunction(()=>document.querySelector('audio').src.includes('-30.000-32.000.mp3'));
+      await page.waitForFunction(()=>document.querySelector('audio').ended);
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+      await page.locator('.mini-more').click();
+      assert.equal(await page.locator('.clip-part-label').innerText(),'Kesit 2/2');
+      await page.locator('.clip-part-previous').click();
+      await page.waitForFunction(()=>document.querySelector('audio').src.includes('-20.000-22.000.mp3')&&!document.querySelector('audio').paused);
+      await page.locator('.clip-part-next').click();
+      await page.waitForFunction(()=>document.querySelector('audio').src.includes('-30.000-32.000.mp3'));
+      await page.waitForFunction(()=>document.querySelector('audio').ended);
+      await page.locator('.player-play').click();
+      await page.waitForFunction(()=>document.querySelector('audio').src.includes('-20.000-22.000.mp3')&&!document.querySelector('audio').paused);
+      assert.equal(await page.locator('audio').count(),1);
+      const source=await page.locator('audio').getAttribute('src');
+      await page.locator('.article-reader .back').click();
+      await page.waitForSelector('#stories');
+      await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('ended')));
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+      assert.equal(await page.locator('audio').getAttribute('src'),source);
+    });
+    await run('immersive header is centered and mobile has a content preview instead of a fixed footer',async()=>{
+      await page.setViewportSize({width:390,height:844});await open('/akis/');
+      const layout=await page.evaluate(()=>{
+        const title=document.querySelector('.flow-heading h1').getBoundingClientRect();
+        const header=document.querySelector('.flow-header').getBoundingClientRect();
+        const preview=document.querySelector('.flow-next');
+        return {titleCenter:title.x+title.width/2,screen:innerWidth/2,headerHeight:header.height,
+                previewPosition:getComputedStyle(preview).position,footer:!!document.querySelector('.flow-navigation')};
+      });
+      assert(Math.abs(layout.titleCenter-layout.screen)<1);assert(layout.headerHeight<=60);
+      assert.equal(layout.footer,false);assert.notEqual(layout.previewPosition,'fixed');
+      assert(await page.locator('.flow-next-title').innerText());
+      await page.locator('.flow-next').click();
+      assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
     });
     await run('flow fits mobile and desktop and exposes accessible controls',async()=>{
       for(const width of [320,390,768,1440]) {
