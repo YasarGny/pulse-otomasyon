@@ -2653,3 +2653,5 @@ body.in-news-flow { overflow:hidden; }
 .clip-action-icon { display:flex; }
 .clip-action-icon svg { display:block; width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; }
 .in-news-flow.has-mini .flow-story-navigation { padding-bottom:112px; }
+
+.clip-return { display:block; width:100%; min-height:44px; margin:0 0 16px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:transparent; color:var(--text); font:inherit; font-size:12px; cursor:pointer; }

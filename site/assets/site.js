@@ -411,7 +411,7 @@
       selectedRelease.manifest.publish_date !== context.manifest.publish_date;
     if (changed) {
       persistListening(true);
-      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = clipParts.hidden = true;
+      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = clipParts.hidden = clipReturn.hidden = true;
       collapsePanel(false);
       audio.pause();
       playRequest++;
@@ -505,7 +505,7 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
-    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = clipParts.hidden = true;
+    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = clipParts.hidden = clipReturn.hidden = true;
     selectedRelease = null;
     playRequest++;
     syncMediaSession();
@@ -675,6 +675,14 @@
   fullEpisode.type = 'button'; fullEpisode.hidden = true; full.append(fullEpisode);
   const clipTopic = make('p', 'clip-topic'); clipTopic.hidden = true;
   full.insertBefore(clipTopic, controls);
+  const clipReturn = make('button', 'clip-return', 'Dinlenen habere dön');
+  clipReturn.type = 'button'; clipReturn.hidden = true; full.insertBefore(clipReturn, controls);
+  clipReturn.onclick = () => {
+    if (!selectedClip) return;
+    const clip = selectedClip; collapsePanel(false);
+    if (clip.context === release && revealFlowStory?.(clip.section, clip.story)) return;
+    navigate(new URL(clip.section + '/haber/' + encodeURIComponent(clip.story) + '/', base));
+  };
   const clipParts = make('div', 'clip-parts'); clipParts.hidden = true;
   const previousPart = make('button', 'clip-part-previous', '←');
   const nextPart = make('button', 'clip-part-next', '→');
@@ -694,6 +702,7 @@
     selectedClip = {entries, index, entry, section, story, context, key:section + ':' + story};
     clipTopic.textContent = context.editions[section].stories.find(item => item.id === story)?.title || '';
     clipTopic.hidden = !clipTopic.textContent;
+    clipReturn.hidden = false;
     pendingPosition = 0; if (audio.readyState) audio.currentTime = 0;
     audio.playbackRate = rate;
     playerSubtitle.textContent = miniSubtitle.textContent = clipCaption(selectedClip);
@@ -733,11 +742,6 @@
       clipNotice.hidden = false;
     }
   });
-  function stopArticleClip() {
-    if (!selectedClip) return;
-    selectedClip.stopped = true;
-    audio.pause(); playRequest++; loading = false; collapsePanel(false); update();
-  }
   async function clipsForStories() {
     if (!clipIndexPromise) clipIndexPromise = (async () => {
       const embedded = window.PULSE_RELEASE?.clips;
@@ -1025,9 +1029,10 @@
     return null;
   }
   const categoryStates = new Map();
-  let flowSnapshot = null;
+  let flowSnapshot = null, revealFlowStory = null;
   function setupFlow(state) {
     document.body.classList.toggle('in-news-flow', document.body.dataset.page === 'flow');
+    revealFlowStory = null;
     const root = $('.news-flow');
     if (!root) { flowSnapshot = null; return; }
     const viewport = $('.flow-viewport', root), stories = all('.flow-story', root);
@@ -1052,7 +1057,6 @@
     const atBottom = () => viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 3;
     function show(target, restore = true) {
       if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
-      stopArticleClip();
       const complete = target >= visible.length;
       index = Math.max(0, Math.min(visible.length, target));
       stories.forEach(story => story.hidden = true);
@@ -1149,6 +1153,12 @@
         else viewport.scrollBy({top:-viewport.clientHeight * .85, behavior:'instant'});
       }
     }, {signal:pageEvents.signal});
+    revealFlowStory = (section, storyId) => {
+      const target = stories.find(item => item.dataset.section === section && item.dataset.story === storyId);
+      if (!target) return false;
+      if (filter && filter !== section) { filter = section; index = 0; filterStories(); }
+      show(visible.indexOf(target), false); viewport.focus(); return true;
+    };
     filterStories();
   }
 
@@ -1261,7 +1271,6 @@
     return document.body.dataset.section === "teknoloji" ? "Teknoloji yayınına dön" : document.body.dataset.section === "oyun" ? "Oyun yayınına dön" : "Haberlere dön";
   }
   function hydrate(state) {
-    stopArticleClip();
     pageEvents?.abort();
     pageEvents = new AbortController();
     const articleBack = $(".article-reader .back");

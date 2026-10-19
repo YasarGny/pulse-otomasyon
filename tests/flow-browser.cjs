@@ -107,16 +107,33 @@ module.exports = async (browser, run, base) => {
       await page.locator('.flow-next').click();
       assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
     });
-    await run('switching stories stops only clip playback and unmapped news has no misleading audio strip',async()=>{
+    await run('story navigation preserves clip playback, return finds its story and another clip replaces it',async()=>{
       await open('/akis/');
       await page.waitForSelector('.flow-story:visible .story-clip-play');
       await page.locator('.flow-story:visible .story-clip-play').click();
       await page.waitForFunction(()=>!document.querySelector('audio').paused);
+      await page.locator('audio').evaluate(a=>a.playbackRate=.25);
+      const source=await page.locator('audio').getAttribute('src');
       await page.locator('.flow-next').click();
-      assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
       assert.equal(await page.locator('.flow-story:visible .story-clip').count(),0);
+      await page.locator('.mini-more').click();
+      await page.locator('.clip-return').click();
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 6');
+      assert.equal(await page.locator('audio').getAttribute('src'),source);
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
+      await page.locator('.flow-category').selectOption('oyun');
+      await page.locator('.mini-more').click();
+      await page.locator('.clip-return').click();
+      assert.equal(await page.locator('.flow-category').inputValue(),'teknoloji');
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 3');
+      await page.locator('.flow-next').click();
       await page.locator('.flow-previous').click();
-      assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
+      await page.locator('.flow-next').click();
+      await page.locator('.flow-story:visible .story-clip-play').click();
+      assert.notEqual(await page.locator('audio').getAttribute('src'),source);
+      assert.equal(await page.locator('audio').count(),1);
     });
     await run('normal article pages expose the same verified story clip',async()=>{
       await open('/teknoloji/haber/teknoloji0/');
@@ -153,6 +170,8 @@ module.exports = async (browser, run, base) => {
       const source=await page.locator('audio').getAttribute('src');
       await page.locator('.article-reader .back').click();
       await page.waitForSelector('#stories');
+      assert.equal(await page.locator('audio').evaluate(a=>a.paused),false);
+      await page.evaluate(()=>window.clipActions.pause());
       await page.locator('audio').evaluate(a=>a.dispatchEvent(new Event('ended')));
       assert.equal(await page.locator('audio').evaluate(a=>a.paused),true);
       assert.equal(await page.locator('audio').getAttribute('src'),source);
