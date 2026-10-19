@@ -2585,8 +2585,8 @@ body.in-news-flow { overflow:hidden; }
 .flow-close { width:44px; height:44px; display:grid; place-items:center; text-decoration:none; justify-self:start; }
 .flow-close svg { width:22px; height:22px; }
 .flow-category-label { position:relative; display:flex; align-items:center; justify-self:end; max-width:112px; }
-.flow-category-label > span[aria-hidden] { position:absolute; right:4px; pointer-events:none; }
-.flow-category { appearance:none; border:0; color:var(--text); background:transparent; min-height:44px; max-width:112px; width:112px; padding:8px 22px 8px 4px; font:inherit; font-size:13px; text-align:right; cursor:pointer; }
+.flow-category-label > svg { position:absolute; right:12px; top:50%; transform:translateY(-50%); width:14px; height:14px; pointer-events:none; }
+.flow-category { appearance:none; box-sizing:border-box; border:1px solid var(--line); border-radius:22px; color:var(--text); background:var(--surface); height:44px; max-width:112px; width:112px; padding:0 32px 0 12px; font:inherit; font-size:12px; font-weight:500; text-align:left; cursor:pointer; }
 .flow-category option { color:var(--text); background:var(--surface); }
 .flow-viewport { width:min(100%,760px); margin-inline:auto; overflow-y:auto; overscroll-behavior-y:contain; min-height:0; scrollbar-width:none; scroll-behavior:auto; padding-bottom:env(safe-area-inset-bottom); }
 .flow-story > .news-figure { margin:0; position:relative; }
@@ -2606,14 +2606,16 @@ body.in-news-flow { overflow:hidden; }
 .flow-copy .story-clip-copy span { font-size:11px; line-height:1.5; }
 .flow-copy .story-clip-play { font-size:12px; padding:10px 12px; }
 .flow-story-navigation { padding:0 24px 32px; }
-.flow-next { display:grid; grid-template-columns:minmax(0,1fr) 20px; gap:16px; align-items:center; width:100%; background:transparent; color:var(--text); text-align:left; border:0; border-top:1px solid var(--line); padding:24px 0; cursor:pointer; }
-.flow-next.has-image { grid-template-columns:minmax(0,1fr) auto 20px; }
-.flow-next-copy { display:grid; gap:8px; }
-.flow-next-label { color:var(--accent); font-size:12px; }
+.flow-next { display:grid; grid-template-columns:minmax(0,1fr) 20px; gap:12px; align-items:center; width:100%; box-sizing:border-box; background:var(--surface); color:var(--text); text-align:left; border:1px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; }
+.flow-next.has-image { grid-template-columns:88px minmax(0,1fr) 20px; }
+.flow-next-copy { display:grid; grid-column:1; grid-row:2; gap:5px; min-width:0; }
+.flow-next.has-image .flow-next-copy { grid-column:2; }
+.flow-next-label { grid-column:1 / -1; grid-row:1; color:var(--muted); font-size:11px; font-weight:500; }
 .flow-next-category { color:var(--muted); font-size:10px; letter-spacing:.08em; }
-.flow-next-title { font-size:17px; line-height:1.4; font-weight:600; }
-.flow-next-image { width:96px; height:72px; object-fit:contain; border-radius:6px; background:var(--surface); }
-.flow-next-arrow { font-size:24px; text-align:center; }
+.flow-next-title { font-size:15px; line-height:1.4; font-weight:600; overflow-wrap:anywhere; }
+.flow-next-image { grid-column:1; grid-row:2; width:88px; height:72px; object-fit:contain; border-radius:6px; background:var(--bg); }
+.flow-next-arrow { grid-column:-2; grid-row:2; display:grid; place-items:center; }
+.flow-next-arrow svg { width:20px; height:20px; }
 .flow-previous { background:transparent; border:0; color:var(--muted); min-height:44px; padding:10px 0; font:inherit; font-size:12px; cursor:pointer; }
 .flow-previous:disabled { visibility:hidden; }
 .flow-step-next { display:none; }
@@ -2643,7 +2645,9 @@ body.in-news-flow { overflow:hidden; }
   .flow-story-navigation { padding-inline:16px; }
   .flow-copy .story-clip { gap:8px; padding:8px; }
   .flow-copy .story-clip > img { width:32px; height:32px; }
-  .flow-next-image { width:72px; height:56px; }
+  .flow-next.has-image { grid-template-columns:64px minmax(0,1fr) 18px; gap:10px; }
+  .flow-next-image { width:64px; height:56px; }
+  .flow-next { padding:12px; }
 }
 @media(prefers-reduced-motion:no-preference) { .news-flow { animation:flow-enter .18s ease-out; } @keyframes flow-enter {from {opacity:0} to {opacity:1}} }
 .clip-action-icon { display:flex; }
