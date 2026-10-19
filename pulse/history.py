@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 
 from pulse.publication import SECTIONS, digest, read_json, verify_manifest
-from pulse.source_history import SourceHistory
+from pulse.source_history import SourceHistory, fingerprint
 from pulse.event_history import EventHistory
 
 
@@ -27,9 +27,10 @@ def exclude_published(research, previous, date):
     if previous is None:
         return research
     ledger, events = histories(previous)
+    same_day = set()
     for manifest_path in (Path(previous) / "releases").glob("*/release.json"):
         manifest = read_json(manifest_path)
-        if manifest.get("status") != "ready" or manifest["publish_date"] >= date:
+        if manifest.get("status") != "ready" or manifest["publish_date"] > date:
             continue
         for section in SECTIONS:
             entry = manifest["editions"][section]
@@ -45,8 +46,13 @@ def exclude_published(research, previous, date):
             ):
                 raise ValueError("Historical edition identity mismatch")
             for story in data["stories"]:
-                ledger.add(story["source_url"])
-                events.add(section, manifest["publish_date"], story)
+                if manifest['publish_date'] == date:
+                    # Revisions may retain today's approved news; only previous
+                    # days are forbidden. Ordinary reruns restore the release.
+                    same_day.add(fingerprint(story['source_url']))
+                else:
+                    ledger.add(story["source_url"])
+                    events.add(section, manifest["publish_date"], story)
     clean = {**research, "sections": {}, "previous_events": {
         section: [r for r in events.record(date)['events'] if r['section'] == section and r['date'] < date]
         for section in SECTIONS}}
@@ -56,7 +62,7 @@ def exclude_published(research, previous, date):
         clean["sections"][section] = [
             s
             for s in research["sections"][section]
-            if not ledger.contains(s["source_url"])
+            if fingerprint(s["source_url"]) in same_day or not ledger.contains(s["source_url"])
         ]
         if len(clean["sections"][section]) < 3:
             raise ValueError(
