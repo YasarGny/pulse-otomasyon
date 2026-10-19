@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -125,6 +126,8 @@ def prepare(release, previous=None):
                 write_json(target / (asset['sha256'] + '.json'), cached)
         if not cached:
             missing.append((section, asset))
+        else:
+            print(f'::notice title=PULSE verified chapters::{section}: {len(cached["chapters"])} cached markers; audio {asset["sha256"]}', flush=True)
     if not missing:
         return
     try:
@@ -143,9 +146,16 @@ def prepare(release, previous=None):
             result = propose(transcript, asset, generate)
             write_json(target / (asset['sha256'] + '.json'), result)
             print(section, 'audio-aligned chapter metadata prepared; voices unchanged')
+            print(f'::notice title=PULSE verified chapters::{section}: {len(result["chapters"])} markers; audio {asset["sha256"]}', flush=True)
         except Exception as error:
             failures.append(section)
             print(section, 'chapter metadata omitted:', type(error).__name__)
+            detail = re.sub(r'(?:https?|wss?)://\S+', '[service URL]', str(error))
+            secret = os.environ.get('GEMINI_API_KEY')
+            if secret:
+                detail = detail.replace(secret, '[redacted]')
+            detail = (section + ': ' + type(error).__name__ + ': ' + detail)[:650]
+            print('::warning title=PULSE chapter review incomplete::' + detail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'), flush=True)
     if failures:
         raise ValueError('Chapter analysis incomplete for: ' + ', '.join(failures))
 

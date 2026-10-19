@@ -131,9 +131,10 @@ jobs:
           PUBLISHED: ${{ steps.build.outcome }}
           CHANGED: ${{ steps.build.outputs.changed }}
           DEPLOYED: ${{ steps.deploy.outcome }}
+          PREPARED: ${{ steps.prepare.outcome }}
         run: |
           if [ "$COMPLETE" != 'true' ] || [ "$PUBLISHED" != 'success' ]; then
-            echo '::error title=PULSE chapters incomplete::Unverified chapters were not published. Successful private stages are retained; the next hourly recovery resumes them without voice generation.'
+            echo "::error title=PULSE chapters incomplete::Unverified chapters were not published. Preparation outcome: $PREPARED. Successful private stages are retained for recovery without voice generation."
             exit 1
           fi
           if [ "$CHANGED" = 'true' ] && [ "$DEPLOYED" != 'success' ]; then
