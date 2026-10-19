@@ -128,6 +128,13 @@ RSS'te bulunan ID'leri seçer ve özetler. Haberlerin zaman aralığı yayın sa
 kayıt araştırma zamanı doğrulamasından ayrıca geçmelidir. En az üç kaynaklı ve
 farklı haber gerekir. Her bölüm ayrı araştırılır. Otomobil kotası yoktur.
 
+Haber seçimi tam metin üretiminden önce kategori, farklı kaynak/olay kimlikleri ve
+genişletilmiş yayın alt sınırıyla denetlenir (teknoloji 12, oyun 10; üst sınır 24).
+Geçersiz seçki aynı kaynaklarla yalnız bir kez yeniden değerlendirilir. Kaynak
+yetersizse sayı doldurulmaz, tam metin/ses üretimine geçilmez. Hata kategori,
+seçilen geçerli haber sayısı ve gereken aralığı bildirir. Son yayın doğrulaması
+ve bağımsız tam haber denetimi ayrıca korunur.
+
 RSS bazen yalnız kısa alıntı veya görselsiz veri verir. Kaynak desteği olmayan
 iddia eklenmemesi modele açıkça söylenir; bu, insan editoryal denetiminin veya
 olgusal doğruluk garantisinin yerini tutmaz. İlk canlı denemede haberleri
