@@ -1,8 +1,7 @@
-"""Bounded, append-only URL fingerprints; no article bodies or personal data.
+"""Exact compact URL hashes; legacy Bloom hits are advisory, never exclusion.
 
-A 512 KiB Bloom filter never forgets an inserted URL. False positives can skip
-an unseen URL, never allow an inserted URL back in. Stop before saturation
-rather than reset history. Compression only reduces storage, not identity.
+No article bodies. The irreversible old filter is retained for diagnostics;
+confirmed identities accumulate separately without probabilistic false positives.
 """
 import base64
 import hashlib
@@ -37,9 +36,30 @@ def fingerprint(url):
 class SourceHistory:
     def __init__(self, record=None):
         self.data = bytearray(SIZE)
+        self.exact = set()
+        self.legacy = False
         if record is None:
             return
+        if record.get('schema_version') == 3:
+            if record.get('algorithm') != 'sha256-exact-v1':
+                raise ValueError('Unknown exact history format')
+            values = record.get('hashes')
+            if not isinstance(values, list) or len(values) > 500000:
+                raise ValueError('Invalid exact history size')
+            for value in values:
+                self.positions(value)
+            if values != sorted(set(values)):
+                raise ValueError('Noncanonical exact history')
+            self.exact = set(values)
+            if record.get('legacy') is not None:
+                if record['legacy'].get('schema_version') != 2:
+                    raise ValueError('Invalid legacy history format')
+                legacy = SourceHistory(record['legacy'])
+                self.data[:] = legacy.data
+                self.legacy = True
+            return
         if record.get('schema_version') == 2:
+            self.legacy = True
             if record.get('algorithm') != 'sha256-bloom-4194304-7':
                 raise ValueError('Unknown source history format')
             compressed = base64.b64decode(record['bits'], validate=True)
@@ -53,11 +73,13 @@ class SourceHistory:
                 raise ValueError('Source history checksum mismatch')
             self.data[:] = raw
         elif set(record) == {'teknoloji', 'oyun'}:
+            self.legacy = True
             for hashes in record.values():
                 if not isinstance(hashes, list):
                     raise ValueError('Invalid legacy history')
                 for value in hashes:
-                    self.add_hash(value)
+                    self.positions(value)
+                    self.exact.add(value)
         else:
             raise ValueError('Invalid source history')
 
@@ -73,18 +95,37 @@ class SourceHistory:
             self.data[bit // 8] |= 1 << (bit % 8)
 
     def add(self, url):
+        self.exact.add(fingerprint(url))
         # Raw identity also preserves compatibility with legacy SHA-256 records.
-        self.add_hash(fingerprint(url))
-        self.add_hash(hashlib.sha256(url.encode()).hexdigest())
+        # The legacy probabilistic filter is frozen, not extended.
 
     def contains(self, url):
-        return any(all(self.data[p // 8] & (1 << (p % 8)) for p in self.positions(value))
-                   for value in (fingerprint(url), hashlib.sha256(url.encode()).hexdigest()))
+        # A probabilistic legacy hit is evidence for review, never a veto.
+        return any(value in self.exact for value in
+                   (fingerprint(url), hashlib.sha256(url.encode()).hexdigest()))
 
-    def record(self):
+    def uncertain(self, url):
+        return self.legacy and not self.contains(url) and any(
+            all(self.data[p // 8] & (1 << (p % 8)) for p in self.positions(value))
+            for value in (fingerprint(url), hashlib.sha256(url.encode()).hexdigest()))
+
+    def bloom_record(self):
         if sum(byte.bit_count() for byte in self.data) > BITS * 0.30:
             raise ValueError('Source history capacity reached; preserve it and migrate before publishing')
         raw = bytes(self.data)
         return {'schema_version': 2, 'algorithm': 'sha256-bloom-4194304-7',
                 'sha256': hashlib.sha256(raw).hexdigest(),
                 'bits': base64.b64encode(zlib.compress(raw, 9)).decode('ascii')}
+
+    def record(self):
+        # 500k SHA-256 values fit ~250k articles: decades at today's cadence.
+        # Stop explicitly at capacity, never forget old exact identities.
+        if len(self.exact) > 500000:
+            raise ValueError('Exact source history capacity reached; migrate before publishing')
+        result = {'schema_version': 3, 'algorithm': 'sha256-exact-v1',
+                  'hashes': sorted(self.exact)}
+        # Validate occupancy even on fresh histories for corruption detection.
+        legacy = self.bloom_record()
+        if self.legacy:
+            result['legacy'] = legacy
+        return result

@@ -18,12 +18,12 @@ class SourceHistoryTests(unittest.TestCase):
         legacy = {'teknoloji': [hashlib.sha256(url.encode()).hexdigest()], 'oyun': []}
         self.assertTrue(SourceHistory(SourceHistory(legacy).record()).contains(url))
 
-    def test_storage_is_fixed_size_and_contains_no_news_text(self):
+    def test_storage_is_compact_exact_and_contains_no_news_text(self):
         history = SourceHistory()
         for i in range(10000):
             history.add('https://example.com/article/' + str(i))
         record = history.record()
-        self.assertLess(len(record['bits']), 700000)
+        self.assertLess(len(str(record)), 1400000)
         self.assertNotIn('example.com', str(record))
         restored = SourceHistory(record)
         self.assertEqual(len(restored.data), SIZE)
@@ -32,7 +32,7 @@ class SourceHistoryTests(unittest.TestCase):
 
     def test_corrupt_or_saturated_history_fails_without_resetting(self):
         record = SourceHistory().record()
-        record['sha256'] = '0' * 64
+        record['hashes'] = ['not-a-hash']
         with self.assertRaises(ValueError):
             SourceHistory(record)
         for invalid in ({}, {'teknoloji': [], 'oyun': ['not-a-hash']}):

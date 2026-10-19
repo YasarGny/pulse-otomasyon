@@ -500,3 +500,34 @@ ve Drive yayın ZIP'ine dahil değildir. Eksik sayaç sıfır maliyet anlamına 
 Ücretli TTS yanıtı dönüştürülemezse yalnız girdi ve içerik hash'i eşleşen ham yanıt
 kurtarılır. Bilinmeyen/bozuk ham içerik geçerli yayın sayılmaz; yerel dönüştürme
 hatası nedeniyle aynı alınmış yanıt tekrar servisten istenmez.
+
+## Haber tekrarı: kesin bağlantılar ve yakın dönem olay hafızası
+
+Bağlantı geçmişi v3, SHA-256 parmak izlerini kesin bir kümede tutar. Yeni bir
+bağlantıyı Bloom çakışması yüzünden elemez. Eski v2 filtresi geri çözülemez;
+eski olasılıklı eşleşmeler yalnız tanısal bilgi olarak korunur. Mühürlü son günlük
+sürümlerden doğrulanarak alınan başlangıç parmak izleri `pulse/history-seed.json`
+içindedir; bunlar önceki günleri yeni sisteme taşır. Yeni kayıtlar yaklaşık
+haber başına 67 bayt JSON'dur; 40 haber/gün yaklaşık 1 MB/yıl eder. 500.000
+parmak izinde sessizce sıfırlamak yerine açık hata verir.
+
+Son 90 günün olay kimliği, başlığı ve en çok 320 karakterlik kısa özeti ayrı
+hafızada tutulur; ses, görsel ve tam haber metni tutulmaz. Son günlük sürüm de
+kaydedilir, yalnız Drive doğrulanmış eski sürümler silinir. Günlük seçki için
+adaylarla ilişkili en fazla 80 eski olay mevcut seçki isteğine eklenir; yeni bir
+model çağrısı yapılmaz. Editör aynı olayı farklı kaynakta yeniden seçmemeli,
+aynı şirket/oyun hakkındaki somut yeni gelişmeyi ise ayrı olay olarak seçmelidir.
+Bilinen olay kimliği tekrar seçilirse kod da eler; haber alt sınırı düşürülmez.
+Bu anlamsal denetim yüzde yüz tekrar yakalama garantisi değildir: çeviri,
+ilişkilendirme ve model yorumundan kaynaklı belirsizlikler vardır. 90 günden eski
+bağlantı parmak izleri kalır; kısa olay hafızası zamanla sona erer.
+
+## Görsel hakları kanıt taraması
+
+`image-rights-audit.yml` mevcut canlı yayının her görseli için kaynak sayfadaki
+kredileri ve kullanım koşulu bağlantılarını toplar. API/AI anahtarı, ses üretimi,
+yayın veya görsel kopyalama yapmaz. HTTP 200, CDN adresi, robots.txt, kaynak
+belirtme veya kredi satırı yeniden kullanım izni değildir. Rapor otomatik hukuki
+onay vermez; belirli görseli kapsayan lisans, hak sahibi ve koşullar ayrıca
+incelenmelidir. Açık izin doğrulanmadan dış görseller yerel varlık olarak
+kopyalanmaz. Erişilemeyen kaynak "yasak" değil "doğrulanamadı" sayılır.
