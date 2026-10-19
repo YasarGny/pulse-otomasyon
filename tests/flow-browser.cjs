@@ -12,7 +12,7 @@ module.exports = async (browser, run, base) => {
   try {
     await run('flow opens as a separate surface and returns to the original scroll position', async () => {
       await open('/teknoloji/');
-      await page.evaluate(() => scrollTo(0, 300));
+      await page.evaluate(() => scrollTo({top:300,behavior:'instant'}));
       const y = await page.evaluate(() => scrollY);
       // A normal link uses the shared same-origin navigation and preserves history.
       await page.evaluate(() => document.querySelector('.nav a[href*="akis"]').click());

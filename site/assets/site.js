@@ -409,7 +409,7 @@
       selectedRelease.manifest.publish_date !== context.manifest.publish_date;
     if (changed) {
       persistListening(true);
-      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = true;
+      selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
       collapsePanel(false);
       audio.pause();
       playRequest++;
@@ -495,7 +495,7 @@
     audio.removeAttribute("src");
     audio.load();
     selected = null;
-    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = true;
+    selectedClip = null; fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
     selectedRelease = null;
     playRequest++;
     syncMediaSession();
@@ -663,6 +663,8 @@
   let selectedClip = null, clipIndexPromise = null;
   const fullEpisode = make('button', 'clip-full-episode', 'Tam bölümü dinle');
   fullEpisode.type = 'button'; fullEpisode.hidden = true; full.append(fullEpisode);
+  const clipTopic = make('p', 'clip-topic'); clipTopic.hidden = true;
+  full.insertBefore(clipTopic, controls);
   const clipNotice = make('p', 'clip-notice'); clipNotice.hidden = true; full.append(clipNotice);
   fullEpisode.onclick = () => {
     if (!selectedClip) return;
@@ -673,7 +675,7 @@
     pendingPosition = position;
     if (audio.readyState) { audio.currentTime = position; pendingPosition = 0; }
     audio.playbackRate = rate;
-    fullEpisode.hidden = clipNotice.hidden = true;
+    fullEpisode.hidden = clipNotice.hidden = clipTopic.hidden = true;
     toggle();
   };
   audio.addEventListener('ended', () => {
@@ -735,6 +737,8 @@
           selectedClip = null;
           configure(section, 'podcast', clipContext);
           selectedClip = {entry, section, context};
+          clipTopic.textContent = context.editions[section].stories.find(item => item.id === story)?.title || '';
+          clipTopic.hidden = !clipTopic.textContent;
           pendingPosition = 0; audio.playbackRate = rate;
           playerSubtitle.textContent = 'Haber kesiti · ' + format(entry.duration);
           fullEpisode.hidden = false; clipNotice.hidden = true;

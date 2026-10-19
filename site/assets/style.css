@@ -2625,3 +2625,5 @@ body.in-news-flow { overflow:hidden; }
 .flow-story .news-figure figcaption { padding:6px 24px; font-size:11px; }
 .flow-heading .brand { font-size:25px; }
 .flow-heading h1 { font-size:16px; font-weight:500; }
+.clip-topic { margin:8px 0 16px; font-size:15px; line-height:1.45; overflow-wrap:anywhere; }
+.story-clip-play, .flow-filters button[aria-pressed="true"] { color:var(--on-accent); }
