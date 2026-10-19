@@ -429,6 +429,11 @@ Yalnız bu workflow'un main dalındaki güvenilir tetikleyicileri geri yüklenir
 Yanıt önbelleği tam girdi, model, talimat ve yanıt hash'leriyle bağlıdır;
 yapısal olarak geçersiz öneriler önbellekten çıkarılır. Döküm, özel denetim
 yanıtları ve kullanım kayıtları public siteye veya Drive yayın ZIP'ine girmez.
+Konu listesi 4–10 gibi bir hedefe sığdırılmak için kırpılmaz; konuşulan bütün
+ana geçişler kapsanır (şema üst sınırı 40). Bağımsız denetçinin eksik konu
+geri bildirimi aynı ses/döküm/model kimliğiyle sonraki denemeye taşınır.
+Checkpoint kaydı metadata klasörlerini aynalar; silinen reddedilmiş yanıtlar
+ve giderilmiş eski geri bildirimler sonraki artifact'a geri eklenmez.
 İlk tamamlama, aynı yayın kimliğinin güvenilir günlük checkpoint'indeki hazır
 döküm ve denetim aşamalarını da devralır. Açık sekmeler, aynı yayın kimliğine
 sonradan eklenen işaretleri başarılı manifest kontrollerinden sonra yeniden

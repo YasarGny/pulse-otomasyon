@@ -40,10 +40,17 @@ def missing(previous, manifest, release):
 def copy_state(source, target):
     """Only private metadata is checkpointed; never copy sources or MP3s."""
     source, target = Path(source), Path(target)
-    for name in ('chapters', 'chapter-transcripts', 'chapter-requests'):
+    for name in ('chapters', 'chapter-transcripts', 'chapter-requests', 'chapter-feedback'):
         folder = source / name
-        if folder.exists():
-            for path in folder.glob('*.json'):
+        paths = list(folder.glob('*.json')) if folder.exists() else []
+        names = {path.name for path in paths}
+        destination_folder = target / name
+        if destination_folder.exists():
+            for old in destination_folder.glob('*.json'):
+                if old.name not in names:
+                    old.unlink()
+        if paths:
+            for path in paths:
                 if path.is_symlink():
                     raise ValueError('Symlink in chapter state')
                 destination = target / name / path.name

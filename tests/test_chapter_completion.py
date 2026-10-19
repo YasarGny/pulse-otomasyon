@@ -17,6 +17,20 @@ from scripts.prepare_chapters import propose
 
 
 class ChapterResponseCacheTests(unittest.TestCase):
+    def test_checkpoint_sync_does_not_resurrect_evicted_responses_or_stale_feedback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, state = Path(tmp) / 'work', Path(tmp) / 'state'
+            write_json(work / 'chapter-requests/rejected.json', {'approved': False})
+            write_json(work / 'chapter-requests/approved.json', {'approved': True})
+            write_json(work / 'chapter-feedback/old.json', {'reason': 'Previous failure'})
+            copy_state(work, state)
+            (work / 'chapter-requests/rejected.json').unlink()
+            (work / 'chapter-feedback/old.json').unlink()
+            copy_state(work, state)
+            self.assertFalse((state / 'chapter-requests/rejected.json').exists())
+            self.assertFalse((state / 'chapter-feedback/old.json').exists())
+            self.assertTrue((state / 'chapter-requests/approved.json').exists())
+
     def test_resume_reuses_response_but_model_evidence_and_options_invalidate_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             provider = Mock(return_value={'approved': True})
