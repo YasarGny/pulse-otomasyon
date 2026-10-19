@@ -29,7 +29,7 @@ def evidence(url):
         text = html.unescape(re.sub('<[^>]+>', ' ', response.text))
         text = re.sub(r'\s+', ' ', text)
         result['excerpts'] = [text[max(0, m.start()-100):m.end()+350] for m in re.finditer(
-            r'(?i)image credit|photo credit|creative commons|©|getty images|reuters|permission|re-use|republish|copyright', text)][:20]
+            r'(?i)image credit|photo credit|image:|credit:|credits:|courtesy|licensed under|CC BY|creative commons|©|getty images|reuters|permission|re-use|republish|copyright', text)][:20]
         result['policy_links'] = [urljoin(url, link) for link in re.findall(
             r'''href=["']([^"']*(?:terms|copyright|licens|permission)[^"']*)["']''', response.text, re.I)[-15:]]
     except requests.RequestException as error:

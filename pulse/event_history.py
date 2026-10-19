@@ -40,7 +40,7 @@ class EventHistory:
 
     def record(self, date):
         day = dt.date.fromisoformat(date)
-        cutoff = (day - dt.timedelta(days=DAYS)).isoformat()
+        cutoff = (day - dt.timedelta(days=DAYS - 1)).isoformat()
         rows = [r for r in self.rows.values() if cutoff <= r['date'] <= date]
         if len(rows) > MAX_ROWS:
             raise ValueError('Event history capacity exceeded; review before pruning')
