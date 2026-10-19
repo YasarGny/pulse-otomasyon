@@ -1645,6 +1645,7 @@ async function run(name, fn) {
         await c.close();
       },
     );
+    await require("./publication-recovery-browser.cjs")(browser, run, base);
     await require("./chapters-browser.cjs")(browser, run, base);
     await require("./install-browser.cjs")(browser, run, base);
     await run("no browser runtime errors", async () =>

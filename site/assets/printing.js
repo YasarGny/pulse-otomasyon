@@ -22,7 +22,27 @@
     observed = 0,
     lastSuccess = 0,
     active = null,
-    busy = false;
+    busy = false,
+    retryTimer = null,
+    retryRequested = false,
+    failures = 0;
+  const verifiedLifetime = 120000;
+  function scheduleRetry() {
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(check, Math.min(30000, 5000 * 2 ** Math.min(failures++, 3)));
+  }
+  function canKeepVerified() {
+    return active && window.PULSE_RELEASE && serverEpoch !== null &&
+      performance.now() - lastSuccess <= verifiedLifetime &&
+      rules.isReady(window.PULSE_RELEASE.manifest,
+        new Date(serverEpoch + performance.now() - observed));
+  }
+  function retryState(checking) {
+    const retry = document.querySelector('#pulse-printing .retry');
+    if (!retry) return;
+    retry.disabled = checking;
+    retry.textContent = checking ? 'Kontrol ediliyor…' : 'Tekrar dene';
+  }
   const shell = document.querySelector(".site-shell");
   const make = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -129,7 +149,7 @@
           "p",
           "",
           mode === "offline"
-            ? "Bağlantını kontrol edip yeniden deneyebilirsin."
+            ? "Bağlantı yeniden kontrol ediliyor. İstersen tekrar deneyebilirsin."
             : mode === "delayed"
               ? "İki yayın tamamlandığında burada olacak."
               : "Teknoloji ve oyun gündemi hazırlanıyor.",
@@ -199,34 +219,44 @@
   window.addEventListener("pulse:rendered", (event) => {
     if (event.detail?.release_id === active) reveal();
   });
-  window.addEventListener("pulse:render-error", () =>
+  window.addEventListener("pulse:render-error", () => {
     lock(
       "Sayfa güncel yayınla eşleşmedi. Yeniden kontrol edeceğiz.",
       "offline",
-    ),
-  );
-  async function get(url) {
+    );
+    scheduleRetry();
+  });
+  async function get(url, signal) {
     const response = await fetch(url, {
       cache: "no-store",
-      signal: AbortSignal.timeout(15000),
+      signal,
     });
-    if (!response.ok) throw Error("Yayın dosyaları henüz ulaşmadı");
+    if (!response.ok) {
+      const error = Error('Yayın dosyaları henüz ulaşmadı');
+      error.retryable = response.status >= 500 || response.status === 429;
+      throw error;
+    }
     return response;
   }
   async function check() {
-    if (busy) return;
+    if (busy) { retryRequested = true; return; }
+    clearTimeout(retryTimer);
     busy = true;
+    retryState(true);
+    const controller = new AbortController();
+    // One deadline covers the manifest, JSON bodies and all audio probes.
+    const deadline = setTimeout(() => controller.abort(), 15000);
+    const signal = controller.signal;
+    let retry = false;
     try {
       const response = await get(
-        new URL("data/publication.json?check=" + performance.now(), base),
+        new URL("data/publication.json?check=" + performance.now(), base), signal,
       );
-      const at = rules.httpTime(response.headers);
-      // A cache returning an older clock cannot postpone tomorrow's closing indefinitely.
-      if (
-        serverEpoch !== null &&
-        at.getTime() < serverEpoch + (performance.now() - observed) - 120000
-      )
-        throw Error("Yayın durumu güncelleniyor");
+      const receivedAt = rules.httpTime(response.headers);
+      // CDN clock skew must neither trap this tab in an error loop nor move
+      // trusted time backwards (which could postpone the next 06:00 closure).
+      const at = new Date(Math.max(receivedAt.getTime(), serverEpoch === null
+        ? -Infinity : serverEpoch + performance.now() - observed));
       serverEpoch = at.getTime();
       observed = performance.now();
       const manifest = await response.json();
@@ -239,7 +269,7 @@
         await Promise.all(
           rules.sections.map(async (section) => {
             const response = await get(
-              new URL(manifest.editions[section].file, url),
+              new URL(manifest.editions[section].file, url), signal,
             );
             const raw = await response.arrayBuffer();
             if ((await rules.sha256(raw)) !== manifest.editions[section].sha256)
@@ -253,8 +283,13 @@
                 const r = await fetch(new URL(a.file, url), {
                   method: "HEAD",
                   cache: "no-store",
-                  signal: AbortSignal.timeout(15000),
+                  signal,
                 });
+                if (!r.ok && (r.status >= 500 || r.status === 429)) {
+                  const error = Error('Ses bağlantısı geçici olarak kurulamadı');
+                  error.retryable = true;
+                  throw error;
+                }
                 if (
                   !r.ok ||
                   Number(r.headers.get("content-length")) !== a.bytes ||
@@ -274,11 +309,23 @@
         return;
       }
       lastSuccess = performance.now();
+      failures = 0;
       unlock(manifest, editions, url);
     } catch (error) {
-      lock("", "offline");
+      const transient = error.retryable ||
+        ['TypeError', 'AbortError', 'TimeoutError'].includes(error.name);
+      if (!transient || !canKeepVerified()) lock('', 'offline');
+      retry = true;
     } finally {
+      clearTimeout(deadline);
+      controller.abort();
       busy = false;
+      retryState(false);
+      if (retryRequested) {
+        retryRequested = false;
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(check, 0);
+      } else if (retry) scheduleRetry();
     }
   }
   // A ready page must never flash the print room while its manifest is fetched.
@@ -304,11 +351,15 @@
     if (!active) return;
     const at = new Date(serverEpoch + performance.now() - observed);
     if (
-      !rules.isReady(window.PULSE_RELEASE.manifest, at) ||
-      performance.now() - lastSuccess > 120000
-    )
-      lock();
+      !rules.isReady(window.PULSE_RELEASE.manifest, at)
+    ) lock();
+    else if (performance.now() - lastSuccess > verifiedLifetime) {
+      lock('', 'offline');
+      scheduleRetry();
+    }
   }, 1000);
+  window.addEventListener('online', () => check());
+  window.addEventListener('pageshow', (event) => { if (event.persisted) check(); });
   document.addEventListener("visibilitychange", () => {
     document.documentElement.classList.toggle(
       "document-hidden",
