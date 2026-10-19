@@ -1189,11 +1189,17 @@ async function run(name, fn) {
         await page.waitForFunction(
           () => document.body.dataset.page === "legal",
         );
+        const verifiedRelease = await page.evaluate(()=>window.PULSE_RELEASE.manifest.release_id);
         await page.route("**/data/publication.json*", (r) => r.abort());
+        const failedPoll = page.waitForEvent('requestfailed', request=>
+          request.url().includes('/data/publication.json'));
         await page.evaluate(() =>
           document.dispatchEvent(new Event("visibilitychange")),
         );
-        await page.waitForFunction(() => window.PULSE_RELEASE === null);
+        await failedPoll;
+        // A single transient failure now retains the verified publication;
+        // legal pages remain accessible throughout either state.
+        assert.equal(await page.evaluate(()=>window.PULSE_RELEASE?.manifest.release_id),verifiedRelease);
         assert.equal(await page.locator("#pulse-printing").count(), 0);
         assert.equal(
           await page.locator(".site-shell").evaluate((n) => n.inert),
@@ -1645,6 +1651,7 @@ async function run(name, fn) {
         await c.close();
       },
     );
+    await require("./publication-recovery-browser.cjs")(browser, run, base);
     await require("./chapters-browser.cjs")(browser, run, base);
     await require("./install-browser.cjs")(browser, run, base);
     await run("no browser runtime errors", async () =>

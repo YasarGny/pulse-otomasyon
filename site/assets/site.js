@@ -1310,7 +1310,10 @@
         scrollReadingTo(history.state.scroll || 0);
     }
   }
-  window.addEventListener("pulse:ready", (event) => ready(event.detail));
+  function receiveRelease(next) {
+    ready(next).catch(() => window.dispatchEvent(new Event('pulse:render-error')));
+  }
+  window.addEventListener("pulse:ready", (event) => receiveRelease(event.detail));
   window.addEventListener("pulse:locked", () => {
     $(".topics-dialog")?.close();
     collapsePanel(false);
@@ -1318,5 +1321,5 @@
     release = null;
     pendingNav?.abort();
   });
-  if (window.PULSE_RELEASE) ready(window.PULSE_RELEASE);
+  if (window.PULSE_RELEASE) receiveRelease(window.PULSE_RELEASE);
 })();

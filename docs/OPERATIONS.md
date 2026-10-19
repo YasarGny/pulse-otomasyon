@@ -531,3 +531,19 @@ belirtme veya kredi satırı yeniden kullanım izni değildir. Rapor otomatik hu
 onay vermez; belirli görseli kapsayan lisans, hak sahibi ve koşullar ayrıca
 incelenmelidir. Açık izin doğrulanmadan dış görseller yerel varlık olarak
 kopyalanmaz. Erişilemeyen kaynak "yasak" değil "doğrulanamadı" sayılır.
+
+## Geçici yayın kontrolü hatalarından toparlanma
+
+Tarayıcı, ağ/timeout/429/5xx hatasında son tam doğrulanmış yayını en fazla
+120 saniyelik doğrulama süresi içinde korur; bu süre başarısız denemelerle
+uzatılmaz. Ertesi gün 06:00 veya hazırlık manifesti bu toleransı geçersiz kılar.
+Bozuk JSON, hash uyuşmazlığı ve eksik dosya gibi bütünlük hataları hemen kapatır.
+Doğrulama işleminin tamamı (manifest, iki JSON, dört ses HEAD isteği) ortak
+15 saniyelik son süreye tabidir. Hata durumunda 5/10/20/30 saniye aralıklarla
+tekrar denenir; bağlantı geri geldiğinde, sekmeye dönüldüğünde veya tekrar dene
+butonuyla beklemeden kontrol edilir. Başarılı doğrulamada yeniden deneme sayacı
+sıfırlanır. Sayfa değiştirme/render hataları da aynı toparlanma yoluna girer.
+
+CDN Date/Age yanıtı geriden gelirse zaman geri alınmaz: son doğrulanmış sunucu
+zamanı + monotonik süre alt sınırı kullanılır. Bu, geriden gelen yanıtın sekmeyi
+kalıcı hata döngüsüne sokmasını ve eski saatin 06:00 kapanışını ertelemesini önler.
