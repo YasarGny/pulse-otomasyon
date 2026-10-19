@@ -100,6 +100,7 @@ jobs:
         with:
           name: pulse-chapter-state-${{ steps.inspect.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: .chapter-state/
+          include-hidden-files: true
           retention-days: 3
           if-no-files-found: warn
       - name: Rebuild only verified chapter additions without changing news or audio
