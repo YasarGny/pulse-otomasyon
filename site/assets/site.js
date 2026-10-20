@@ -802,7 +802,7 @@
 
   const chapterCache = new Map();
   let chapterRegistry = null;
-  let chapterRegistryAt = 0, missingChapterRefreshAt = -Infinity;
+  let chapterRegistryAt = 0, chapterRefreshRunning = false, chapterRefreshAgain = false;
   async function chaptersFor(asset) {
     if (!asset || !/^[a-f0-9]{64}$/.test(asset.sha256)) return null;
     if (!chapterCache.has(asset.sha256)) chapterCache.set(asset.sha256, (async () => {
@@ -843,7 +843,7 @@
   chapterPanel.hidden = tabs.hidden = true;
   const chapterList = make("ol", "chapter-list");
   chapterPanel.append(chapterList);
-  let currentChapters = null, chapterAsset = null;
+  let currentChapters = null, chapterAsset = null, chapterLoadEpoch = 0;
   for (const [tab, id, controlled] of [[transportTab,"transport-tab","transport-pane"],[chapterTab,"chapters-tab","chapters-pane"]]) {
     tab.type = "button"; tab.id = id; tab.setAttribute("role", "tab");
     tab.setAttribute("aria-controls", controlled);
@@ -939,10 +939,11 @@
   async function loadSelectedChapters() {
     const asset = selectedRelease.editions[selected.section][selected.kind];
     if (chapterAsset === asset.sha256) return;
+    const epoch = ++chapterLoadEpoch;
     chapterAsset = asset.sha256; currentChapters = null; tabs.hidden = true;
     chapterList.replaceChildren(); chooseTab(false); syncChapters();
     const data = selected.kind === "podcast" ? await chaptersFor(asset) : null;
-    if (chapterAsset !== asset.sha256) return;
+    if (chapterAsset !== asset.sha256 || epoch !== chapterLoadEpoch) return;
     currentChapters = data; tabs.hidden = !data;
     if (data) chapterList.replaceChildren(...chapterRows(data,selected.section,selected.kind,selectedRelease));
     syncChapters();
@@ -962,22 +963,33 @@
     listen.closest(".episode").append(container); syncChapters();
   }
   async function refreshMissingChapters() {
-    if (!release || window.PULSE_ARCHIVE || document.hidden ||
-        performance.now() - missingChapterRefreshAt < 50000) return;
+    if (!release || window.PULSE_ARCHIVE || document.hidden) return;
+    if (chapterRefreshRunning) { chapterRefreshAgain = true; return; }
     const missingPlayer = !selectedClip && selected?.kind === "podcast" && !currentChapters &&
       selectedRelease.manifest.release_id === release.manifest.release_id;
     const missingPage = $(".listen-player") &&
       new URLSearchParams(location.search).get("ses") !== "ozet" && !$(".episode-chapters");
     const missingClips = all('.story-clip-slot').some(slot => !slot.childElementCount);
     if (!missingPlayer && !missingPage && !missingClips) return;
-    missingChapterRefreshAt = performance.now();
-    chapterRegistry = null;
-    clipIndexPromise = null; hydrateStoryClips();
-    if (missingPlayer) {
-      chapterAsset = null;
-      await loadSelectedChapters();
+    chapterRefreshRunning = true;
+    try {
+      chapterRegistry = null;
+      // Do not borrow an in-flight missing response from before this verified update.
+      if (missingPlayer) chapterCache.delete(selectedRelease.editions[selected.section].podcast.sha256);
+      if (missingPage) chapterCache.delete(release.editions[missingPage.dataset.listenSection].podcast.sha256);
+      clipIndexPromise = null; hydrateStoryClips();
+      if (missingPlayer) {
+        chapterAsset = null;
+        await loadSelectedChapters();
+      }
+      if (missingPage) await hydrateChapters();
+    } finally {
+      chapterRefreshRunning = false;
+      if (chapterRefreshAgain) {
+        chapterRefreshAgain = false;
+        await refreshMissingChapters();
+      }
     }
-    if (missingPage) await hydrateChapters();
   }
   window.addEventListener("pulse:verified", event => {
     if (event.detail?.release_id === release?.manifest.release_id)
