@@ -59,6 +59,47 @@ module.exports = async (browser, run, base) => {
       await page.locator('.flow-restart').click();
       assert.equal(await page.locator('.flow-count').innerText(),'1 / 3');
     });
+    await run('mobile preview taps open unread stories at the top and preserve the previous reading position',async()=>{
+      const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce',serviceWorkers:'block'});
+      try {
+        await mobile.route('https://images.example.test/**',r=>r.fulfill({path:'site/assets/covers/teknoloji-768.webp',contentType:'image/webp'}));
+        const reader=await mobile.newPage();await reader.goto(base+'/akis/');
+        await reader.waitForFunction(()=>!!window.PULSE_RELEASE&&!document.documentElement.classList.contains('pulse-locked'));
+        await reader.locator('.flow-next').scrollIntoViewIfNeeded();
+        const previousPosition=await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop);
+        assert(previousPosition>0);
+        await reader.locator('.flow-next').tap();
+        assert.equal(await reader.locator('.flow-count').innerText(),'2 / 6');
+        assert.equal(await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop),0);
+        assert(await reader.locator('.flow-viewport').evaluate(el=>el===document.activeElement));
+        await reader.locator('.flow-previous').tap();
+        assert.equal(await reader.locator('.flow-count').innerText(),'1 / 6');
+        assert.equal(await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop),previousPosition);
+        await reader.locator('.flow-next').tap();await reader.locator('.flow-next').tap();
+        assert.equal(await reader.locator('.flow-count').innerText(),'3 / 6');
+        assert.equal(await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop),0);
+        const saved=await reader.evaluate(()=>JSON.parse(localStorage.getItem('pulse-flow-progress-v1')));
+        assert.equal(saved.position,0);assert.equal(saved.story,await reader.locator('.flow-story:visible').getAttribute('data-story'));
+      } finally {await mobile.close();}
+    });
+    await run('desktop navigation arrows and completion return focus to the reading surface',async()=>{
+      await page.setViewportSize({width:1440,height:1000});await open('/akis/');
+      await page.locator('.flow-step-next').click();
+      assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
+      assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),0);
+      assert(await page.locator('.flow-viewport').evaluate(el=>el===document.activeElement));
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
+      await page.locator('.flow-previous').click();
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 6');
+      for(let i=0;i<6;i++)await page.locator('.flow-step-next').click();
+      assert(await page.locator('.flow-end').isVisible());
+      assert(await page.locator('.flow-end-previous').evaluate(el=>el===document.activeElement));
+      await page.locator('.flow-end-previous').click();
+      assert.equal(await page.locator('.flow-count').innerText(),'6 / 6');
+      assert(await page.locator('.flow-viewport').evaluate(el=>el===document.activeElement));
+      await page.setViewportSize({width:390,height:844});
+    });
     await run('a fresh vertical touch is required after finishing a long article',async()=>{
       await open('/akis/');
       await page.locator('.flow-story:visible .article-text').evaluate(el=>{

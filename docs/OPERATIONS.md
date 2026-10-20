@@ -666,3 +666,10 @@ Editör API'sindeki geçici ağ/408/429/5xx hataları en fazla üç ulaşım den
 aynı adımda toparlanır; bekleme sınırlıdır. 400/401/403 gibi kalıcı hatalar yeniden
 denenmez. Başarılı fakat bozuk JSON içerik en fazla bir kez yeniden istenir;
 geçersiz içerik düzeltilmiş gibi kabul edilmez, mevcut kullanım sayaçları korunur.
+
+Akış’ta sıradaki haber kartı ve önceki/sonraki düğmeleri, içeriği değiştirmeden
+önce odağı kaydırmadan okuma alanına taşır. Mobil tarayıcının alttaki odaklı
+düğmeyi görünür tutmak için yeni haberi aşağı kaydırması önlenir. İlk ziyaret
+baştan, yeniden ziyaret o haberdeki son konumdan açılır; bitiş ekranı uygun
+kontrole odaklanır. Navigasyon ses oturumuna dokunmaz. Dokunmatik Chromium
+testi gerçek kart dokunmalarını, masaüstü testi sabit okları ve klavye odağını denetler.

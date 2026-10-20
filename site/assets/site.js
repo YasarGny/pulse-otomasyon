@@ -1136,11 +1136,19 @@
       category.value = filter;
       show(index);
     }
-    next.onclick = () => show(index + 1);
-    previous.onclick = () => show(index - 1);
-    $('.flow-end-previous', root).onclick = () => show(Math.max(0, visible.length - 1));
+    function move(target) {
+      // Persistent footer controls must not pull the new story down to their
+      // focused position when its content changes (especially mobile browsers).
+      viewport.focus({preventScroll:true});
+      show(target);
+      if (viewport.hidden) $('.flow-end-previous', root).focus({preventScroll:true});
+      else viewport.focus({preventScroll:true});
+    }
+    next.onclick = () => move(index + 1);
+    previous.onclick = () => move(index - 1);
+    $('.flow-end-previous', root).onclick = () => move(Math.max(0, visible.length - 1));
     $('.flow-restart', root).onclick = $('.flow-reset', root).onclick = () => { index = 0; show(0, false); viewport.focus(); };
-    stepNext.onclick = () => show(index + 1);
+    stepNext.onclick = () => move(index + 1);
     category.onchange = () => {
       if (category.value === filter) return;
       filter = category.value; index = 0; filterStories();
