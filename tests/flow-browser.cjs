@@ -209,7 +209,7 @@ module.exports = async (browser, run, base) => {
       const id=await page.locator('.flow-story:visible').getAttribute('data-story');
       // Close in the same task, before the throttled scroll event can persist.
       await page.locator('.flow-viewport').evaluate(el=>{el.scrollTop=80;document.querySelector('.flow-close').click();});
-      await page.waitForSelector('#stories, .category-audio');
+      await page.waitForSelector('.news-flow',{state:'detached'});
       await page.locator('.nav a[href*="akis/"]').click();
       assert.equal(await page.locator('.flow-story:visible').getAttribute('data-story'),id);
       assert.equal(await page.locator('.flow-category').inputValue(),'teknoloji');
