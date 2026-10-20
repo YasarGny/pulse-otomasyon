@@ -82,6 +82,36 @@ module.exports = async (browser, run, base) => {
         assert.equal(saved.position,0);assert.equal(saved.story,await reader.locator('.flow-story:visible').getAttribute('data-story'));
       } finally {await mobile.close();}
     });
+    await run('native swipes over the next-story preview advance once and reverse without a stray click',async()=>{
+      const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce',serviceWorkers:'block'});
+      try {
+        await mobile.route('https://images.example.test/**',r=>r.fulfill({path:'site/assets/covers/teknoloji-768.webp',contentType:'image/webp'}));
+        const reader=await mobile.newPage();await reader.goto(base+'/akis/');
+        await reader.waitForFunction(()=>!!window.PULSE_RELEASE&&!document.documentElement.classList.contains('pulse-locked'));
+        await reader.locator('.flow-story:visible .story-image').evaluate(image=>image.decode());
+        await reader.locator('.flow-next').scrollIntoViewIfNeeded();
+        const position=await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop);
+        const cdp=await mobile.newCDPSession(reader);
+        async function swipe(x,start,end) {
+          await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y:start}]});
+          for(let i=1;i<=5;i++) {
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:start+(end-start)*i/5}]});
+            await new Promise(resolve=>setTimeout(resolve,35));
+          }
+          await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+        }
+        const next=await reader.locator('.flow-next').boundingBox();
+        await swipe(next.x+next.width/2,next.y+next.height/2,next.y+next.height/2-180);
+        assert.equal(await reader.locator('.flow-count').innerText(),'2 / 6');
+        await reader.waitForTimeout(250);
+        assert.equal(await reader.locator('.flow-count').innerText(),'2 / 6');
+        assert.equal(await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop),0);
+        const image=await reader.locator('.flow-story:visible .story-image').boundingBox();
+        await swipe(image.x+image.width/2,image.y+image.height/2,image.y+image.height/2+180);
+        assert.equal(await reader.locator('.flow-count').innerText(),'1 / 6');
+        assert.equal(await reader.locator('.flow-viewport').evaluate(el=>el.scrollTop),position);
+      } finally {await mobile.close();}
+    });
     await run('desktop navigation arrows and completion return focus to the reading surface',async()=>{
       await page.setViewportSize({width:1440,height:1000});await open('/akis/');
       await page.locator('.flow-step-next').click();

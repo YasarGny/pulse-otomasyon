@@ -673,3 +673,8 @@ düğmeyi görünür tutmak için yeni haberi aşağı kaydırması önlenir. İ
 baştan, yeniden ziyaret o haberdeki son konumdan açılır; bitiş ekranı uygun
 kontrole odaklanır. Navigasyon ses oturumuna dokunmaz. Dokunmatik Chromium
 testi gerçek kart dokunmalarını, masaüstü testi sabit okları ve klavye odağını denetler.
+
+“Sıradaki haber” kartının üzerinden başlayan sınır kaydırması da metinle aynı
+biçimde işlenir; hareket, kartın tıklamasını tetikleyip ikinci haberi atlamamalıdır.
+Diğer bağlantı, ses düğmesi ve form kontrolleri bu jestten korunur. Native
+Chromium dokunma testi bir hareketin tek haber ilerlettiğini ve geri dönebildiğini denetler.

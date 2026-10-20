@@ -1165,7 +1165,8 @@
     for (const event of ['pointerdown','touchstart','wheel','keydown'])
       window.addEventListener(event,()=>restoreEpoch++,{capture:true,passive:true,signal:pageEvents.signal});
     viewport.addEventListener('touchstart', event => {
-      if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
+      const control = event.target.closest('button,a,input,select,textarea,[contenteditable]');
+      if ((control && !control.matches('.flow-next,.flow-previous')) || event.touches.length !== 1) {gesture = null; return;}
       gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};
     }, {passive:true, signal:pageEvents.signal});
     viewport.addEventListener('touchmove', event => {
@@ -1200,11 +1201,11 @@
       if (event.defaultPrevented || event.target.closest('input,textarea,select,[contenteditable],.audio-session') || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 'PageDown') {
         event.preventDefault();
-        if (!viewport.hidden && atBottom()) show(index + 1);
+        if (!viewport.hidden && atBottom()) move(index + 1);
         else viewport.scrollBy({top:viewport.clientHeight * .85, behavior:'instant'});
       } else if (event.key === 'PageUp') {
         event.preventDefault();
-        if ((viewport.hidden || atTop()) && index > 0) show(index - 1);
+        if ((viewport.hidden || atTop()) && index > 0) move(index - 1);
         else viewport.scrollBy({top:-viewport.clientHeight * .85, behavior:'instant'});
       }
     }, {signal:pageEvents.signal});
