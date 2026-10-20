@@ -655,3 +655,9 @@ kopyalama değildir. Fotoğrafın manuel yeniden denemesi çalışmaya devam ede
 Bölüm dizini eskiyse SHA-adresli sidecar ayrıca okunup aynı ses hash'i ve zaman
 kurallarıyla doğrulanır; başka kayda ait bölümler hiçbir durumda kullanılmaz.
 Hazırlık ekranı son kullanıcıya iç hedef aşımı veya teknik hata metni göstermez.
+
+Günün yayını zaten hazırsa normal otomatik tekrar eski özel artifact'ı geri
+yüklemez; `restore_published` doğrulanmış güncel yayını kullanır. Böylece aynı gün
+onaylı ses kesimi veya görsel revizyonundan sonra eski kontrol noktası yeni
+canlı dosyalarla çakışmaz. Açıkça istenen revizyon modları kendi kontrol
+noktalarını korur; bu değişiklik yeni ses üretimi başlatmaz.

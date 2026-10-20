@@ -140,7 +140,21 @@ jobs:
       - name: Restore today's checkpoint
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python scripts/state.py --repo "$GITHUB_REPOSITORY" --date "$PULSE_DATE"
+          REVISION_AUDIO: ${{ inputs.refresh_audio == true }}
+          REVISION_MEDIA: ${{ inputs.refresh_media == true }}
+          REVISION_EXPANDED: ${{ inputs.expanded_issue == true }}
+        run: |
+          python - <<'PY'
+          import os
+          from pulse.publication import read_json
+          from scripts.state import restore
+          current=read_json('.published/data/publication.json')
+          revision=any(os.environ[k]=='true' for k in ('REVISION_AUDIO','REVISION_MEDIA','REVISION_EXPANDED'))
+          if current.get('status')=='ready' and current.get('publish_date')==os.environ['PULSE_DATE'] and not revision:
+              print('Use the verified published edition; do not restore a superseded private checkpoint.')
+          else:
+              restore(os.environ['GITHUB_REPOSITORY'],os.environ['PULSE_DATE'],'.pulse-work')
+          PY
       - name: Research, edit, synthesize and validate both publications
         id: edition
         env:
