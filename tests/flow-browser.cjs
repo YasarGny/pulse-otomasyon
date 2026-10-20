@@ -199,7 +199,11 @@ module.exports = async (browser, run, base) => {
       await page.setViewportSize({width:390,height:500});await open('/akis/');
       await page.locator('.flow-category').selectOption('teknoloji');
       await page.locator('.flow-next').click();
-      await page.locator('.flow-viewport').evaluate(el=>el.scrollTop=80);
+      await page.locator('.flow-story:visible .story-image').evaluate(image=>image.decode());
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      await page.locator('.flow-viewport').evaluate(el=>{
+        el.dispatchEvent(new WheelEvent('wheel',{deltaY:1,bubbles:true}));el.scrollTop=80;
+      });
       const position=await page.locator('.flow-viewport').evaluate(el=>el.scrollTop);
       assert(position>0);
       const id=await page.locator('.flow-story:visible').getAttribute('data-story');

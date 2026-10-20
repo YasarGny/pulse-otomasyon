@@ -1142,7 +1142,7 @@
     }, {passive:true, signal:pageEvents.signal});
     pageEvents.signal.addEventListener('abort', () => clearTimeout(scrollSaveTimer), {once:true});
     for (const event of ['pointerdown','touchstart','wheel','keydown'])
-      viewport.addEventListener(event,()=>restoreEpoch++,{capture:true,passive:true,signal:pageEvents.signal});
+      window.addEventListener(event,()=>restoreEpoch++,{capture:true,passive:true,signal:pageEvents.signal});
     viewport.addEventListener('touchstart', event => {
       if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
       gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};
