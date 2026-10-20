@@ -1136,11 +1136,19 @@
       category.value = filter;
       show(index);
     }
-    next.onclick = () => show(index + 1);
-    previous.onclick = () => show(index - 1);
-    $('.flow-end-previous', root).onclick = () => show(Math.max(0, visible.length - 1));
+    function move(target) {
+      // Persistent footer controls must not pull the new story down to their
+      // focused position when its content changes (especially mobile browsers).
+      viewport.focus({preventScroll:true});
+      show(target);
+      if (viewport.hidden) $('.flow-end-previous', root).focus({preventScroll:true});
+      else viewport.focus({preventScroll:true});
+    }
+    next.onclick = () => move(index + 1);
+    previous.onclick = () => move(index - 1);
+    $('.flow-end-previous', root).onclick = () => move(Math.max(0, visible.length - 1));
     $('.flow-restart', root).onclick = $('.flow-reset', root).onclick = () => { index = 0; show(0, false); viewport.focus(); };
-    stepNext.onclick = () => show(index + 1);
+    stepNext.onclick = () => move(index + 1);
     category.onchange = () => {
       if (category.value === filter) return;
       filter = category.value; index = 0; filterStories();
@@ -1157,7 +1165,8 @@
     for (const event of ['pointerdown','touchstart','wheel','keydown'])
       window.addEventListener(event,()=>restoreEpoch++,{capture:true,passive:true,signal:pageEvents.signal});
     viewport.addEventListener('touchstart', event => {
-      if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
+      const control = event.target.closest('button,a,input,select,textarea,[contenteditable]');
+      if ((control && !control.matches('.flow-next,.flow-previous')) || event.touches.length !== 1) {gesture = null; return;}
       gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};
     }, {passive:true, signal:pageEvents.signal});
     viewport.addEventListener('touchmove', event => {
@@ -1192,11 +1201,11 @@
       if (event.defaultPrevented || event.target.closest('input,textarea,select,[contenteditable],.audio-session') || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 'PageDown') {
         event.preventDefault();
-        if (!viewport.hidden && atBottom()) show(index + 1);
+        if (!viewport.hidden && atBottom()) move(index + 1);
         else viewport.scrollBy({top:viewport.clientHeight * .85, behavior:'instant'});
       } else if (event.key === 'PageUp') {
         event.preventDefault();
-        if ((viewport.hidden || atTop()) && index > 0) show(index - 1);
+        if ((viewport.hidden || atTop()) && index > 0) move(index - 1);
         else viewport.scrollBy({top:-viewport.clientHeight * .85, behavior:'instant'});
       }
     }, {signal:pageEvents.signal});
