@@ -7,6 +7,7 @@ import html
 import json
 import os
 import re
+import time
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
@@ -191,8 +192,32 @@ def research(date, destination, feeds_path=None):
     return result
 
 
+def _editorial_post(url, **kwargs):
+    for attempt in range(3):
+        try:
+            response = requests.post(url, **kwargs)
+        except requests.RequestException:
+            if attempt == 2:
+                raise RuntimeError('Gemini editorial connection unavailable') from None
+            response = None
+        if response is not None and response.status_code not in (408,429,500,502,503,504):
+            return response
+        delay = 2 ** attempt * 2
+        if response is not None:
+            status = response.status_code
+            if attempt == 2:
+                response.close()
+                raise RuntimeError('Gemini editorial HTTP ' + str(status))
+            try:
+                value = float(response.headers.get('Retry-After',''))
+                if 0 <= value <= 30: delay = max(delay,value)
+            except (TypeError,ValueError): pass
+            response.close()
+        time.sleep(delay)
+
+
 def _gemini_once(prompt, *, system="", json_output=True):
-    response = requests.post(
+    response = _editorial_post(
         "https://generativelanguage.googleapis.com/v1beta/models/"
         + MODEL
         + ":generateContent",

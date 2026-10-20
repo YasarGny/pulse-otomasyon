@@ -661,3 +661,8 @@ yüklemez; `restore_published` doğrulanmış güncel yayını kullanır. Böyle
 onaylı ses kesimi veya görsel revizyonundan sonra eski kontrol noktası yeni
 canlı dosyalarla çakışmaz. Açıkça istenen revizyon modları kendi kontrol
 noktalarını korur; bu değişiklik yeni ses üretimi başlatmaz.
+
+Editör API'sindeki geçici ağ/408/429/5xx hataları en fazla üç ulaşım denemesiyle
+aynı adımda toparlanır; bekleme sınırlıdır. 400/401/403 gibi kalıcı hatalar yeniden
+denenmez. Başarılı fakat bozuk JSON içerik en fazla bir kez yeniden istenir;
+geçersiz içerik düzeltilmiş gibi kabul edilmez, mevcut kullanım sayaçları korunur.
