@@ -15,6 +15,10 @@ from pulse.publication import SECTIONS, expected_date, not_before, read_json
 BASE = "https://yasargny.github.io/"
 
 
+class SiteVerificationError(ValueError):
+    """A safe diagnostic about public deployment files, never credentials."""
+
+
 def check_site(session, base, expected):
     response = session.get(
         urljoin(base, "data/publication.json"),
@@ -23,7 +27,7 @@ def check_site(session, base, expected):
     )
     response.raise_for_status()
     if response.json() != expected:
-        raise ValueError("Pages is still serving another manifest")
+        raise SiteVerificationError("Pages is still serving another manifest")
     routes = ("", "teknoloji/", "oyun/", "haberler/", "podcastler/", "akis/")
     if expected["status"] == "ready":
         routes += ("teknoloji/dinle/", "oyun/dinle/")
@@ -36,12 +40,12 @@ def check_site(session, base, expected):
             "assets/publication.js" not in page.text
             or 'data-design="editor-desk-v1"' not in page.text
         ):
-            raise ValueError("Pages HTML has not updated")
+            raise SiteVerificationError("Pages HTML has not updated")
         if (
             expected["status"] == "ready"
             and ('data-release="' + expected["release_id"] + '"') not in page.text
         ):
-            raise ValueError("Pages HTML belongs to another release")
+            raise SiteVerificationError("Pages HTML belongs to another release")
     if expected["status"] != "ready":
         return
     server = parsedate_to_datetime(response.headers["Date"]) + dt.timedelta(
@@ -50,14 +54,14 @@ def check_site(session, base, expected):
     if expected_date(server) != expected["publish_date"] or server < not_before(
         expected["publish_date"]
     ):
-        raise ValueError("Deployed issue does not match the server publication window")
+        raise SiteVerificationError("Deployed issue does not match the server publication window")
     release = urljoin(base, "releases/" + expected["release_id"] + "/")
     for section in SECTIONS:
         entry = expected["editions"][section]
         result = session.get(urljoin(release, entry["file"]), timeout=30)
         result.raise_for_status()
         if hashlib.sha256(result.content).hexdigest() != entry["sha256"]:
-            raise ValueError("Deployed edition hash mismatch")
+            raise SiteVerificationError("Deployed edition hash mismatch")
         data = result.json()
         for kind in ("summary", "podcast"):
             asset = data[kind]
@@ -66,17 +70,17 @@ def check_site(session, base, expected):
             ) as audio:
                 audio.raise_for_status()
                 if not audio.headers.get("Content-Type", "").startswith("audio/"):
-                    raise ValueError("Deployed MP3 content type invalid")
+                    raise SiteVerificationError("Deployed MP3 content type invalid")
                 checksum, size = hashlib.sha256(), 0
                 for chunk in audio.iter_content(128 * 1024):
                     size += len(chunk)
                     if size > asset["bytes"]:
-                        raise ValueError(
+                        raise SiteVerificationError(
                             "Deployed MP3 is larger than the verified file"
                         )
                     checksum.update(chunk)
                 if size != asset["bytes"] or checksum.hexdigest() != asset["sha256"]:
-                    raise ValueError("Deployed MP3 hash/size mismatch")
+                    raise SiteVerificationError("Deployed MP3 hash/size mismatch")
 
 
 def check_assets(session, base, tree):
@@ -98,11 +102,11 @@ def check_assets(session, base, tree):
             hashlib.sha256(response.content).digest()
             != hashlib.sha256(path.read_bytes()).digest()
         ):
-            raise ValueError("Pages asset has not updated: " + path.name)
+            raise SiteVerificationError("Pages asset has not updated: " + path.name)
         if path.name == "sw.js" and "javascript" not in response.headers.get(
             "Content-Type", ""
         ):
-            raise ValueError("Service worker MIME type invalid")
+            raise SiteVerificationError("Service worker MIME type invalid")
 
 
 def wait_for_site(expected, timeout=900, tree=None):
@@ -110,9 +114,9 @@ def wait_for_site(expected, timeout=900, tree=None):
     with requests.Session() as session:
         while True:
             try:
-                check_site(session, BASE, expected)
                 if tree:
                     check_assets(session, BASE, tree)
+                check_site(session, BASE, expected)
                 print(
                     "GitHub Pages verified:",
                     expected["status"],
@@ -120,13 +124,14 @@ def wait_for_site(expected, timeout=900, tree=None):
                 )
                 return
             except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+                reason = str(exc) if isinstance(exc, SiteVerificationError) else type(exc).__name__
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise RuntimeError(
                         "Pages did not serve the verified deployment before timeout: "
-                        + type(exc).__name__
+                        + reason
                     ) from None
-                print("Waiting for the complete Pages deployment...", flush=True)
+                print("Waiting for the complete Pages deployment: " + reason, flush=True)
                 time.sleep(min(15, remaining))
 
 

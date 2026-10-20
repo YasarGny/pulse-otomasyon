@@ -191,7 +191,7 @@ def research(date, destination, feeds_path=None):
     return result
 
 
-def gemini(prompt, *, system="", json_output=True):
+def _gemini_once(prompt, *, system="", json_output=True):
     response = requests.post(
         "https://generativelanguage.googleapis.com/v1beta/models/"
         + MODEL
@@ -220,6 +220,16 @@ def gemini(prompt, *, system="", json_output=True):
         p.get("text", "") for p in candidates[0].get("content", {}).get("parts", [])
     )
     return json.loads(text) if json_output else text.strip()
+
+
+def gemini(prompt, *, system="", json_output=True):
+    # Retry malformed JSON once; never silently repair, trim or approve content.
+    for attempt in range(2):
+        try:
+            return _gemini_once(prompt, system=system, json_output=json_output)
+        except json.JSONDecodeError:
+            if attempt:
+                raise ValueError("Gemini returned invalid JSON after two attempts") from None
 
 
 def selection_sources(sources):

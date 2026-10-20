@@ -611,3 +611,26 @@ kategoriye geçer. Diğer sayfalarda ilgili haber ayrıntısını açar. Son kes
 oynatma durur; başka haber otomatik başlamaz. Tam podcast de gezinirken devam eder.
 Yeniden dinleme sıralamanın başından başlar. Bu arayüz güncellemesi model veya
 ses üretimi çağrısı yapmaz; `refresh-website.yml` ile yayımlanır.
+
+## Zorunlu günlük kalite ve hazır yayın kurtarması
+
+20.10.2026 sonrası üretimde dört kaydın tam çözülmesi, beş saniye ve üzeri
+-50 dB sessizlik bulunmaması ve iki podcast için son dosya hash'ine bağlı,
+bağımsız incelenmiş bölüm/haber eşleşmeleri zorunludur. Bölüm analizi artık
+07:15 yaklaşınca atlanmaz; eksik bölümle yayın açılmaz. TTS parçaları da cache'e
+alınmadan denetlenir; hatalı parça en çok bir kez yenilenir, sağlam parçalar
+korunur. Bu değişiklik mevcut erkek ses kimliklerini ve Edge TTS yöntemini korur.
+
+`publish-ready.yml` yalnız mevcut, mühürlü kontrol noktasını yayımlar; model veya
+ses üretmez. 07:15 ve 07:25 TRT tetikleri tamamlanmış paketi doğrular, 07:30
+öncesi yayına vermez. 07:45 ve 08:15 ek kontrolleri hazır paketi kurtarır; zaten
+hazır yayın varsa canlı dosyaları denetler ve yeni yedek/commit oluşturmaz.
+GitHub cron ve dış servisler kesin saat garantisi vermez; eksik veya bozuk yayın
+başarılı sayılmaz. Aynı concurrency grubu tüm yayın yazarlarını sıraya koyar.
+
+20 Ekim Moradon FM için tek seferlik `repair-audio-2026-10-20.yml`, yalnız
+`audio-repair-2026-10-20.json` içindeki kaynak SHA ve sessiz aralığı kabul eder.
+MP3 paketlerini yeniden kodlamadan keser; diğer üç ana ses dosyasını korur.
+Mevcut incelenmiş bölüm/kesit sınırlarını aynı konuşmaların yeni zamanlarına
+matematiksel olarak taşır; yeni başlık veya konuşma uydurmaz. Yeni kayıt hash'i,
+yayın kimliği, kesit dosyaları ve günlük Drive ZIP'i birlikte yenilenir.
