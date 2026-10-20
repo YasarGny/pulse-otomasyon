@@ -6,7 +6,11 @@ module.exports = async (browser, run, base) => {
   page.on('pageerror', e => errors.push(e.message));
   await context.route('https://images.example.test/**', r => r.fulfill({path:'site/assets/covers/teknoloji-768.webp',contentType:'image/webp'}));
   let visit = 0;
-  const open = async route => {
+  const open = async (route, {resume=false}={}) => {
+    if (!resume) {
+      await page.goto(base+'/gizlilik/');
+      await page.evaluate(()=>{try{localStorage.removeItem('pulse-flow-progress-v1')}catch(_){}});
+    }
     const url = new URL(route, base); url.searchParams.set('flow_check', String(++visit));
     await page.goto(url.href);
     await page.waitForFunction(() => window.PULSE_RELEASE && !document.documentElement.classList.contains('pulse-loading') && !document.documentElement.classList.contains('pulse-locked'));
@@ -190,6 +194,54 @@ module.exports = async (browser, run, base) => {
       assert(await page.locator('.flow-next-title').innerText());
       await page.locator('.flow-next').click();
       assert.equal(await page.locator('.flow-count').innerText(),'2 / 6');
+    });
+    await run('same-day flow restores story category and reading position on reentry and a fresh tab',async()=>{
+      await page.setViewportSize({width:390,height:500});await open('/akis/');
+      await page.locator('.flow-category').selectOption('teknoloji');
+      await page.locator('.flow-next').click();
+      await page.locator('.flow-story:visible .story-image').evaluate(image=>image.decode());
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      await page.locator('.flow-viewport').evaluate(el=>{
+        el.dispatchEvent(new WheelEvent('wheel',{deltaY:1,bubbles:true}));el.scrollTop=80;
+      });
+      const position=await page.locator('.flow-viewport').evaluate(el=>el.scrollTop);
+      assert(position>0);
+      const id=await page.locator('.flow-story:visible').getAttribute('data-story');
+      await page.locator('.flow-close').click();
+      await page.locator('.nav a[href*="akis/"]').click();
+      assert.equal(await page.locator('.flow-story:visible').getAttribute('data-story'),id);
+      assert.equal(await page.locator('.flow-category').inputValue(),'teknoloji');
+      assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),position);
+      const fresh=await context.newPage();await fresh.setViewportSize({width:390,height:500});
+      await fresh.goto(base+'/akis/');await fresh.waitForSelector('.flow-story:visible');
+      assert.equal(await fresh.locator('.flow-story:visible').getAttribute('data-story'),id);
+      assert.equal(await fresh.locator('.flow-viewport').evaluate(el=>el.scrollTop),position);
+      assert.equal(await fresh.locator('audio').evaluate(a=>a.paused),true);
+      await fresh.close();
+      await page.locator('.flow-reset').click();
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 3');
+      assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),0);
+    });
+    await run('stale daily progress and removed story identities cannot open the wrong story',async()=>{
+      await page.goto(base+'/gizlilik/');
+      await page.evaluate(()=>localStorage.setItem('pulse-flow-progress-v1',JSON.stringify({date:'2000-01-01',section:'teknoloji',story:'teknoloji1',filter:'teknoloji',position:100})));
+      await open('/akis/',{resume:true});
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 6');
+      await page.goto(base+'/gizlilik/');
+      await page.evaluate(()=>localStorage.setItem('pulse-flow-progress-v1',JSON.stringify({date:'2026-10-16',section:'teknoloji',story:'removed-id',filter:'teknoloji',position:100,complete:true})));
+      await open('/akis/',{resume:true});
+      assert.equal(await page.locator('.flow-count').innerText(),'1 / 3');
+      assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),0);
+    });
+    await run('flow still opens and navigates when persistent storage is denied',async()=>{
+      const denied=await browser.newContext({serviceWorkers:'block'});
+      await denied.addInitScript(()=>{Storage.prototype.getItem=()=>{throw Error('denied')};Storage.prototype.setItem=()=>{throw Error('denied')};Storage.prototype.removeItem=()=>{throw Error('denied')}});
+      const other=await denied.newPage();await other.goto(base+'/akis/');
+      await other.waitForSelector('.flow-story:visible');
+      assert.equal(await other.locator('.flow-count').innerText(),'1 / 6');
+      await other.locator('.flow-next').click();
+      assert.equal(await other.locator('.flow-count').innerText(),'2 / 6');
+      await denied.close();
     });
     await run('flow fits mobile and desktop and exposes accessible controls',async()=>{
       for(const width of [320,390,768,1440]) {

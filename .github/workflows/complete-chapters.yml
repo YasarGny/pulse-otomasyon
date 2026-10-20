@@ -77,6 +77,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           python -m pulse.chapter_completion stage --work ".chapter-work/$PULSE_DATE" --state ".chapter-state/$PULSE_DATE"
+      - name: Reuse the public transcription model cache
+        if: steps.inspect.outputs.needed == 'true'
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: pulse-whisper-small-${{ runner.os }}-v1
       - name: Complete transcription and independent chapter review without synthesis
         id: prepare
         if: steps.inspect.outputs.needed == 'true'

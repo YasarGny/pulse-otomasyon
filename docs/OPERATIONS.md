@@ -634,3 +634,35 @@ MP3 paketlerini yeniden kodlamadan keser; diğer üç ana ses dosyasını korur.
 Mevcut incelenmiş bölüm/kesit sınırlarını aynı konuşmaların yeni zamanlarına
 matematiksel olarak taşır; yeni başlık veya konuşma uydurmaz. Yeni kayıt hash'i,
 yayın kimliği, kesit dosyaları ve günlük Drive ZIP'i birlikte yenilenir.
+
+### Akış devamı ve görsel/konu yükleme dayanıklılığı
+
+`pulse-flow-progress-v1` yalnız cihazın localStorage alanında, tek günlük
+kayıt tutar: yayın tarihi/kimliği, haber kimliği, kategori ve okuma konumu.
+Menüden dönüş ve yeni sekme bu kaydı kullanır; tarayıcı geri/ileri konumu
+önceliklidir. Yeni tarihte kayıt bırakılır; aynı gün sıralama değişirse haber
+kimliğiyle bulunur, kaldırılmış haber kategori başına döner. Revizyon değişince
+eski “tamamlandı” durumu yeni haberleri okunmuş saymaz. Ses otomatik başlamaz;
+mevcut ses devam eder. “Başa dön” seçili kategorinin ilk haberini açar. Arşiv
+ZIP'i canlı konum kaydını okumaz/değiştirmez; engellenmiş storage Akış'ı bozmaz.
+Görsel/font yüklenirken konum yerleşimi tamamlanır; kullanıcı girdisi otomatik
+konum düzeltmesini iptal eder.
+
+Erişilemeyen kaynak fotoğrafın yerine yerel PULSE kapağı açıkça “Temsili görsel”
+etiketiyle gösterilir; kaynak fotoğrafın kredi satırı bu sırada gizlenir, haberin
+kaynak bağlantısı korunur. Bu bir görsel izin tespiti veya kaynak fotoğrafı
+kopyalama değildir. Fotoğrafın manuel yeniden denemesi çalışmaya devam eder.
+Bölüm dizini eskiyse SHA-adresli sidecar ayrıca okunup aynı ses hash'i ve zaman
+kurallarıyla doğrulanır; başka kayda ait bölümler hiçbir durumda kullanılmaz.
+Hazırlık ekranı son kullanıcıya iç hedef aşımı veya teknik hata metni göstermez.
+
+Günün yayını zaten hazırsa normal otomatik tekrar eski özel artifact'ı geri
+yüklemez; `restore_published` doğrulanmış güncel yayını kullanır. Böylece aynı gün
+onaylı ses kesimi veya görsel revizyonundan sonra eski kontrol noktası yeni
+canlı dosyalarla çakışmaz. Açıkça istenen revizyon modları kendi kontrol
+noktalarını korur; bu değişiklik yeni ses üretimi başlatmaz.
+
+Editör API'sindeki geçici ağ/408/429/5xx hataları en fazla üç ulaşım denemesiyle
+aynı adımda toparlanır; bekleme sınırlıdır. 400/401/403 gibi kalıcı hatalar yeniden
+denenmez. Başarılı fakat bozuk JSON içerik en fazla bir kez yeniden istenir;
+geçersiz içerik düzeltilmiş gibi kabul edilmez, mevcut kullanım sayaçları korunur.

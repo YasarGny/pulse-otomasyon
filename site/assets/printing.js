@@ -151,16 +151,16 @@
           mode === "offline"
             ? "Bağlantı yeniden kontrol ediliyor. İstersen tekrar deneyebilirsin."
             : mode === "delayed"
-              ? "İki yayın tamamlandığında burada olacak."
+              ? "Bugünün haberleri ve sohbetleri hazırlanıyor."
               : "Teknoloji ve oyun gündemi hazırlanıyor.",
         ),
         make(
           "div",
           "pulse-print-clock",
           mode === "printing"
-            ? "Yeni sayı hedefi 07:30."
+            ? "Her sabah 07:30’da."
             : mode === "delayed"
-              ? "07:30 hedef saati aşıldı."
+              ? "Hazır olduğunda burada buluşalım."
               : "",
         ),
         status,

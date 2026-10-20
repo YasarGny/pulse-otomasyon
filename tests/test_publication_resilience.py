@@ -61,3 +61,24 @@ class PublicationResilienceTests(unittest.TestCase):
             wait_for_site({}, timeout=0)
         self.assertIn('ConnectionError',str(failure.exception))
         self.assertNotIn('secret',str(failure.exception))
+
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'synthetic-test-key'})
+    @patch('pulse.editorial.time.sleep')
+    @patch('pulse.usage.record')
+    @patch('pulse.editorial.requests.post')
+    def test_transient_editorial_failure_recovers_without_restarting_the_pipeline(self, post, usage, sleep):
+        bad=Mock(ok=False,status_code=503,headers={'Retry-After':'5'})
+        post.side_effect=[bad,self.response('{"stories":[]}')]
+        self.assertEqual(gemini('evidence'),{'stories':[]})
+        self.assertEqual(post.call_count,2);sleep.assert_called_once_with(5)
+        self.assertEqual(usage.call_count,1)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY':'synthetic-test-key'})
+    @patch('pulse.editorial.time.sleep')
+    @patch('pulse.editorial.requests.post')
+    def test_editorial_network_retry_is_bounded_and_sanitized(self, post, sleep):
+        post.side_effect=requests.ConnectionError('private credential-bearing URL')
+        with self.assertRaisesRegex(RuntimeError,'^Gemini editorial connection unavailable$'):
+            gemini('evidence')
+        self.assertEqual(post.call_count,3);self.assertEqual(sleep.call_count,2)

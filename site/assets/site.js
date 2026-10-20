@@ -802,7 +802,7 @@
 
   const chapterCache = new Map();
   let chapterRegistry = null;
-  let chapterRegistryAt = 0, missingChapterRefreshAt = -Infinity;
+  let chapterRegistryAt = 0, chapterRefreshRunning = false, chapterRefreshAgain = false;
   async function chaptersFor(asset) {
     if (!asset || !/^[a-f0-9]{64}$/.test(asset.sha256)) return null;
     if (!chapterCache.has(asset.sha256)) chapterCache.set(asset.sha256, (async () => {
@@ -820,7 +820,15 @@
           }).catch(() => ({}));
         }
         const registry = await chapterRegistry;
-        return PulseListening.validate(registry[asset.sha256], asset);
+        const indexed = PulseListening.validate(registry[asset.sha256], asset);
+        if (indexed) return indexed;
+        // A CDN can briefly retain yesterday's index; the SHA-addressed file
+        // is independently validated and cannot be borrowed from other audio.
+        const sidecar = await fetch(new URL('assets/chapters/' + asset.sha256 + '.json', base),
+          {cache:'no-cache',signal:AbortSignal.timeout(10000)});
+        if (!sidecar.ok) return null;
+        const text = await sidecar.text();
+        return text.length < 65536 ? PulseListening.validate(JSON.parse(text),asset) : null;
       } catch (_) { return null; }
     })());
     const pending = chapterCache.get(asset.sha256);
@@ -835,7 +843,7 @@
   chapterPanel.hidden = tabs.hidden = true;
   const chapterList = make("ol", "chapter-list");
   chapterPanel.append(chapterList);
-  let currentChapters = null, chapterAsset = null;
+  let currentChapters = null, chapterAsset = null, chapterLoadEpoch = 0;
   for (const [tab, id, controlled] of [[transportTab,"transport-tab","transport-pane"],[chapterTab,"chapters-tab","chapters-pane"]]) {
     tab.type = "button"; tab.id = id; tab.setAttribute("role", "tab");
     tab.setAttribute("aria-controls", controlled);
@@ -931,10 +939,11 @@
   async function loadSelectedChapters() {
     const asset = selectedRelease.editions[selected.section][selected.kind];
     if (chapterAsset === asset.sha256) return;
+    const epoch = ++chapterLoadEpoch;
     chapterAsset = asset.sha256; currentChapters = null; tabs.hidden = true;
     chapterList.replaceChildren(); chooseTab(false); syncChapters();
     const data = selected.kind === "podcast" ? await chaptersFor(asset) : null;
-    if (chapterAsset !== asset.sha256) return;
+    if (chapterAsset !== asset.sha256 || epoch !== chapterLoadEpoch) return;
     currentChapters = data; tabs.hidden = !data;
     if (data) chapterList.replaceChildren(...chapterRows(data,selected.section,selected.kind,selectedRelease));
     syncChapters();
@@ -954,22 +963,34 @@
     listen.closest(".episode").append(container); syncChapters();
   }
   async function refreshMissingChapters() {
-    if (!release || window.PULSE_ARCHIVE || document.hidden ||
-        performance.now() - missingChapterRefreshAt < 50000) return;
+    if (!release || window.PULSE_ARCHIVE || document.hidden) return;
+    if (chapterRefreshRunning) { chapterRefreshAgain = true; return; }
     const missingPlayer = !selectedClip && selected?.kind === "podcast" && !currentChapters &&
       selectedRelease.manifest.release_id === release.manifest.release_id;
-    const missingPage = $(".listen-player") &&
+    const listenPage = $(".listen-player");
+    const missingPage = listenPage &&
       new URLSearchParams(location.search).get("ses") !== "ozet" && !$(".episode-chapters");
     const missingClips = all('.story-clip-slot').some(slot => !slot.childElementCount);
     if (!missingPlayer && !missingPage && !missingClips) return;
-    missingChapterRefreshAt = performance.now();
-    chapterRegistry = null;
-    clipIndexPromise = null; hydrateStoryClips();
-    if (missingPlayer) {
-      chapterAsset = null;
-      await loadSelectedChapters();
+    chapterRefreshRunning = true;
+    try {
+      chapterRegistry = null;
+      // Do not borrow an in-flight missing response from before this verified update.
+      if (missingPlayer) chapterCache.delete(selectedRelease.editions[selected.section].podcast.sha256);
+      if (missingPage) chapterCache.delete(release.editions[listenPage.dataset.listenSection].podcast.sha256);
+      clipIndexPromise = null; hydrateStoryClips();
+      if (missingPlayer) {
+        chapterAsset = null;
+        await loadSelectedChapters();
+      }
+      if (missingPage) await hydrateChapters();
+    } finally {
+      chapterRefreshRunning = false;
+      if (chapterRefreshAgain) {
+        chapterRefreshAgain = false;
+        await refreshMissingChapters();
+      }
     }
-    if (missingPage) await hydrateChapters();
   }
   window.addEventListener("pulse:verified", event => {
     if (event.detail?.release_id === release?.manifest.release_id)
@@ -987,6 +1008,7 @@
       renderedURL.search === location.search
     )
       try {
+        saveFlowProgress?.();
         history.replaceState(
           {
             ...history.state,
@@ -1029,10 +1051,26 @@
     return null;
   }
   const categoryStates = new Map();
-  let flowSnapshot = null, revealFlowStory = null;
+  const flowProgressKey = 'pulse-flow-progress-v1';
+  let flowSnapshot = null, revealFlowStory = null, saveFlowProgress = null;
+  function storedFlow(stories) {
+    if (window.PULSE_ARCHIVE) return null;
+    try {
+      const item = JSON.parse(localStorage.getItem(flowProgressKey));
+      if (!item || item.date !== release.manifest.publish_date) {
+        localStorage.removeItem(flowProgressKey); return null;
+      }
+      if (!['', 'teknoloji', 'oyun'].includes(item.filter) ||
+          !Number.isFinite(item.position) || item.position < 0 || item.position > 1e7) return null;
+      const visible = stories.filter(story => !item.filter || story.dataset.section === item.filter);
+      const index = visible.findIndex(story => story.dataset.section === item.section && story.dataset.story === item.story);
+      return {filter:item.filter, index:index >= 0 && item.complete === true && item.releaseId === release.manifest.release_id ? visible.length : Math.max(0,index),
+        positions:index < 0 ? {} : {[item.section + ':' + item.story]:item.position}};
+    } catch (_) { return null; }
+  }
   function setupFlow(state) {
     document.body.classList.toggle('in-news-flow', document.body.dataset.page === 'flow');
-    revealFlowStory = null;
+    revealFlowStory = saveFlowProgress = null;
     const root = $('.news-flow');
     if (!root) { flowSnapshot = null; return; }
     const viewport = $('.flow-viewport', root), stories = all('.flow-story', root);
@@ -1045,10 +1083,11 @@
     nextImage.onerror = () => {nextImage.hidden = true; next.classList.remove('has-image');};
     nextImage.onload = () => {nextImage.hidden = false; next.classList.add('has-image');};
     if (history.state?.flowReturn) closeFlow.href = history.state.flowReturn;
-    let filter = state?.flow?.filter || '', index = Number.isInteger(state?.flow?.index) ? state.flow.index : 0;
+    const initial = state?.flow || storedFlow(stories) || {filter:state?.flowInitialSection || '',index:0,positions:{}};
+    let filter = initial?.filter || '', index = Number.isInteger(initial?.index) ? initial.index : 0;
     if (!['', 'teknoloji', 'oyun'].includes(filter)) filter = '';
-    const positions = {...state?.flow?.positions};
-    let visible = [], active = null, wheelAt = -Infinity, gesture = null, lastWheel = -Infinity;
+    const positions = {...initial?.positions};
+    let visible = [], active = null, wheelAt = -Infinity, gesture = null, lastWheel = -Infinity, restoreEpoch = 0;
     const save = () => {
       if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
       flowSnapshot = {filter, index, positions}; saveState();
@@ -1056,6 +1095,7 @@
     const atTop = () => viewport.scrollTop <= 2;
     const atBottom = () => viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 3;
     function show(target, restore = true) {
+      const epoch = ++restoreEpoch;
       if (active) positions[active.dataset.section + ':' + active.dataset.story] = viewport.scrollTop;
       const complete = target >= visible.length;
       index = Math.max(0, Math.min(visible.length, target));
@@ -1064,7 +1104,12 @@
       endPanel.hidden = !complete; viewport.hidden = complete;
       if (active) {
         active.hidden = false;
-        viewport.scrollTop = restore ? positions[active.dataset.section + ':' + active.dataset.story] || 0 : 0;
+        const desired = restore ? positions[active.dataset.section + ':' + active.dataset.story] || 0 : 0;
+        viewport.scrollTop = desired;
+        const photo = active.querySelector('.story-image');
+        Promise.all([photo?.decode().catch(()=>{}), document.fonts?.ready]).then(()=>{
+          requestAnimationFrame(()=>{if(epoch===restoreEpoch) viewport.scrollTop=desired;});
+        });
         const image = $('img', active); if (image) image.loading = 'eager';
         const upcoming = visible[index + 1]?.querySelector('img'); if (upcoming) upcoming.loading = 'eager';
         if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -1094,7 +1139,7 @@
     next.onclick = () => show(index + 1);
     previous.onclick = () => show(index - 1);
     $('.flow-end-previous', root).onclick = () => show(Math.max(0, visible.length - 1));
-    $('.flow-restart', root).onclick = () => { index = 0; show(0, false); viewport.focus(); };
+    $('.flow-restart', root).onclick = $('.flow-reset', root).onclick = () => { index = 0; show(0, false); viewport.focus(); };
     stepNext.onclick = () => show(index + 1);
     category.onchange = () => {
       if (category.value === filter) return;
@@ -1109,6 +1154,8 @@
       scrollSaveTimer = setTimeout(saveState, 220);
     }, {passive:true, signal:pageEvents.signal});
     pageEvents.signal.addEventListener('abort', () => clearTimeout(scrollSaveTimer), {once:true});
+    for (const event of ['pointerdown','touchstart','wheel','keydown'])
+      window.addEventListener(event,()=>restoreEpoch++,{capture:true,passive:true,signal:pageEvents.signal});
     viewport.addEventListener('touchstart', event => {
       if (event.target.closest('button,a,input') || event.touches.length !== 1) {gesture = null; return;}
       gesture = {x:event.touches[0].clientX, y:event.touches[0].clientY, top:atTop(), bottom:atBottom()};
@@ -1158,6 +1205,17 @@
       if (!target) return false;
       if (filter && filter !== section) { filter = section; index = 0; filterStories(); }
       show(visible.indexOf(target), false); viewport.focus(); return true;
+    };
+    saveFlowProgress = () => {
+      if (window.PULSE_ARCHIVE) return;
+      const story = active || visible.at(-1);
+      if (!story) return;
+      try {
+        localStorage.setItem(flowProgressKey, JSON.stringify({date:release.manifest.publish_date,releaseId:release.manifest.release_id,
+          section:story.dataset.section, story:story.dataset.story, filter,
+          position:active ? viewport.scrollTop : positions[story.dataset.section + ':' + story.dataset.story] || 0,
+          complete:!active}));
+      } catch (_) {}
     };
     filterStories();
   }
@@ -1289,6 +1347,16 @@
       listenBack.href = source?.url || new URL(fallback[0], base).href;
       backLabel(listenBack, source?.label || fallback[1]);
     }
+    const illustrateFallback = (fallback, section) => {
+      if (!fallback || fallback.querySelector('.fallback-art')) return;
+      const art = make('img', 'fallback-art'); art.alt = ''; art.setAttribute('aria-hidden','true');
+      art.src = new URL('assets/covers/' + (section === 'oyun' ? 'oyun' : 'teknoloji') + '-768.webp', base).href;
+      fallback.prepend(art);
+      const credit = make('small', 'fallback-credit', 'PULSE · Temsili görsel'); fallback.append(credit);
+    };
+    for (const missing of all('.image-missing')) {
+      illustrateFallback($('.image-fallback',missing), missing.closest('[data-section]')?.dataset.section);
+    }
     for (const image of all(".story-image")) {
       const frame = image.closest(".image-frame");
       if (!frame) continue;
@@ -1296,10 +1364,13 @@
       const show = () => {
         image.hidden = true;
         fallback.hidden = false;
+        image.closest('.news-figure')?.classList.add('is-fallback');
+        illustrateFallback(fallback, image.closest('[data-section]')?.dataset.section);
       };
       const hide = () => {
         image.hidden = false;
         fallback.hidden = true;
+        image.closest('.news-figure')?.classList.remove('is-fallback');
       };
       image.addEventListener("error", show, { signal: pageEvents.signal });
       image.addEventListener("load", hide, { signal: pageEvents.signal });
@@ -1488,7 +1559,7 @@
           pulse: true, releaseId: release.manifest.release_id,
           scroll: 0, readerReturn: origin, listeningReturn: listeningOrigin,
           flowReturn: doc.body.dataset.page === "flow" ? location.href : null,
-          flow: doc.body.dataset.page === "flow" ? {filter:document.body.dataset.section || "",index:0,positions:{}} : null,
+          flow: null, flowInitialSection: doc.body.dataset.page === "flow" ? document.body.dataset.section || "" : "",
         };
         history.pushState(state, "", url);
       }

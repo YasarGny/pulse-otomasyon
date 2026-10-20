@@ -8,12 +8,25 @@ module.exports = async function(browser, run, base) {
     await page.goto(base+path);
     await page.waitForFunction(()=>!!window.PULSE_RELEASE && !document.documentElement.classList.contains('pulse-locked'));
   };
+  await run('SHA-addressed chapters load even when the shared index is stale',async()=>{
+    const stale=await browser.newContext({serviceWorkers:'block'});
+    await stale.route('**/assets/chapters/index.json',route=>route.fulfill({status:200,contentType:'application/json',body:'{}'}));
+    const other=await stale.newPage();await other.goto(base+'/teknoloji/dinle/');
+    await other.waitForSelector('.episode-chapters .chapter-jump');
+    assert(await other.locator('.episode-chapters .chapter-jump').count()>1);
+    await other.locator('.listen-player .audio-start').click();
+    await other.waitForFunction(()=>!document.querySelector('audio').paused);
+    await other.locator('.mini-more').click();
+    await other.waitForFunction(()=>!document.querySelector('.player-tabs').hidden);
+    await stale.close();
+  });
   await run('late published chapters appear in the open page and player without interrupting audio',async()=>{
     const lateContext = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
     const latePage = await lateContext.newPage();
     let available = false, emptyRequests = 0;
-    await lateContext.route('**/assets/chapters/index.json',async route=>{
+    await lateContext.route('**/assets/chapters/*.json',async route=>{
       if (available) return route.continue();
+      if (!route.request().url().endsWith('index.json')) return route.fulfill({status:404,body:''});
       emptyRequests++;
       return route.fulfill({status:200,contentType:'application/json',body:'{}'});
     });
