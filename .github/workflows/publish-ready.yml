@@ -1,6 +1,12 @@
 name: Publish completed checkpoint without generating content
 on:
   workflow_dispatch:
+  schedule:
+    # Start before 07:30 Istanbul; this job can only validate/publish existing files.
+    - cron: '15 4 * * *'
+    - cron: '25 4 * * *'
+    - cron: '45 4 * * *'
+    - cron: '15 5 * * *'
 permissions:
   contents: read
   actions: read
@@ -9,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.PULSE_AUTOMATION_ENABLED != 'false')
     runs-on: ubuntu-24.04
     environment: pulse-production
     env:
@@ -59,19 +65,32 @@ jobs:
           current = read_json('.published/data/publication.json')
           assert current['publish_date'] == date, 'Current publication date must match today'
           if current['status'] == 'ready':
+              from pulse.release_checks import check
+              from pulse.verify_site import wait_for_site
               source = Path('.published/releases') / current['release_id']
+              check(source, '.published')
+              wait_for_site(current, timeout=180, tree='.published')
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                  output.write('publish=false\n')
+              print('Today is already complete and verified live; no upload or new backup needed.')
+              raise SystemExit(0)
           else:
               assert current['status'] == 'preparing', 'Unexpected publication state'
               assert restore(os.environ['GITHUB_REPOSITORY'], date, '.pulse-work'), 'No trusted checkpoint available'
               source = Path('.pulse-work') / date
           manifest = read_json(source / 'release.json')
           assert manifest['status'] == 'ready' and manifest['publish_date'] == date, 'Checkpoint is incomplete or stale'
+          from pulse.release_checks import check
+          from pulse.pipeline import wait_for
+          check(source, '.published')
+          wait_for(date, '07:30:00')
           result = build('site', 'dist', release=source, previous='.published')
           assert result == manifest, 'The verified checkpoint identity must be preserved'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('date=' + date + '\n')
+              output.write('date=' + date + '\npublish=true\n')
           PY
       - uses: ./.github/actions/deploy-site
+        if: steps.build.outputs.publish == 'true'
         with:
           mode: release
           date: ${{ steps.build.outputs.date }}

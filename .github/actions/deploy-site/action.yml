@@ -41,6 +41,17 @@ runs:
       env:
         PULSE_DATE: ${{ inputs.date }}
       run: python -m pulse.build --preparing "$PULSE_DATE" --previous .published
+    - name: Require complete audio and reviewed chapters before a ready publication
+      if: inputs.mode == 'release'
+      shell: bash
+      run: |
+        python - <<'PY'
+        from pathlib import Path
+        from pulse.publication import read_json
+        from pulse.release_checks import check
+        manifest=read_json('dist/data/publication.json')
+        check(Path('dist/releases') / manifest['release_id'], 'dist')
+        PY
     - name: Back up complete publications to private Drive before any cleanup
       if: env.PULSE_DRIVE_ENABLED == 'true'
       shell: bash

@@ -198,11 +198,9 @@ jobs:
                           summary.write(f"- {kind}: {len(report['replacements'])} sözlük dönüşümü; {report['candidate_count']} kontrol adayı. {names}\n")
                   summary.write('\nAyrıntılar özel pulse-state artifact içindeki pronunciation-review.json dosyalarında.\n')
           PY
-      - name: Optional final-audio chapter analysis (never regenerates voices)
+      - name: Required final-audio chapter analysis (never regenerates voices)
         id: chapters
-        if: vars.PULSE_CHAPTERS_ENABLED != 'false'
-        continue-on-error: true
-        timeout-minutes: 25
+        timeout-minutes: 45
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
@@ -210,22 +208,13 @@ jobs:
           HF_HUB_DISABLE_XET: '1'
         run: |
           python -m pip install -r requirements-chapters.txt
-          python - <<'PY'
-          import datetime as dt, os, subprocess, sys
-          from pulse.publication import now, not_before
-          # Optional metadata must not consume the final publication-check window.
-          remaining = int((not_before(os.environ['PULSE_DATE']) - dt.timedelta(minutes=15) - now()).total_seconds())
-          if remaining > 30:
-              subprocess.run([sys.executable, 'scripts/prepare_chapters.py', '--release', os.environ['RELEASE_PATH'], '--previous', '.published'], check=True, timeout=min(remaining, 24 * 60))
-          else:
-              print('Chapter analysis deferred to the independent post-publication completion workflow. Existing audio is unchanged.')
-          PY
-      - name: Report optional chapter availability
-        if: always() && vars.PULSE_CHAPTERS_ENABLED != 'false'
+          python scripts/prepare_chapters.py --release "$RELEASE_PATH" --previous .published
+      - name: Report required chapter availability
+        if: always()
         env:
           CHAPTER_OUTCOME: ${{ steps.chapters.outcome }}
         run: |
-          echo "Podcast chapter analysis: $CHAPTER_OUTCOME. Failed/unverified metadata is omitted; original audio is preserved." >> "$GITHUB_STEP_SUMMARY"
+          echo "Podcast chapter analysis: $CHAPTER_OUTCOME. Unverified or missing metadata blocks the release; original audio is preserved." >> "$GITHUB_STEP_SUMMARY"
       - name: Build only inside the verified publication window; otherwise save the ready checkpoint
         id: build
         env:
@@ -234,6 +223,8 @@ jobs:
           python - <<'PY'
           import os, subprocess, sys
           from pulse.schedule import build_available
+          from pulse.release_checks import check
+          check(os.environ['RELEASE_PATH'], '.published')
           available=build_available(os.environ['PULSE_DATE'])
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:
               f.write(f'available={str(available).lower()}\n')

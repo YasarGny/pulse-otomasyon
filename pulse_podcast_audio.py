@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 import requests
+from pulse.audio_quality import assert_no_long_silence
 
 MODEL = os.getenv("PULSE_TTS_MODEL", "gemini-3.8-flash-tts")
 VOICES = {"Yaşar": os.getenv("PULSE_YASAR_VOICE_ID", "voice_glt4mz1jtaeh"), "Necdet": os.getenv("PULSE_NECDET_VOICE_ID", "voice_8nqcoox86z5q")}
@@ -163,17 +164,26 @@ def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
             valid = False
             if persistent and path.exists():
                 try:
-                    run('ffmpeg', '-v', 'error', '-i', str(path), '-f', 'null', '-')
+                    assert_no_long_silence(path)
                     valid = duration(path) >= max(2, sum(len(t['text'].split()) for t in group) / 220 * 60)
                 except (ValueError, subprocess.CalledProcessError):
                     valid = False
             if not valid:
+                path.unlink(missing_ok=True)
                 partial = path.with_name(path.stem + '.partial.wav')
                 try:
-                    synthesize(group, partial, index, strict_audio=strict_audio)
-                    if persistent and duration(partial) < max(2, sum(len(t['text'].split()) for t in group) / 220 * 60):
-                        raise RuntimeError('TTS segment shorter than its dialogue; refusing truncated audio')
-                    partial.replace(path)
+                    for attempt in range(2):
+                        synthesize(group, partial, index, strict_audio=strict_audio)
+                        try:
+                            if duration(partial) < max(2, sum(len(t['text'].split()) for t in group) / 220 * 60):
+                                raise ValueError('TTS segment shorter than its dialogue')
+                            assert_no_long_silence(partial)
+                        except (ValueError, subprocess.CalledProcessError):
+                            partial.unlink(missing_ok=True)
+                            if attempt: raise
+                            continue
+                        partial.replace(path)
+                        break
                 finally:
                     partial.unlink(missing_ok=True)
             paths.append(path)
@@ -200,6 +210,7 @@ def render(turns, target, *, strict_audio=False, checkpoint_dir=None):
         (persistent / 'merged.wav').unlink(missing_ok=True)
         for gap in persistent.glob('silence_*.wav'):
             gap.unlink()
+    assert_no_long_silence(target)
     seconds = duration(target)
     if seconds < 2:
         raise RuntimeError("Rendered podcast unexpectedly short")
