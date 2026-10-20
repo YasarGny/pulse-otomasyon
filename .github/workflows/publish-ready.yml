@@ -1,0 +1,80 @@
+name: Publish completed checkpoint without generating content
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: pulse-github-daily
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: pulse-production
+    env:
+      PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+      PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+      PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+      PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+      PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check production and backup authorization
+        env:
+          LIVE_APPROVED: ${{ vars.PULSE_LIVE_APPROVED }}
+        run: |
+          python - <<'PY'
+          import json, os
+          assert json.load(open('pulse/deployment.json')).get('live_enabled') is True, 'Live publication is disabled'
+          assert os.environ['LIVE_APPROVED'] == 'true', 'Live publication is not approved'
+          assert os.environ['PULSE_DRIVE_ENABLED'] == 'true', 'A verified Drive backup is required for this rollout'
+          PY
+      - run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
+      - name: Restore and publish only a complete verified current-day checkpoint
+        id: build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from pulse.build import build
+          from pulse.publication import read_json, expected_date, now
+          from scripts.state import restore
+          date = expected_date(now())
+          current = read_json('.published/data/publication.json')
+          assert current['publish_date'] == date, 'Current publication date must match today'
+          if current['status'] == 'ready':
+              source = Path('.published/releases') / current['release_id']
+          else:
+              assert current['status'] == 'preparing', 'Unexpected publication state'
+              assert restore(os.environ['GITHUB_REPOSITORY'], date, '.pulse-work'), 'No trusted checkpoint available'
+              source = Path('.pulse-work') / date
+          manifest = read_json(source / 'release.json')
+          assert manifest['status'] == 'ready' and manifest['publish_date'] == date, 'Checkpoint is incomplete or stale'
+          result = build('site', 'dist', release=source, previous='.published')
+          assert result == manifest, 'The verified checkpoint identity must be preserved'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('date=' + date + '\n')
+          PY
+      - uses: ./.github/actions/deploy-site
+        with:
+          mode: release
+          date: ${{ steps.build.outputs.date }}
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          refresh-backup: "true"
