@@ -1616,7 +1616,7 @@
     )
       return;
     event.preventDefault();
-    if (a.matches(".flow-close") && history.state?.flowReturn) { history.back(); return; }
+    if (a.matches(".flow-close") && history.state?.flowReturn) { saveState(); history.back(); return; }
     if (a.matches(".article-reader .back") && readerReturn()) {
       history.back();
       return;
