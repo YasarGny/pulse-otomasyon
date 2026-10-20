@@ -198,6 +198,12 @@ jobs:
                           summary.write(f"- {kind}: {len(report['replacements'])} sözlük dönüşümü; {report['candidate_count']} kontrol adayı. {names}\n")
                   summary.write('\nAyrıntılar özel pulse-state artifact içindeki pronunciation-review.json dosyalarında.\n')
           PY
+      - name: Reuse the public transcription model cache
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: pulse-whisper-small-${{ runner.os }}-v1
       - name: Required final-audio chapter analysis (never regenerates voices)
         id: chapters
         timeout-minutes: 45

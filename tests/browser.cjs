@@ -1451,6 +1451,7 @@ async function run(name, fn) {
         });
         await p.reload();
         await p.locator('.pulse-printing[data-mode="delayed"]').waitFor();
+        assert.doesNotMatch(await p.locator('.pulse-print-card').innerText(), /hedef saati aşıldı/);
         assert.match(
           await p.locator(".pulse-print-card h1").innerText(),
           /devam ediyor/,
