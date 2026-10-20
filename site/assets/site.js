@@ -967,7 +967,8 @@
     if (chapterRefreshRunning) { chapterRefreshAgain = true; return; }
     const missingPlayer = !selectedClip && selected?.kind === "podcast" && !currentChapters &&
       selectedRelease.manifest.release_id === release.manifest.release_id;
-    const missingPage = $(".listen-player") &&
+    const listenPage = $(".listen-player");
+    const missingPage = listenPage &&
       new URLSearchParams(location.search).get("ses") !== "ozet" && !$(".episode-chapters");
     const missingClips = all('.story-clip-slot').some(slot => !slot.childElementCount);
     if (!missingPlayer && !missingPage && !missingClips) return;
@@ -976,7 +977,7 @@
       chapterRegistry = null;
       // Do not borrow an in-flight missing response from before this verified update.
       if (missingPlayer) chapterCache.delete(selectedRelease.editions[selected.section].podcast.sha256);
-      if (missingPage) chapterCache.delete(release.editions[missingPage.dataset.listenSection].podcast.sha256);
+      if (missingPage) chapterCache.delete(release.editions[listenPage.dataset.listenSection].podcast.sha256);
       clipIndexPromise = null; hydrateStoryClips();
       if (missingPlayer) {
         chapterAsset = null;
