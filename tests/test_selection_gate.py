@@ -16,7 +16,7 @@ class SelectionGateTests(unittest.TestCase):
         }
         self.rows = [{'id': str(i), 'event_key': f'event-{i}', 'category': 'BİLİM',
                       'title': 'Doğrulanmış haber', 'summary': 'Kaynak özeti.',
-                      'brief': 'Olgusal kısa özet.', 'why': 'Önem açıklaması.'}
+                      'brief': 'Kaynağa dayanan olgusal kısa haber özeti.', 'why': 'Önem açıklaması.'}
                      for i in range(15)]
 
     def test_floor_is_not_lowered_and_diagnostic_is_actionable(self):
@@ -52,7 +52,7 @@ class SelectionGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'selected 11'):
             checked_selection({'stories': rows}, self.sources, 'teknoloji')
         rows[0]['id'] = 'invented'
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(ValueError, 'source identity'):
             checked_selection({'stories': rows}, self.sources, 'teknoloji')
 
     def test_failed_repair_never_pays_for_articles(self):
@@ -89,3 +89,15 @@ class SelectionGateTests(unittest.TestCase):
         self.assertEqual(generate.call_count, 1)
         self.assertIn('Already reported facts', generate.call_args.args[0])
         self.assertIn('somut YENİ gelişme', generate.call_args.args[0])
+
+    def test_missing_why_is_repaired_before_any_article_generation(self):
+        research={'publish_date':'2026-10-19','sections':{'teknoloji':list(self.sources.values())}}
+        bad=copy.deepcopy(self.rows);bad[0].pop('why')
+        with patch('pulse.editorial.gemini',side_effect=[{'stories':bad},{'stories':self.rows}]) as generate, \
+             patch('pulse.articles.full_articles',return_value=[]) as articles, \
+             patch('pulse.editorial.validate_content',side_effect=ValueError('Final gate preserved')):
+            with self.assertRaisesRegex(ValueError,'Final gate preserved'):
+                create_edition(research,'teknoloji','2026-10-19',4,'2026-10-16')
+        self.assertEqual(generate.call_count,2)
+        self.assertIn('why',generate.call_args.args[0])
+        self.assertEqual(len(articles.call_args.args[0]),15)

@@ -678,3 +678,32 @@ testi gerçek kart dokunmalarını, masaüstü testi sabit okları ve klavye oda
 biçimde işlenir; hareket, kartın tıklamasını tetikleyip ikinci haberi atlamamalıdır.
 Diğer bağlantı, ses düğmesi ve form kontrolleri bu jestten korunur. Native
 Chromium dokunma testi bir hareketin tek haber ilerlettiğini ve geri dönebildiğini denetler.
+
+### 21.10.2026: editoryal yapı ve uzunluk hatalarından toparlanma
+
+Haber seçkisinin kaynak kimliği, zorunlu başlık/özet/önem alanları ve varsa
+brief biçimi makale üretiminden önce doğrulanır. Eksik alan, aynı kanıtlarla
+sınırlı bir düzeltme isteğine gider; KeyError ile düzeltme aşamasını atlamaz.
+Tam makale JSON’u da bozuk kimlik/alan/paragraf için bir kez düzeltilir, ardından
+ayrı olgu denetiminden geçer. Kaynak, haber sayısı ve inceleme koşulları korunur.
+
+Podcastte yerel kelime sayımı bağımsız denetimden önce yapılır; aralık dışındaki
+metin en çok iki hedefli düzeltmeyle aralığın ortasına yönlendirilir. Alt/üst
+sınır düşürülmez, dolgu veya tekrara izin verilmez; sonuç ayrıca bağımsız olgu
+ve sohbet denetiminden geçer. Metin, tam kanıt/ayar parmak izine bağlı özel
+podcast-draft.json dosyasında saklanır; başarısız aşama yeniden başladığında
+ilk taslağı ve editör aşamasını tekrar satın almaz. Taslak hiçbir zaman onay
+sayılmaz; değişen kanıtlar eski taslağı geçersiz kılar. Geçici HTTP ve bozuk JSON
+yanıtları sınırlı olarak yeniden denenir. Normal başarılı akışa ek model çağrısı
+eklenmez; ücretli bağımsız denetim zaten kısa olduğu bilinen metne harcanmaz.
+
+Kullanıcı 21.10.2026’da bugünkü eksik üretimin tamamlanmasını açıkça istedi:
+mevcut günlük checkpoint ile normal üretim çalıştırılabilir; hazır dosyaları
+yeniden üretmek için refresh_audio veya expanded_issue kullanılmaz. Bu izin
+yeni bir günün elle ses üretimi için genel izin değildir.
+
+Sabah plan adımı üretimden önce sentetik tam test paketini yeniden çalıştırmaz;
+aynı paket PR ve main kalite CI’ında zorunlu çalışır. Gerçek dosya, ses, bölüm,
+Drive ve canlı Pages kontrolleri korunur. Üretim cron’una 08:30/09:00 TRT için
+iki sınırlı geç toparlanma denemesi eklendi; günün manifesti ready ise bu ek
+tetikler plan aşamasında kapanır ve yeni model/ses/yedek işi çalıştırmaz.
