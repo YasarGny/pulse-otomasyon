@@ -770,3 +770,13 @@ kısa ve doğrudan konu değişimi geçerlidir. Her geçişe ortak tema, espri v
 eklenmez. Necdet her konuda soru sormak veya karşı çıkmak zorunda değildir.
 Yazım, editör ve bağımsız denetim talimatları bu davranışı birlikte uygular.
 Çalışan Gemini/Edge yöntemi, ses kimlikleri ve telaffuz katmanı değiştirilmez.
+
+Az haberli yeni profilde günün özeti sabit 20 saniyeye zorlanmaz. Üretim,
+checkpoint yeniden kullanımı ve son yayın denetimi aynı metne bağlı süre alt
+sınırını kullanır: özet metnindeki kelime sayısı / 4; en az 5, en çok 20 saniye.
+240 kelime/dakika, bariz kısa çıktıyı ayıklamak için geniş bir üst hız varsayımıdır;
+konuşma hedefi veya kaydın bütün metni kapsadığının kanıtı değildir. Tarayıcıda
+yeni profil için 5 saniyelik temel metadata kontrolü bulunur; sunucunun daha güçlü
+metin kontrolü ve doğrulanan MP3 kimliği korunur. Önceki profillerde 20 saniye
+şartı değişmez. Tam çözümleme, boyut/hash, uzun sessizlik ve yayın kontrolleri
+devam eder; kısa özeti uzatmak için metin veya ses yeniden üretilmez.

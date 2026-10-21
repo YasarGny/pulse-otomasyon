@@ -140,7 +140,7 @@
       const a = d[kind],
         min =
           kind === "summary"
-            ? 20
+            ? d.publication_profile === "daily-v2" ? 5 : 20
             : d.publication_profile === "expanded-v1"
               ? section === "teknoloji"
                 ? 900
