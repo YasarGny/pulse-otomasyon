@@ -10,6 +10,8 @@ def validate_priority(story):
         for key in DIMENSIONS
     ):
         raise ValueError('Missing/invalid editorial priority dimensions')
+    if priority['evidence'] == 0 or priority['development'] == 0:
+        raise ValueError('A selected story needs source evidence and a concrete new development')
     reason = priority.get('reason')
     if not isinstance(reason, str) or not 20 <= len(reason.strip()) <= 500:
         raise ValueError('Source-grounded editorial priority reason is required')

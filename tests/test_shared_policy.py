@@ -68,6 +68,10 @@ class SharedPolicyTests(unittest.TestCase):
         for value in (True,4.5,5,-1):
             story={'editorial_priority':priority(2)};story['editorial_priority']['impact']=value
             with self.assertRaises(ValueError):validate_priority(story)
+        for key in ('evidence','development'):
+            story={'editorial_priority':priority(2)};story['editorial_priority'][key]=0
+            with self.assertRaisesRegex(ValueError,'concrete new development'):
+                validate_priority(story)
 
     def test_selection_uses_new_policy_without_lowering_old_floor(self):
         story=daily(count=1)['stories'][0];source={story['id']:story}

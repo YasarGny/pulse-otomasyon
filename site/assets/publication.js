@@ -118,7 +118,7 @@
           const p = s.editorial_priority;
           if (!p || !["impact", "development", "timeliness", "evidence"].every(
             k => Number.isInteger(p[k]) && p[k] >= 0 && p[k] <= 4
-          ) || typeof p.reason !== "string" || p.reason.trim().length < 20 || p.reason.length > 500)
+          ) || p.evidence === 0 || p.development === 0 || typeof p.reason !== "string" || p.reason.trim().length < 20 || p.reason.trim().length > 500)
             return false;
         }
         if (

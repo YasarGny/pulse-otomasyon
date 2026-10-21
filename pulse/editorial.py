@@ -371,11 +371,11 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sourc
     system = "Sen dikkatli bir Türkçe haber editörüsün. Yalnızca sağlanan kaynaklara dayan. Çıktı yalnızca JSON olsun."
     if profile == DAILY_PROFILE:
         prompt = prompt.replace('yeterli geçerli haber yoksa boş stories döndür', 'hiç geçerli haber yoksa boş stories döndür')
-        prompt += '''\nHer haber için editorial_priority ekle: {"impact":0,"development":0,"timeliness":0,"evidence":0,"reason":"Kaynak olgularına dayanan kısa gerekçe"}.
+        prompt += '''\nHer haber için editorial_priority ekle: {"impact":2,"development":2,"timeliness":2,"evidence":2,"reason":"Kaynak olgularına dayanan kısa gerekçe"}. Örnek puanları kopyalama; her haberi ayrı değerlendir.
 Her boyut 0–4 tam sayı: impact etkilenenler açısından önem; development somut yeni gelişmenin büyüklüğü;
 timeliness bugün okunmasının önemi; evidence verilen kaynak kanıtının açıklığı.
 0 düşük/yetersiz, 2 orta, 4 güçlü/yüksek; ara değerler kullanılabilir. Bu editoryal bir değerlendirmedir.
-Kanıtı yetersiz haberi puan vererek meşrulaştırma; seçme. Gerekçeye yeni olgu ekleme.
+Kanıtı yetersiz veya somut yeni gelişme içermeyen haberi puan vererek meşrulaştırma; seçme. Gerekçeye yeni olgu ekleme.
 Haberleri toplam puana göre önem sırasına koy. Kategori, yayıncı popülerliği veya görsel güzelliği puanı etkilemesin.'''
     generated = gemini(prompt, system=system)
     try:
