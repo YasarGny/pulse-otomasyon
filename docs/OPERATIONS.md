@@ -707,3 +707,8 @@ aynı paket PR ve main kalite CI’ında zorunlu çalışır. Gerçek dosya, ses
 Drive ve canlı Pages kontrolleri korunur. Üretim cron’una 08:30/09:00 TRT için
 iki sınırlı geç toparlanma denemesi eklendi; günün manifesti ready ise bu ek
 tetikler plan aşamasında kapanır ve yeni model/ses/yedek işi çalıştırmaz.
+
+İptal edilen günlük çalışmanın generate işi `always()` koşuluyla yeniden
+başlamamalıdır; koşul ayrıca `!cancelled()` gerektirir. Başarısız/atlanmış
+gate sonucu uygun biçimde değerlendirilirken kullanıcı iptali dikkate alınır.
+Güvenli checkpoint kaydetme adımları kendi always() koşullarını korur.
