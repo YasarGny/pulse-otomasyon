@@ -701,3 +701,9 @@ Kullanıcı 21.10.2026’da bugünkü eksik üretimin tamamlanmasını açıkça
 mevcut günlük checkpoint ile normal üretim çalıştırılabilir; hazır dosyaları
 yeniden üretmek için refresh_audio veya expanded_issue kullanılmaz. Bu izin
 yeni bir günün elle ses üretimi için genel izin değildir.
+
+Sabah plan adımı üretimden önce sentetik tam test paketini yeniden çalıştırmaz;
+aynı paket PR ve main kalite CI’ında zorunlu çalışır. Gerçek dosya, ses, bölüm,
+Drive ve canlı Pages kontrolleri korunur. Üretim cron’una 08:30/09:00 TRT için
+iki sınırlı geç toparlanma denemesi eklendi; günün manifesti ready ise bu ek
+tetikler plan aşamasında kapanır ve yeni model/ses/yedek işi çalıştırmaz.
