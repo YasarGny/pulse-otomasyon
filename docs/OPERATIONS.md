@@ -732,3 +732,41 @@ gecikmişse hemen başlar. İçerik ve ses için ayrıca 06:30/06:45 saatlerini 
 Böylece ilk cron zamanında geldiğinde ikinci 06:15 cron’unun gecikmesine bağlı
 kalınmaz. Diğer cron’lar ara çıktılardan devam eden yedeklerdir; aynı gün ready
 olan yayın için ücretli üretim çalıştırılmaz. 07:30 yayın kapısı değişmedi.
+
+### 22.10.2026’dan itibaren ortak editoryal politika
+
+Kullanıcı 21.10.2026’da iki yayına aynı politika uygulanmasını, haberlerin önem
+sırasına konmasını ve podcastte zorlama bağlantılar kurulmamasını onayladı.
+Bugünkü haber/ses üretimi veya dağıtımı başlatılmaz. `daily-v2` profili yalnız
+22.10.2026 ve sonraki tarihlerde yeni sayılar için seçilir. Önceki `expanded-v1`
+sayıların haber ve gerçek süre sözleşmeleri değişmez; eski ZIP’ler doğrulanabilir.
+
+İki kategori de 15–20 önemli ve farklı gelişme hedefler. Bu hedef alt sınır
+değildir: yalnız yeterli kaynağı olan haberler seçilir; boş seçki engellenir.
+24 haberlik teknik paket üst sınırı korunur. Araştırma aşamasının güncel aday
+havuzu kontrolleri değişmez. Daha az haber seçmek, araştırma hatalarını veya
+eksik kaynakları yok sayma izni değildir.
+
+Her haberin `editorial_priority` alanı etki, somut gelişmenin büyüklüğü, güncellik
+ve kanıt açıklığı için 0–4 değerlendirme ile kaynak olgularına dayanan gerekçe
+içerir. Puan nesnel gerçek veya doğruluk garantisi değildir. Gerekçedeki olgular
+mevcut bağımsız haber incelemesine dahildir; ek model çağrısı gerekmez. Aynı
+rubrik iki kategoride de kullanılır. Toplam puan sıralamayı belirler; eşitlikler
+kararlı haber kimliğiyle çözülür, kategori veya görsel tercih edilmez. Kategori
+sayfaları ve birleşik liste aynı sıralama bilgisini kullanır. Ana sayfada en
+yüksek öncelikli haber başa gelir; üçlü seçkide iki yayın da temsil edilir.
+Eski profildeki sayılar mevcut yerleşimlerini korur.
+
+İki podcast de yaklaşık 15–25 dakika / 2500–3100 kelime hedefler. Yeni profilde
+kelime veya dakika kotası için metin uzatılmaz, kısaltılmaz veya yeniden
+üretilmez. Gerçek sesin çözümlenebilmesi, en az 40 saniyelik temel dosya kontrolü,
+olgu/sohbet incelemesi, uzun sessizlik denetimi ve iki podcastin onaylı bölüm/kesit
+verileri zorunludur. 40 saniye editoryal hedef değildir; içerik derinliği ve önemli
+konuların yeterli ele alınması bağımsız incelemede değerlendirilir. Kaynaklar
+yeterliyken yüzeysel veya tekrarla uzatılmış sohbet reddedilir.
+
+Yaşar ana sunucudur. Konular arasında gerçek ilişki varsa kullanılabilir; yoksa
+kısa ve doğrudan konu değişimi geçerlidir. Her geçişe ortak tema, espri veya soru
+eklenmez. Necdet her konuda soru sormak veya karşı çıkmak zorunda değildir.
+Yazım, editör ve bağımsız denetim talimatları bu davranışı birlikte uygular.
+Çalışan Gemini/Edge yöntemi, ses kimlikleri ve telaffuz katmanı değiştirilmez.

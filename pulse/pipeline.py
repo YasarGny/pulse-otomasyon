@@ -61,7 +61,7 @@ def generate_audio(root, data):
     import pulse_podcast_audio
     import pulse_podcast_writer
 
-    from pulse.profile import expanded, podcast_minimum, PODCAST_SECONDS
+    from pulse.profile import expanded, podcast_minimum, podcast_maximum, shared_policy, DAILY_PROFILE
     minimum_podcast = podcast_minimum(data)
     section = data["section"]
     folder = root / section
@@ -133,6 +133,7 @@ def generate_audio(root, data):
             evidence=evidence,
             audit_path=review_path,
             **({"long_form": True} if expanded(data) else {}),
+            **({"publication_profile": DAILY_PROFILE} if shared_policy(data) else {}),
         )
         write_json(turns_path, {"turns": turns})
     review = read_json(review_path)
@@ -163,7 +164,7 @@ def generate_audio(root, data):
         "episode": data["issue"],
         **audio_info(podcast, minimum_podcast),
     }
-    if expanded(data) and data["podcast"]["duration"] > PODCAST_SECONDS[section][1]:
+    if podcast_maximum(data) is not None and data["podcast"]["duration"] > podcast_maximum(data):
         raise ValueError("Podcast exceeds expanded duration budget")
     data["ready"] = True
     data["audio_revision"] = AUDIO_REVISION

@@ -1,5 +1,10 @@
 """Versioned publishing targets; old sealed issues remain verifiable."""
 PROFILE = 'expanded-v1'
+DAILY_PROFILE = 'daily-v2'
+POLICY_START = '2026-10-22'
+DAILY_TARGET = (15, 20)
+DAILY_WORDS = (2500, 3100)
+DAILY_PODCAST_SECONDS = (900, 1500)
 TARGETS = {'teknoloji': (15, 20), 'oyun': (12, 18)}
 MIN_STORIES = {'teknoloji': 12, 'oyun': 10}
 WORDS = {'teknoloji': (2500, 3100), 'oyun': (2000, 2700)}
@@ -9,8 +14,27 @@ PODCAST_SECONDS = {'teknoloji': (900, 1500), 'oyun': (720, 1320)}
 
 
 def expanded(data):
-    return data.get('publication_profile') == PROFILE
+    return data.get('publication_profile') in (PROFILE, DAILY_PROFILE)
+
+
+def shared_policy(data):
+    return data.get('publication_profile') == DAILY_PROFILE
+
+
+def profile_for(date):
+    return DAILY_PROFILE if date >= POLICY_START else PROFILE
+
+
+def minimum_stories(data):
+    # A real non-empty edition is required; the editorial target is not a quota.
+    return 1 if shared_policy(data) else MIN_STORIES[data['section']] if expanded(data) else 3
+
+
+def podcast_maximum(data):
+    return PODCAST_SECONDS[data['section']][1] if data.get('publication_profile') == PROFILE else None
 
 
 def podcast_minimum(data):
-    return PODCAST_SECONDS[data['section']][0] if expanded(data) else 40
+    # Keep old sealed contracts intact. New duration targets are guidance;
+    # decoding, factual/conversation review, silence and chapters remain gates.
+    return PODCAST_SECONDS[data['section']][0] if data.get('publication_profile') == PROFILE else 40

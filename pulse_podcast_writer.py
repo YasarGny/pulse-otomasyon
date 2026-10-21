@@ -22,8 +22,11 @@ Bir konuyu konuşmak yeterliyse sırf listeyi bitirmek için diğerine atlama.
 Her konu için gereken olgusal bağlamı bir-iki kısa cümlede ver; sonra değerlendirme,
 açıklığa kavuşmamış nokta, kullanıcı/oyuncu açısından tercih veya somut bir soruyu
 karşılıklı düşün. Bir sunucu değiştiğinde önceki kişinin düşüncesine gerçek yanıt
-versin. 'Sıradaki haber', 'bir sonraki haberimiz', zorlama haber bağlantıları,
-başlık okuma, 'aynen/haklısın' döngüleri ve yapay zıtlaşma kullanma.
+versin. Konular arasında gerçek ilişki varsa kullan; ilişki yoksa Yaşar kısa,
+doğal bir cümleyle yeni konuya geçebilir. Her haberi önceki habere bağlamak,
+her geçişe ortak tema, soru veya espri bulmak zorunda değilsin. Sırf geçiş için
+nedensellik veya benzerlik uydurma. Başlık okuma, 'aynen/haklısın' döngüleri
+ve yapay zıtlaşma kullanma. Necdet her konuda soru sormak veya karşı çıkmak zorunda değil.
 Görüş açıkça kişisel değerlendirme/olasılık olarak duyulsun; doğrulanmış olgu gibi
 sunulmasın. Bence demek yanlış bir olgusal iddiayı meşrulaştırmaz. Kaynakta olmayan
 rakam, özellik, nedensellik, şirket planı, piyasa geçmişi veya yaşanmış deneyim
@@ -47,7 +50,9 @@ bitirmek zorunlu değil; iki-üç güçlü konu yeter. Gerekirse tekrarı kısal
 sayısını korumak veya süre doldurmak zorunda değilsin. Yeni olgu, sahte anı, sayı,
 karşılaştırma, kesin gelecek tahmini veya kaynakta olmayan nedensellik EKLEME.
 Yorumu olgudan ayır. Yaşar'ın açılışı, doğru Türkçe tarih, Yeni Sekme adı ve samimi
-kapanış korunsun. Yalnız {"turns":[{"speaker":"Yaşar","text":"..."},...]} döndür."""
+kapanış korunsun. Konular ilişkili değilse Yaşar'ın kısa, doğrudan konu değişimini
+koru; doğal geçişleri zorla bağlantı, espri veya soru ekleyerek yeniden yazma.
+Yalnız {"turns":[{"speaker":"Yaşar","text":"..."},...]} döndür."""
 
 REVIEWER = """Sen senaryoyu yazmayan, titiz bir doğruluk denetçisisin. Verilen
 kaynak notları ve varsa ham kaynak alıntılarına karşı diyalogdaki HER olgusal iddiayı
@@ -57,8 +62,10 @@ iddialarına özellikle bak. Kanıtı olmayan iddia, yorum içine gizlense de re
 Kişisel tercih, açık soru ve açıkça koşullu olasılık olgu değildir; bunlara izin ver.
 Yorum gerçeklerden çıkmayan bir kesin sonuç dayatıyorsa misleading_opinions'a yaz.
 Dış bilginden boşluk doldurma. Ana sunucu Yaşar olmalı; metin sırayla haber okuyan
-bir özet değil, karşılıklı fikir geliştiren bir sohbet olmalı. Sorun varsa düzeltme
-tarifini concern listesine yaz ve onaylama. Yalnız JSON döndür:
+bir özet değil, karşılıklı fikir geliştiren bir sohbet olmalı.
+Gerçek ilişkisi olmayan konular arasında kısa, doğrudan geçiş kusur değildir;
+akış sağlamak için uydurulmuş ilişki veya nedensellik ise reddedilmelidir.
+Sorun varsa düzeltme tarifini concerns listesine yaz ve onaylama. Yalnız JSON döndür:
 {"approved":true,"unsupported_claims":[],"misleading_opinions":[],"concerns":[]}
 Sorun varsa approved false ve ilgili listelerde kısa, somut nedenler olmalı."""
 
@@ -144,7 +151,7 @@ def dialogue_digest(turns):
     return hashlib.sha256(json.dumps(turns, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
-def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=None, audit_path=None, long_form=False):
+def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=None, audit_path=None, long_form=False, publication_profile=None):
     if section not in ("teknoloji", "oyun"):
         raise ValueError("Unknown podcast section")
     source = [{"id": i + 1, "headline": title, "verified_summary": summary} for i, (title, summary) in enumerate(stories)]
@@ -154,7 +161,18 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
         system = system.replace("Yeni Sekme", "Moradon FM").replace("teknoloji podcast", "oyun podcast")
         system += "\nYalnız oyun gündemi. Knight Online'a hafif bir gönderme olabilir; bütün sohbeti ona bağlama."
         editor = editor.replace("Yeni Sekme", "Moradon FM")
-    if long_form:
+    from pulse.profile import DAILY_PROFILE, DAILY_WORDS, DAILY_PODCAST_SECONDS
+    flexible = publication_profile == DAILY_PROFILE
+    if long_form and flexible:
+        length = (f'\nHer iki yayın için aynı yazım hedefi: yaklaşık {DAILY_WORDS[0]}–{DAILY_WORDS[1]} kelime, '
+                  f'{DAILY_PODCAST_SECONDS[0] // 60}–{DAILY_PODCAST_SECONDS[1] // 60} dakika. Bunlar kota değildir. '
+                  'Konuşmaya değer konuları önemine göre seç; bütün haberleri işlemek veya belirli sayıda konu/dönüş '
+                  'tamamlamak zorunda değilsin. Kaynaklarda yeterli gelişme varsa birkaç konuyu yüzeysel geçme; '
+                  'anlamlı takip ve gerekçeli karşılıklı değerlendirme geliştir. Gündem sakinse daha kısa olabilir. '
+                  'Hedefe ulaşmak için tekrar, yapay bağlantı veya yeni olgu ekleme. Her dönüş en çok 1000 karakter.')
+        system = system.replace('iki-üç ortak soruyu', 'konuşmaya değer soruları') + length
+        editor = editor.replace('iki-üç güçlü konu yeter', 'gündeme göre yeterli güçlü konu seç') + length
+    elif long_form:
         from pulse.profile import WORDS, PODCAST_SECONDS, SCRIPT_ESTIMATED_WORDS_PER_MINUTE
         low, high = WORDS[section]
         estimated_low = round(PODCAST_SECONDS[section][0] / 60 * SCRIPT_ESTIMATED_WORDS_PER_MINUTE[0])
@@ -192,7 +210,7 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
     review = None
     length_repairs = 0
     for attempt in range(2):
-        if long_form:
+        if long_form and not flexible:
             while not estimated_low <= (count := sum(len(t['text'].split()) for t in turns)) <= estimated_high:
                 if length_repairs >= 2:
                     raise RuntimeError(f'Podcast rejected by independent evidence/conversation review: bölüm {count} kelime; hedef {low}–{high}, yazım payı {estimated_low}–{estimated_high}; bounded length repair exhausted')
@@ -207,7 +225,13 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
                 turns = _validate(_dialogue(editor, notes + correction, .25))
                 length_repairs += 1
                 checkpoint()
-        review = _request(_payload(REVIEWER, notes + "\nDenetlenecek diyalog: " + json.dumps({"turns": turns}, ensure_ascii=False), .05))
+        reviewer = REVIEWER
+        if flexible:
+            reviewer += ('\nKelime, süre veya konu sayısı tek başına ret gerekçesi değildir. '
+                         'Mevcut güçlü kaynaklara göre sohbetin kapsamını ve derinliğini denetle. '
+                         'Önemli gelişmeleri sebepsizce atlayan, yüzeysel veya tekrarla uzatılmış sohbeti concerns ile reddet. '
+                         'Her haberi kapsamak gerekmez; kısa ve doğrudan konu geçişlerini kabul et.')
+        review = _request(_payload(reviewer, notes + "\nDenetlenecek diyalog: " + json.dumps({"turns": turns}, ensure_ascii=False), .05))
         if not isinstance(review,dict) or any(not isinstance(review.get(k),list) or any(not isinstance(v,str) for v in review[k]) for k in ('unsupported_claims','misleading_opinions','concerns')):
             review = {'approved':False,'unsupported_claims':[],'misleading_opinions':[], 'concerns':['Independent review returned an invalid schema; a new valid independent review is required.']}
         if audit_path:
