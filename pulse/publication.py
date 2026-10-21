@@ -94,8 +94,12 @@ def validate_content(data, section, date, game_start):
     if data.get("date") != turkish_date(date):
         raise ValueError("Incorrect Turkish date")
     stories = data.get("stories")
-    from pulse.profile import MIN_STORIES, expanded
-    minimum = MIN_STORIES[section] if expanded(data) else 3
+    from pulse.profile import minimum_stories, expanded, shared_policy
+    minimum = minimum_stories(data)
+    if shared_policy(data):
+        from pulse.profile import POLICY_START
+        if date < POLICY_START:
+            raise ValueError('Shared editorial policy is not active before ' + POLICY_START)
     if not isinstance(stories, list) or not minimum <= len(stories) <= 24:
         count = len(stories) if isinstance(stories, list) else 'invalid list'
         raise ValueError(f"{section}: edition has {count} stories; required {minimum}–24 distinct sourced stories")
@@ -106,6 +110,9 @@ def validate_content(data, section, date, game_start):
     else:
         approved_hosts = None
     for story in stories:
+        if shared_policy(data):
+            from pulse.news_priority import validate_priority
+            validate_priority(story)
         if expanded(data):
             event = story.get('event_key')
             if not isinstance(event, str) or not 4 <= len(event) <= 120 or event.casefold() in events:
@@ -146,6 +153,10 @@ def validate_content(data, section, date, game_start):
             raise ValueError("Stale/future source")
         ids.add(story["id"])
         urls.add(story["source_url"])
+    if shared_policy(data):
+        from pulse.news_priority import rank_key
+        if stories != sorted(stories, key=rank_key):
+            raise ValueError('Stories must follow their reviewed editorial priority')
     return data
 
 
@@ -220,13 +231,13 @@ def validate_release(root, date, game_start):
         data = validate_content(read_json(path), section, date, game_start)
         if data.get("ready") is not True:
             raise ValueError("Edition not ready")
-        from pulse.profile import podcast_minimum, PODCAST_SECONDS, expanded
+        from pulse.profile import podcast_minimum, podcast_maximum
         for kind, minimum in [("summary", 20), ("podcast", podcast_minimum(data))]:
             asset = data.get(kind, {})
             if asset.get("file") != section + "/" + kind + ".mp3":
                 raise ValueError("Unexpected audio path")
             actual = audio_info(safe_file(root, asset["file"]), minimum)
-            if kind == "podcast" and expanded(data) and actual["duration"] > PODCAST_SECONDS[section][1]:
+            if kind == "podcast" and podcast_maximum(data) is not None and actual["duration"] > podcast_maximum(data):
                 raise ValueError("Podcast exceeds the expanded issue duration budget")
             if any(asset.get(k) != v for k, v in actual.items()):
                 raise ValueError("Audio hash/size/duration mismatch")

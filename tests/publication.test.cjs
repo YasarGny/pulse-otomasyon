@@ -95,3 +95,19 @@ test("expanded issues accept broad selections and require a real long podcast", 
     assert(!r.editionValid({...d,stories:d.stories.slice(0,section === "teknoloji" ? 11 : 9)},section,m));
   }
 });
+
+test("shared policy accepts quiet days equally but rejects empty news and invalid ranking", () => {
+  const future = {...m, publish_date:"2026-10-22",
+    editions:Object.fromEntries(r.sections.map(s=>[s,{...m.editions[s],issue:7}]))};
+  for (const section of r.sections) {
+    const d={section,publish_date:future.publish_date,ready:true,issue:7,publication_profile:"daily-v2",
+      stories:[{id:"one",title:"Başlık",summary:"Özet",why:"Önemi",category:"Gündem",source_name:"Kaynak",source_url:"https://example.com/news",
+        editorial_priority:{impact:3,development:3,timeliness:3,evidence:3,reason:"Kaynağa dayanan somut gelişme açıklaması."}}],
+      summary:{file:section+"/summary.mp3",duration:30,bytes:25000,sha256:"a".repeat(64),episode:7},
+      podcast:{file:section+"/podcast.mp3",duration:600,bytes:25000,sha256:"b".repeat(64),episode:7}};
+    assert(r.editionValid(d,section,future));
+    assert(!r.editionValid({...d,stories:[]},section,future));
+    assert(!r.editionValid({...d,stories:[{...d.stories[0],editorial_priority:null}]},section,future));
+    assert(!r.editionValid({...d,podcast:{...d.podcast,duration:1}},section,future));
+  }
+});

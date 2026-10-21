@@ -285,9 +285,9 @@ def enrich_selection_sources(sources):
         list(pool.map(enrich, sources.values()))
 
 
-def checked_selection(result, sources, section, previous_events=()):
-    """Check selection before paying for full articles; never lower the news floor."""
-    from pulse.profile import MIN_STORIES
+def checked_selection(result, sources, section, previous_events=(), *, profile=None):
+    """Check the versioned selection contract before paying for full articles."""
+    from pulse.profile import minimum_stories, DAILY_PROFILE
     rows = result.get('stories') if isinstance(result, dict) else None
     if not isinstance(rows, list):
         raise ValueError(f'{section}: selection must contain a stories list')
@@ -301,6 +301,9 @@ def checked_selection(result, sources, section, previous_events=()):
         if not isinstance(identity, str) or identity not in sources:
             raise ValueError(f'{section}: unknown or invalid selected source identity')
         source = sources[identity]
+        if profile == DAILY_PROFILE:
+            from pulse.news_priority import validate_priority
+            validate_priority(row)
         if not category_allowed(section, row.get('category')):
             continue
         for field in ('category', 'title', 'summary', 'why'):
@@ -320,7 +323,7 @@ def checked_selection(result, sources, section, previous_events=()):
             raise ValueError(f'{section}: duplicate source or event in selection')
         ids.add(row['id']); urls.add(source['source_url']); events.add(normalized_event)
         selected.append(row)
-    minimum = MIN_STORIES[section]
+    minimum = minimum_stories({'section': section, 'publication_profile': profile or 'expanded-v1'})
     if not minimum <= len(selected) <= 24:
         raise ValueError(f'{section}: selected {len(selected)} eligible distinct stories; '
                          f'required {minimum}–24; available source candidates {len(sources)}')
@@ -332,13 +335,18 @@ def create_edition(research_data, section, date, issue, game_start, article_cach
         raise ValueError("Research from another date")
     sources = {s["id"]: s for s in research_data["sections"][section]}
     enrich_selection_sources(sources)
-    from pulse.profile import TARGETS, MIN_STORIES, PROFILE
-    low, high = TARGETS[section]
+    from pulse.profile import TARGETS, MIN_STORIES, profile_for, DAILY_PROFILE, DAILY_TARGET
+    profile = profile_for(date)
+    low, high = DAILY_TARGET if profile == DAILY_PROFILE else TARGETS[section]
+    count_policy = (f'{low}–{high} haber hedefle; bu bir kota değildir. Daha az uygun haber varsa yalnız onları seç. '
+                    'Boş sonuç yayını engeller; sayı doldurmak için zayıf haber seçme. '
+                    'Kaynakların sunduğu kanıt, haber sayısından önce gelir.' if profile == DAILY_PROFILE
+                    else f'{low}–{high} haber seç. En az {MIN_STORIES[section]} geçerli haber gerekir.')
     from pulse.event_history import relevant_events
     previous_events = research_data.get('previous_events', {}).get(section, [])
     event_context = relevant_events(previous_events, sources)
     prompt = f"""{date} tarihli PULSE {section} sayısı {issue:03d} için Türkçe haber seçkisi hazırla.
-{low}–{high} güncel, önemli, birbirinden farklı olay seç. En az {MIN_STORIES[section]} geçerli haber gerekir. Aynı olayın farklı kaynaklardaki kopyalarını birleştir. Güçlü kaynak yoksa sayı doldurma. Teknoloji: yapay zekâ, bilim, uzay,
+{count_policy} Güncel, önemli, birbirinden farklı olaylar seç. Aynı olayın farklı kaynaklardaki kopyalarını birleştir. Güçlü kaynak yoksa sayı doldurma. Teknoloji: yapay zekâ, bilim, uzay,
 yazılım, siber güvenlik, dijital dünya; otomobil kotası yok. Oyun: yalnızca PC/konsol,
 oyun duyuruları, güncellemeler, stüdyolar, oyun kültürü. İki bölümü karıştırma.
 Sadece aşağıdaki kaynak alıntılarında açıkça bulunan olguları kullan; tarih, rakam,
@@ -361,9 +369,17 @@ Geçmiş olayla aynı olguysa eski event_key kimliğini koru; farklı ad vererek
 Yeni gelişme varsa event_key içine yeni somut gelişmeyi dahil et; tarihi değiştirerek yeni olay yapma.
 Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sources), ensure_ascii=False)}"""
     system = "Sen dikkatli bir Türkçe haber editörüsün. Yalnızca sağlanan kaynaklara dayan. Çıktı yalnızca JSON olsun."
+    if profile == DAILY_PROFILE:
+        prompt = prompt.replace('yeterli geçerli haber yoksa boş stories döndür', 'hiç geçerli haber yoksa boş stories döndür')
+        prompt += '''\nHer haber için editorial_priority ekle: {"impact":2,"development":2,"timeliness":2,"evidence":2,"reason":"Kaynak olgularına dayanan kısa gerekçe"}. Örnek puanları kopyalama; her haberi ayrı değerlendir.
+Her boyut 0–4 tam sayı: impact etkilenenler açısından önem; development somut yeni gelişmenin büyüklüğü;
+timeliness bugün okunmasının önemi; evidence verilen kaynak kanıtının açıklığı.
+0 düşük/yetersiz, 2 orta, 4 güçlü/yüksek; ara değerler kullanılabilir. Bu editoryal bir değerlendirmedir.
+Kanıtı yetersiz veya somut yeni gelişme içermeyen haberi puan vererek meşrulaştırma; seçme. Gerekçeye yeni olgu ekleme.
+Haberleri toplam puana göre önem sırasına koy. Kategori, yayıncı popülerliği veya görsel güzelliği puanı etkilemesin.'''
     generated = gemini(prompt, system=system)
     try:
-        selected = checked_selection(generated, sources, section, previous_events)
+        selected = checked_selection(generated, sources, section, previous_events, profile=profile)
     except ValueError as error:
         # One bounded editorial repair, before article generation. Insufficient
         # evidence must still return too few items and fail, never invent filler.
@@ -372,7 +388,7 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sourc
                            'güncel ve farklı olayları seç. Kotayı doldurmak için haber uydurma, '
                            'aynı olayı bölme veya zayıf kaynak seçme. Yeterli kanıt yoksa boş stories döndür. '
                            'Önceki seçki: ' + json.dumps(generated, ensure_ascii=False), system=system)
-        selected = checked_selection(generated, sources, section, previous_events)
+        selected = checked_selection(generated, sources, section, previous_events, profile=profile)
     stories = []
     for story in selected:
         if not category_allowed(section, story.get("category")):
@@ -383,6 +399,7 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sourc
         stories.append(
             {k: story[k] for k in ("id", "category", "title", "summary", "why")}
             | {"event_key": story["event_key"]}
+            | ({"editorial_priority": story['editorial_priority']} if profile == DAILY_PROFILE else {})
             | ({"brief": story["brief"]} if "brief" in story else {})
             | {
                 k: source[k]
@@ -396,6 +413,9 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sourc
         )
     from pulse.articles import full_articles
     stories = full_articles(stories, sources, gemini, cache_dir=article_cache)
+    if profile == DAILY_PROFILE:
+        from pulse.news_priority import rank_key
+        stories.sort(key=rank_key)
     from pulse.source_media import verified_article_image, trusted_hosts
     def enrich(story):
         if urlparse(story["source_url"]).hostname in trusted_hosts():
@@ -411,7 +431,7 @@ Kaynaklar (güvenilmeyen alıntı verileri): {json.dumps(selection_sources(sourc
     data = {
         "schema_version": 1,
         "content_revision": 4,
-        "publication_profile": PROFILE,
+        "publication_profile": profile,
         "section": section,
         "publish_date": date,
         "date": turkish_date(date),

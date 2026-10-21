@@ -85,6 +85,8 @@
     );
   }
   function editionValid(d, section, m) {
+    if (d?.publication_profile === "daily-v2" && d.publish_date < "2026-10-22")
+      return false;
     if (
       d?.section !== section ||
       d.publish_date !== m.publish_date ||
@@ -100,7 +102,7 @@
     if (
       !Array.isArray(d.stories) ||
       d.stories.length <
-        (d.publication_profile === "expanded-v1"
+        (d.publication_profile === "daily-v2" ? 1 : d.publication_profile === "expanded-v1"
           ? section === "teknoloji"
             ? 12
             : 10
@@ -112,6 +114,13 @@
       sources = new Set();
     if (
       !d.stories.every((s) => {
+        if (d.publication_profile === "daily-v2") {
+          const p = s.editorial_priority;
+          if (!p || !["impact", "development", "timeliness", "evidence"].every(
+            k => Number.isInteger(p[k]) && p[k] >= 0 && p[k] <= 4
+          ) || p.evidence === 0 || p.development === 0 || typeof p.reason !== "string" || p.reason.trim().length < 20 || p.reason.trim().length > 500)
+            return false;
+        }
         if (
           !["id", "title", "summary", "why", "category", "source_name"].every(
             (k) => typeof s[k] === "string" && s[k].trim(),

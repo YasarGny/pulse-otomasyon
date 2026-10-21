@@ -148,6 +148,17 @@ def navigation(root, page="", section=""):
 
 
 def selection(editions):
+    from pulse.profile import shared_policy
+    if all(shared_policy(data) for data in editions.values()):
+        from pulse.news_priority import ranked
+        items = ranked([(s, story) for s, data in editions.items() for story in data['stories']])
+        lead = items[:1]
+        # Both publications are represented; neither owns the first or third slot.
+        other = next((item for item in items if item[0] != lead[0][0]), None) if lead else None
+        if other:
+            lead.append(other)
+        lead += [item for item in items if item not in lead][:3-len(lead)]
+        return ranked(lead)
     # Preserve each edition's verified editorial order. Represent both publications;
     # do not invent importance scores or a new AI news ranking in the web layer.
     tech, game = editions["teknoloji"]["stories"], editions["oyun"]["stories"]
@@ -170,6 +181,10 @@ def listing(editions, root, *, section=None):
         for s in sections
         if i < len(editions[s]["stories"])
     ]
+    from pulse.profile import shared_policy
+    if all(shared_policy(editions[s]) for s in sections):
+        from pulse.news_priority import ranked
+        rows = ranked(rows)
     cards = "".join(story_card(s, story, root, level=2) for s, story in rows)
     return (
         list_controls(section)
@@ -196,7 +211,7 @@ def shell(
     attrs = f'data-page="{page}" data-section="{section}" data-story="{e(story_id)}"'
     return symbols(
         f"""<!doctype html>
-<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg?v=2" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png?v=2"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=25"><script src="{root}assets/publication.js?v=4" defer></script><script src="{root}assets/printing.js?v=10" defer></script><script src="{root}assets/listening.js?v=1" defer></script><script src="{root}assets/site.js?v=27" defer></script><script src="{root}assets/install.js?v=3" defer></script></head>
+<html lang="tr" class="pulse-loading" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#151618"><meta name="description" content="{e(description)}"><title>{e(title)}</title><link rel="canonical" href="{url}"><meta property="og:type" content="{'article' if page == 'article' else 'website'}"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="PULSE"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{url}"><meta property="og:image" content="{e(share_image or "https://yasargny.github.io/assets/og.png?v=3")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="{root}assets/favicon.svg?v=2" type="image/svg+xml"><link rel="manifest" href="{root}manifest.webmanifest"><link rel="apple-touch-icon" href="{root}assets/app-180.png?v=2"><meta name="apple-mobile-web-app-title" content="PULSE"><script src="{root}assets/theme.js?v=1"></script><link rel="stylesheet" href="{root}assets/style.css?v=25"><script src="{root}assets/publication.js?v=5" defer></script><script src="{root}assets/printing.js?v=10" defer></script><script src="{root}assets/listening.js?v=1" defer></script><script src="{root}assets/site.js?v=27" defer></script><script src="{root}assets/install.js?v=3" defer></script></head>
 <body data-design="{DESIGN}" {attrs}><noscript><style>.pulse-loading .site-shell{{visibility:visible!important}}.site-shell{{display:block!important}}[data-audio-section],.audio-start,.listen-player,.theme-toggle,.news-tools,.news-more{{display:none!important}}</style><p class="nojs-note">Bu kayıt {e(stamp)} tarihli sayıdır. Güncel yayın durumunu ve sesleri kullanmak için JavaScript’i etkinleştirin.</p></noscript><div class="site-shell"><a class="skip" href="#main">İçeriğe geç</a><header class="nav"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><span class="nav-issue">{e(stamp)}</span>{navigation(root, page, section)}<button type="button" class="theme-toggle" aria-label="Açık temaya geç"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></header><main id="main" tabindex="-1" data-release="{e(release_id)}">{main}</main><footer class="foot"><a class="brand" href="{root}index.html" aria-label="PULSE ana sayfa">PULSE<span class="brand-dot">.</span></a><div class="foot-actions"><button type="button" class="install-entry" aria-haspopup="dialog" hidden>Uygulamayı yükle <span aria-hidden="true">↗</span></button><a href="{root}gizlilik/index.html">Gizlilik</a></div></footer></div></body></html>"""
     )
 
@@ -242,6 +257,10 @@ def build_views(output, manifest):
         if i < len(d["stories"])
         and (s, (story := d["stories"][i])["id"]) not in selected
     ]
+    from pulse.profile import shared_policy
+    if all(shared_policy(data) for data in editions.values()):
+        from pulse.news_priority import ranked
+        remaining = ranked(remaining)
     lead_html = "".join(
         story_card(s, story, "./", lead=True, eager=i == 0)
         for i, (s, story) in enumerate(lead)
