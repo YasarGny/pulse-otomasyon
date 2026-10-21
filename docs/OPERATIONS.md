@@ -688,8 +688,8 @@ Tam makale JSON’u da bozuk kimlik/alan/paragraf için bir kez düzeltilir, ard
 ayrı olgu denetiminden geçer. Kaynak, haber sayısı ve inceleme koşulları korunur.
 
 Podcastte yerel kelime sayımı bağımsız denetimden önce yapılır; aralık dışındaki
-metin en çok iki hedefli düzeltmeyle aralığın ortasına yönlendirilir. Alt/üst
-sınır düşürülmez, dolgu veya tekrara izin verilmez; sonuç ayrıca bağımsız olgu
+metin en çok iki hedefli düzeltmeyle aralığın ortasına yönlendirilir. Gerçek ses süresi
+sınırları korunur, dolgu veya tekrara izin verilmez; sonuç ayrıca bağımsız olgu
 ve sohbet denetiminden geçer. Metin, tam kanıt/ayar parmak izine bağlı özel
 podcast-draft.json dosyasında saklanır; başarısız aşama yeniden başladığında
 ilk taslağı ve editör aşamasını tekrar satın almaz. Taslak hiçbir zaman onay
@@ -707,3 +707,19 @@ aynı paket PR ve main kalite CI’ında zorunlu çalışır. Gerçek dosya, ses
 Drive ve canlı Pages kontrolleri korunur. Üretim cron’una 08:30/09:00 TRT için
 iki sınırlı geç toparlanma denemesi eklendi; günün manifesti ready ise bu ek
 tetikler plan aşamasında kapanır ve yeni model/ses/yedek işi çalıştırmaz.
+
+İptal edilen günlük çalışmanın generate işi `always()` koşuluyla yeniden
+başlamamalıdır; koşul ayrıca `!cancelled()` gerektirir. Başarısız/atlanmış
+gate sonucu uygun biçimde değerlendirilirken kullanıcı iptali dikkate alınır.
+Güvenli checkpoint kaydetme adımları kendi always() koşullarını korur.
+
+Kelime aralığı süre için kaba yazım hedefidir, tek başına kalite ölçüsü değildir.
+2446 veya 3429 kelimelik, bağımsız denetimden geçen iyi bir metin yalnız yazım
+hedefinin sınırları nedeniyle kısaltılıp uzatılmaz. Ses üretiminden önce yalnız
+belirgin sapmalar için geniş bir makullük kontrolü yapılır: gerçek süre hedefi
+ve 120–180 kelime/dakika tahminiyle türetilen bandın dışındaki metin en çok iki
+kez düzeltilir. Bu konuşma hızı kesin ölçüm değildir; pahalı ses üretiminden önce
+açıkça kısa/uzun taslağı yakalayan bir ön kontroldür.
+Asıl yayın sözleşmesi değişmedi: teknoloji gerçek ses süresi 15–25 dakika, oyun
+12–22 dakika; olgu/sohbet incelemesi, ses bütünlüğü, sessizlik ve bölüm kontrolleri
+zorunludur. Bu sürelerin dışındaki MP3, kelime sayısı uygun olsa da yayımlanamaz.

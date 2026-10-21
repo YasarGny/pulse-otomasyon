@@ -113,7 +113,7 @@ jobs:
           private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   generate:
     needs: [plan, gate]
-    if: always() && needs.plan.result == 'success' && needs.plan.outputs.phase == 'produce' && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
+    if: always() && !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.phase == 'produce' && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 170
     outputs:

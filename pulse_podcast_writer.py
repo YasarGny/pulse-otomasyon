@@ -155,8 +155,10 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
         system += "\nYalnız oyun gündemi. Knight Online'a hafif bir gönderme olabilir; bütün sohbeti ona bağlama."
         editor = editor.replace("Yeni Sekme", "Moradon FM")
     if long_form:
-        from pulse.profile import WORDS
+        from pulse.profile import WORDS, PODCAST_SECONDS, SCRIPT_ESTIMATED_WORDS_PER_MINUTE
         low, high = WORDS[section]
+        estimated_low = round(PODCAST_SECONDS[section][0] / 60 * SCRIPT_ESTIMATED_WORDS_PER_MINUTE[0])
+        estimated_high = round(PODCAST_SECONDS[section][1] / 60 * SCRIPT_ESTIMATED_WORDS_PER_MINUTE[1])
         length = f"\nBu tam uzunlukta bir bölüm: {low}–{high} Türkçe kelime aralığında, yaklaşık {(low+high)//2} kelime hedefle; alt sınırın hemen kıyısında kalma. 40–90 doğal konuşma dönüşü kullan; her dönüş en çok 650 karakter olsun, iki sunucunun repliklerini tek text içinde birleştirme. Günün 5–7 ana sorusunu derinlemesine konuş; her soruda birkaç karşılıklı takip sorusu ve gerekçeli yorum geliştir. Kaynakların dışına çıkma, tekrar yapma, süreyi boş sözlerle doldurma."
         system = system.replace('iki-üç', 'beş-yedi') + length
         editor = editor.replace('iki-üç', 'beş-yedi').replace('kelime\nsayısını korumak veya süre doldurmak zorunda değilsin.', 'konuşmanın derinliğini ve hedef kelime aralığını koru; tekrarları yeni olgu uydurmadan gider.') + length
@@ -191,9 +193,9 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
     length_repairs = 0
     for attempt in range(2):
         if long_form:
-            while not low <= (count := sum(len(t['text'].split()) for t in turns)) <= high:
+            while not estimated_low <= (count := sum(len(t['text'].split()) for t in turns)) <= estimated_high:
                 if length_repairs >= 2:
-                    raise RuntimeError(f'Podcast rejected by independent evidence/conversation review: bölüm {count} kelime; gerekli aralık {low}–{high}; bounded length repair exhausted')
+                    raise RuntimeError(f'Podcast rejected by independent evidence/conversation review: bölüm {count} kelime; hedef {low}–{high}, yazım payı {estimated_low}–{estimated_high}; bounded length repair exhausted')
                 target = (low + high) // 2
                 correction = (f"\nYerel kelime sayımı: {count}; zorunlu aralık {low}–{high}. "
                     f"Hedef {target} kelime. Yaklaşık {abs(target-count)} kelimelik "
