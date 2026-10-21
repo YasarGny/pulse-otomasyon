@@ -553,6 +553,67 @@ main > section + section {
 .summary-box .audio-copy p {
   font-variant-numeric: tabular-nums;
 }
+.podcast-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 480px;
+}
+.audio-box.audio-cover-card {
+  display: block;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  background: transparent;
+}
+.audio-cover-media {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #151618;
+  border: 1px solid var(--line);
+}
+.audio-cover-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.audio-cover-media .program-art {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: contain;
+}
+.audio-cover-card .audio-start {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 44px;
+  height: 44px;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 2px 12px #0006;
+}
+.audio-cover-link:focus-visible {
+  outline: 3px solid #f2f1ed;
+  outline-offset: -5px;
+}
+.audio-cover-card .audio-start:focus-visible {
+  outline: 3px solid #f2f1ed;
+  outline-offset: 3px;
+}
+.audio-cover-card .audio-copy {
+  padding-top: 8px;
+}
+.audio-cover-card .audio-copy p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.audio-duration {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .mobile-news-jump {
   display: none;
 }
@@ -2290,24 +2351,10 @@ body.has-mini {
 }
 .section-audio {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin: 0 0 32px;
-}
-.section-audio > div {
-  min-width: 0;
-}
-.section-audio h2 {
-  margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.section-audio .audio-box {
-  height: calc(100% - 32px);
-  min-height: 92px;
-}
-.section-audio .summary-box {
-  padding: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 440px;
+  margin: 0 0 28px;
 }
 .program-grid {
   display: grid;
@@ -2396,14 +2443,6 @@ body.has-mini {
   .nav nav a {
     font-size: 13px;
     min-width: 44px;
-  }
-  .section-audio {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .section-audio .audio-box {
-    min-height: 0;
-    height: auto;
   }
   .program-grid {
     grid-template-columns: 1fr;

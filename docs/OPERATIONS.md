@@ -780,3 +780,16 @@ yeni profil için 5 saniyelik temel metadata kontrolü bulunur; sunucunun daha g
 metin kontrolü ve doğrulanan MP3 kimliği korunur. Önceki profillerde 20 saniye
 şartı değişmez. Tam çözümleme, boyut/hash, uzun sessizlik ve yayın kontrolleri
 devam eder; kısa özeti uzatmak için metin veya ses yeniden üretilmez.
+
+### Tam kapaklı dinleme kartları
+
+Günün seçkisinde iki podcast kapağı, kategori sayfalarında o kategorinin podcasti
+ve Günün Özeti yan yana gösterilir. Kare kapaklar kırpılmaz; kategori grubunun
+genişliği 440px, ana sayfa podcast grubunun genişliği 480px ile sınırlıdır.
+Kapak bağlantısı bölüm ayrıntısını açar, sağ alttaki bağımsız 44px düğme mevcut
+tek ses oturumunu oynatır/duraklatır. Kart içine ikinci oynatıcı yerleştirilmez.
+Kategori başlıklarında çıplak haber sayısı bulunmaz; arama/filtre sonuçlarında
+“N haber bulundu” gösterilir. Özetlerin özgün, üretilmiş kalıcı seri kapakları
+`ozet-teknoloji` ve `ozet-oyun` adıyla 192/768px WebP olarak saklanır; günlük
+görsel üretimi gerekmez. Güncelleme yalnız `refresh-website.yml` ile mevcut
+haber ve dört MP3 korunarak, yenilenmiş Drive yedeği doğrulandıktan sonra yayımlanır.
