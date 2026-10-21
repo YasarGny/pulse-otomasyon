@@ -281,7 +281,7 @@ module.exports = async function(browser, run, base) {
     await page.waitForURL(originalURL);
     await page.waitForFunction(y=>Math.abs(scrollY-y)<3,originalScroll);
     await open('/teknoloji/');
-    await page.locator('.podcast-box .audio-copy a').click();
+    await page.locator('.podcast-box .audio-cover-link').click();
     await page.waitForSelector('.listen-back');
     assert((await page.locator('.listen-back').innerText()).includes('Teknoloji yayınına dön'));
     await page.locator('.listen-back').click();
