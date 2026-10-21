@@ -32,7 +32,7 @@ class EventHistoryTests(unittest.TestCase):
 
     def test_known_event_from_different_source_is_rejected_but_update_allowed(self):
         sources = {str(i): {'source_url': f'https://example.com/{i}'} for i in range(11)}
-        rows = [{'id': str(i), 'category': 'OYUN DÜNYASI', 'event_key': f'new-event-{i}'} for i in range(11)]
+        rows = [{'id': str(i), 'category': 'OYUN DÜNYASI', 'title':'Doğrulanmış başlık', 'summary':'Kaynak özeti', 'why':'Önem açıklaması', 'event_key': f'new-event-{i}'} for i in range(11)]
         rows[0]['event_key'] = 'Steam DEMO'
         selected = checked_selection({'stories': rows}, sources, 'oyun', [{'event_key': 'steam-demo'}])
         self.assertEqual(len(selected), 10)

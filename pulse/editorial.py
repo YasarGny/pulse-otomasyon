@@ -297,9 +297,17 @@ def checked_selection(result, sources, section, previous_events=()):
     for row in rows:
         if not isinstance(row, dict):
             raise ValueError(f'{section}: invalid selection item')
-        source = sources[row['id']]  # Unknown model IDs must never become news.
+        identity = row.get('id')
+        if not isinstance(identity, str) or identity not in sources:
+            raise ValueError(f'{section}: unknown or invalid selected source identity')
+        source = sources[identity]
         if not category_allowed(section, row.get('category')):
             continue
+        for field in ('category', 'title', 'summary', 'why'):
+            if not isinstance(row.get(field), str) or not row[field].strip() or len(row[field]) > 4000:
+                raise ValueError(f'{section}: missing/invalid selection field: {field}')
+        if 'brief' in row and (not isinstance(row['brief'], str) or not 20 <= len(row['brief'].strip()) <= 500):
+            raise ValueError(f'{section}: missing/invalid selection field: brief')
         event = row.get('event_key')
         if not isinstance(event, str) or not 4 <= len(event) <= 120:
             raise ValueError(f'{section}: missing or invalid event identity')

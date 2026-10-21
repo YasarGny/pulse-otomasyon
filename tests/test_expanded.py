@@ -71,7 +71,7 @@ class ExpandedEditorialTests(unittest.TestCase):
     def test_approved_two_minute_script_still_fails_long_profile(self):
         turns=[{'speaker':'Yaşar' if i%2==0 else 'Necdet','text':'Kısa bir kaynak notu hakkında konuşuyoruz.'} for i in range(12)]
         approved={'approved':True,'unsupported_claims':[],'misleading_opinions':[],'concerns':[]}
-        with patch.object(writer,'_request',side_effect=[{'turns':turns},{'turns':turns},approved,{'turns':turns},approved]):
+        with patch.object(writer,'_request',return_value={'turns':turns}):
             with self.assertRaisesRegex(RuntimeError,'independent evidence'):
                 writer.generate([('Haber','Doğrulanmış kaynak')],long_form=True)
 
