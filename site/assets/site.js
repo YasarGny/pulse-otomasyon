@@ -1265,7 +1265,10 @@
       }
       $(".news-more").hidden = count <= limit;
       $(".empty-filter").hidden = count !== 0;
-      $("#story-count").textContent = count + " haber";
+      const filtered = terms.length > 0 || categories.length > 0 || (!document.body.dataset.section && !!filter);
+      const resultCount = $("#story-count");
+      resultCount.hidden = !filtered;
+      resultCount.textContent = filtered ? count + " haber bulundu" : "";
       buttons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === filter)));
       topicToggle.hidden = available().length < 2;
       topicToggle.textContent = "Konular" + (categories.length ? " · " + categories.length : "");

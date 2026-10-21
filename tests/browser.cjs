@@ -585,6 +585,49 @@ async function run(name, fn) {
       },
     );
     await run(
+      "full covers stay paired and uncropped with inset controls on home and category pages",
+      async () => {
+        for (const width of [320,390,768,1440]) {
+          await page.setViewportSize({width,height:900});
+          for (const route of ['/', '/teknoloji/', '/oyun/']) {
+            await open(route);
+            const cards=page.locator(route==='/'?'.podcast-cards .audio-cover-card':'.section-audio .audio-cover-card');
+            assert.equal(await cards.count(),2);
+            const bounds=await cards.evaluateAll(nodes=>nodes.map(n=>{
+              const m=n.querySelector('.audio-cover-media').getBoundingClientRect();
+              const b=n.querySelector('.audio-start').getBoundingClientRect();
+              const img=n.querySelector('img');
+              return {x:m.x,y:m.y,w:m.width,h:m.height,right:m.right-b.right,bottom:m.bottom-b.bottom,
+                button:b.width,loaded:img.complete&&img.naturalWidth>0,fit:getComputedStyle(img).objectFit,
+                nested:n.querySelectorAll('a button').length};
+            }));
+            assert(Math.abs(bounds[0].y-bounds[1].y)<1);
+            assert(bounds[1].x>bounds[0].x+bounds[0].w);
+            for(const b of bounds){
+              assert(b.loaded);assert.equal(b.fit,'contain');assert.equal(b.nested,0);
+              assert(Math.abs(b.w-b.h)<1);assert(b.w<=235);
+              assert(b.button>=44);assert(b.right>=10&&b.right<=12);assert(b.bottom>=10&&b.bottom<=12);
+            }
+            if(route!=='/'){
+              assert.equal(await page.locator('.page-heading p').count(),0);
+              assert(await page.locator('#story-count').isHidden());
+              await cards.nth(1).locator('.audio-start').click();
+              await page.waitForFunction(()=>!document.querySelector('audio').paused);
+              assert.match(await page.locator('audio').getAttribute('src'),/summary\.mp3$/);
+              await cards.nth(1).locator('.audio-start').click();
+              assert(await page.locator('audio').evaluate(a=>a.paused));
+              await searchFor('gelişme');
+              await page.waitForFunction(()=>document.querySelector('#story-count').textContent.includes('haber bulundu'));
+            }
+            await noOverflow();
+            if(width===390||width===1440)await page.screenshot({path:`test-results/cover-cards-${route==='/'?'home':route.split('/')[1]}-${width}.png`,fullPage:false});
+          }
+        }
+        await page.setViewportSize({width:1440,height:1000});
+        await open('/');
+      },
+    );
+    await run(
       "audio cards stay fixed, show a visible pause glyph and use only the floating transport",
       async () => {
         await page.setViewportSize({ width: 390, height: 844 });

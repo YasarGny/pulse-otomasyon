@@ -163,6 +163,17 @@ class EditorViewsTests(unittest.TestCase):
         self.assertNotIn("autoplay", home)
         self.assertNotIn('aria-pressed="true"', home)
 
+    def test_full_cover_audio_cards_are_scoped_and_category_titles_have_no_raw_counts(self):
+        home=(self.site/'index.html').read_text()
+        self.assertEqual(home.count('audio-cover-card"'),2)
+        for section,label in [('teknoloji','Teknoloji'),('oyun','Oyun')]:
+            text=(self.site/section/'index.html').read_text()
+            self.assertIn(f'<header class="page-heading"><h1>{label}</h1></header>',text)
+            self.assertEqual(text.count('audio-cover-card"'),2)
+            self.assertIn('assets/covers/ozet-'+section+'-768.webp',text)
+            self.assertIn('?ses=ozet&amp;from='+section,text)
+            self.assertNotIn('class="summary-heading"',text)
+
     def test_article_source_and_complete_body_are_in_html_without_a_fetch(self):
         article = (self.site / "teknoloji/haber/teknoloji0/index.html").read_text()
         self.assertIn("article-text", article)
