@@ -170,7 +170,7 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
                   'tamamlamak zorunda değilsin. Kaynaklarda yeterli gelişme varsa birkaç konuyu yüzeysel geçme; '
                   'anlamlı takip ve gerekçeli karşılıklı değerlendirme geliştir. Gündem sakinse daha kısa olabilir. '
                   'Hedefe ulaşmak için tekrar, yapay bağlantı veya yeni olgu ekleme. Her dönüş en çok 1000 karakter.')
-        system = system.replace('iki-üç ortak soruyu', 'konuşmaya değer soruları') + length
+        system = system.replace('iki-üç ortak soruyu', 'soruları') + length
         editor = editor.replace('iki-üç güçlü konu yeter', 'gündeme göre yeterli güçlü konu seç') + length
     elif long_form:
         from pulse.profile import WORDS, PODCAST_SECONDS, SCRIPT_ESTIMATED_WORDS_PER_MINUTE

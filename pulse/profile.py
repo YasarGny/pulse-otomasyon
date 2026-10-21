@@ -38,3 +38,13 @@ def podcast_minimum(data):
     # Keep old sealed contracts intact. New duration targets are guidance;
     # decoding, factual/conversation review, silence and chapters remain gates.
     return PODCAST_SECONDS[data['section']][0] if data.get('publication_profile') == PROFILE else 40
+
+
+def summary_minimum(data):
+    if not shared_policy(data):
+        return 20
+    from pulse.editorial import summary_script
+    # A conservative 240 words/minute bound catches grossly short output.
+    # It is a file sanity check, not a target speaking rate or completeness proof.
+    words = len(summary_script(data).split())
+    return min(20, max(5, words / 4))

@@ -13,7 +13,7 @@ from pulse.editorial import checked_selection
 from pulse.news_priority import rank_key, validate_priority
 from pulse.pages import selection, listing
 from pulse.profile import (DAILY_PROFILE, DAILY_TARGET, POLICY_START, profile_for,
-                           podcast_minimum, podcast_maximum)
+                           podcast_minimum, podcast_maximum, summary_minimum)
 from pulse.publication import validate_content
 import pulse_podcast_writer as writer
 
@@ -120,11 +120,17 @@ class SharedPolicyTests(unittest.TestCase):
                 data=daily(section,1)
                 for kind in ('summary','podcast'):
                     target=root/section/(kind+'.mp3');target.parent.mkdir(exist_ok=True)
-                    shutil.copyfile(audio,target)
+                    if kind=='summary':
+                        import subprocess
+                        subprocess.run(['ffmpeg','-v','error','-y','-i',str(audio),'-t','15','-c:a','copy',str(target)],check=True,capture_output=True)
+                        with self.assertRaisesRegex(ValueError,'short MP3'):
+                            audio_info(target,20)
+                    else:
+                        shutil.copyfile(audio,target)
                     data[kind]={'file':section+'/'+kind+'.mp3', 'episode':data['issue'],
                                 'title':('Yeni Sekme' if section=='teknoloji' else 'Moradon FM') if kind=='podcast' else 'Günün Özeti',
                                 **({'hosts':['Yaşar','Necdet']} if kind=='podcast' else {}),
-                                **audio_info(target,20 if kind=='summary' else 40)}
+                                **audio_info(target,5 if kind=='summary' else 40)}
                 data['ready']=True
                 write_json(root/(section+'.json'),data)
             seal_release(root,POLICY_START,'2026-10-16')
@@ -146,6 +152,25 @@ class SharedPolicyTests(unittest.TestCase):
         self.assertEqual(podcast_minimum({'section':'teknoloji','publication_profile':'expanded-v1'}),900)
         self.assertEqual(podcast_minimum({'section':'oyun','publication_profile':'expanded-v1'}),720)
 
+    def test_summary_guard_scales_with_the_actual_script_without_weakening_old_issues(self):
+        short=daily(count=1)
+        short['stories'][0]['brief']=' '.join(['Doğrulanmış']*35)
+        self.assertGreaterEqual(summary_minimum(short),5)
+        self.assertLess(summary_minimum(short),15)
+        long=daily()
+        for story in long['stories']:story['brief']=' '.join(['Doğrulanmış']*40)
+        self.assertEqual(summary_minimum(long),20)
+        self.assertEqual(summary_minimum({'publication_profile':'expanded-v1'}),20)
+        from pulse.publication import audio_info
+        # The decoder still rejects a fragment shorter than the minimum text bound.
+        from fixtures import tone
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            original=tone(Path(tmp)/'tone.mp3');fragment=Path(tmp)/'fragment.mp3'
+            subprocess.run(['ffmpeg','-v','error','-y','-i',str(original),'-t','5','-c:a','copy',str(fragment)],check=True,capture_output=True)
+            with self.assertRaisesRegex(ValueError,'short MP3'):
+                audio_info(fragment,summary_minimum(short))
+
     def test_natural_transition_and_flexible_length_still_require_review(self):
         turns=[{'speaker':'Yaşar' if i%2==0 else 'Necdet','text':'Kaynağa dayanan bir düşünceyi karşılıklı değerlendiriyoruz.'} for i in range(12)]
         approved={'approved':True,'unsupported_claims':[],'misleading_opinions':[],'concerns':[]}
@@ -155,6 +180,7 @@ class SharedPolicyTests(unittest.TestCase):
             self.assertEqual(request.call_count,3)
             prompts=[call.args[0]['system_instruction']['parts'][0]['text'] for call in request.call_args_list]
             self.assertIn('2500–3100',prompts[0]);self.assertIn('15–25',prompts[0])
+            self.assertNotIn('konuşmaya değer konuşmaya değer',prompts[0])
             self.assertIn('kota değildir',prompts[0]);self.assertIn('doğrudan konu değişimini',prompts[1])
             self.assertIn('uydurulmuş ilişki',prompts[2])
         rejected={**approved,'approved':False,'unsupported_claims':['Kaynakta bulunmayan iddia']}

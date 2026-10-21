@@ -61,8 +61,9 @@ def generate_audio(root, data):
     import pulse_podcast_audio
     import pulse_podcast_writer
 
-    from pulse.profile import expanded, podcast_minimum, podcast_maximum, shared_policy, DAILY_PROFILE
+    from pulse.profile import expanded, podcast_minimum, podcast_maximum, summary_minimum, shared_policy, DAILY_PROFILE
     minimum_podcast = podcast_minimum(data)
+    minimum_summary = summary_minimum(data)
     section = data["section"]
     folder = root / section
     folder.mkdir(exist_ok=True)
@@ -91,7 +92,7 @@ def generate_audio(root, data):
     reports = {"summary": pronunciation_review(script)}
     write_json(report_path, reports)
     summary = folder / "summary.mp3"
-    if not valid_audio(summary, 20):
+    if not valid_audio(summary, minimum_summary):
         temp = folder / "summary.partial.mp3"
         asyncio.run(
             edge_tts.Communicate(
@@ -101,13 +102,13 @@ def generate_audio(root, data):
                 proxy=tts_proxy(),
             ).save(str(temp))
         )
-        audio_info(temp, 20)
+        audio_info(temp, minimum_summary)
         temp.replace(summary)
     data["summary"] = {
         "file": f"{section}/summary.mp3",
         "title": "Günün Özeti",
         "episode": data["issue"],
-        **audio_info(summary, 20),
+        **audio_info(summary, minimum_summary),
     }
     turns_path = folder / "turns.json"
     review_path = folder / "podcast-review.json"
