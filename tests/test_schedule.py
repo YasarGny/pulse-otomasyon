@@ -5,8 +5,8 @@ from pulse.publication import not_before
 from fixtures import DATE
 
 class ScheduledStagesTests(unittest.TestCase):
-    def test_six_only_prepares_and_other_runs_produce(self):
-        self.assertEqual(phase('schedule','0 3 * * *'),'prepare')
+    def test_first_and_backup_runs_produce_without_a_second_cron_dependency(self):
+        self.assertEqual(phase('schedule','0 3 * * *'),'produce')
         self.assertEqual(phase('schedule','15 3 * * *'),'produce')
         self.assertEqual(phase('workflow_dispatch','0 3 * * *'),'produce')
 

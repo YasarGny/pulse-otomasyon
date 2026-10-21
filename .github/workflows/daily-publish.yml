@@ -157,6 +157,8 @@ jobs:
           else:
               restore(os.environ['GITHUB_REPOSITORY'],os.environ['PULSE_DATE'],'.pulse-work')
           PY
+      - name: Begin research at 06:15 without waiting for another cron delivery
+        run: python -c "import os; from pulse.pipeline import wait_for; wait_for(os.environ['PULSE_DATE'], '06:15')"
       - name: Research, edit, synthesize and validate both publications
         id: edition
         env:
