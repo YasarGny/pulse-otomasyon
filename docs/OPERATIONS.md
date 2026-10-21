@@ -723,3 +723,12 @@ açıkça kısa/uzun taslağı yakalayan bir ön kontroldür.
 Asıl yayın sözleşmesi değişmedi: teknoloji gerçek ses süresi 15–25 dakika, oyun
 12–22 dakika; olgu/sohbet incelemesi, ses bütünlüğü, sessizlik ve bölüm kontrolleri
 zorunludur. Bu sürelerin dışındaki MP3, kelime sayısı uygun olsa da yayımlanamaz.
+
+### İlk cron’un üretimi de üstlenmesi
+
+06:00 tetikleyicisi canlı hazırlık kapısını güncelledikten sonra aynı çalışma
+içinde üretime devam eder. Araştırma 06:15 gelmediyse yalnız o saate kadar bekler;
+gecikmişse hemen başlar. İçerik ve ses için ayrıca 06:30/06:45 saatlerini beklemez.
+Böylece ilk cron zamanında geldiğinde ikinci 06:15 cron’unun gecikmesine bağlı
+kalınmaz. Diğer cron’lar ara çıktılardan devam eden yedeklerdir; aynı gün ready
+olan yayın için ücretli üretim çalıştırılmaz. 07:30 yayın kapısı değişmedi.
