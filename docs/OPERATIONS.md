@@ -712,3 +712,11 @@ tetikler plan aşamasında kapanır ve yeni model/ses/yedek işi çalıştırmaz
 başlamamalıdır; koşul ayrıca `!cancelled()` gerektirir. Başarısız/atlanmış
 gate sonucu uygun biçimde değerlendirilirken kullanıcı iptali dikkate alınır.
 Güvenli checkpoint kaydetme adımları kendi always() koşullarını korur.
+
+Kelime aralığı süre için kaba yazım hedefidir, tek başına kalite ölçüsü değildir.
+Kullanıcının açıklama isteği üzerine aralığa yüzde 5 yazım toleransı eklendi;
+2446 kelimelik, bağımsız denetimden geçen iyi bir metin yalnız 54 kelime için
+uzatılmaz. Belirgin kısalık/uzunluk ses üretiminden önce sınırlı olarak düzeltilir.
+Asıl yayın sözleşmesi değişmedi: teknoloji gerçek ses süresi 15–25 dakika, oyun
+12–22 dakika; olgu/sohbet incelemesi, ses bütünlüğü, sessizlik ve bölüm kontrolleri
+zorunludur. Bu sürelerin dışındaki MP3, kelime sayısı uygun olsa da yayımlanamaz.

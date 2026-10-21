@@ -27,18 +27,28 @@ class MorningRecoveryTests(unittest.TestCase):
                 checked_selection({'stories':[bad]},source,'teknoloji')
 
     def test_short_script_is_length_repaired_before_independent_review(self):
-        short,long=turns(2446),turns(2800)
+        short,long=turns(2200),turns(2800)
         with patch.object(writer,'_request',side_effect=[{'turns':short},{'turns':short},{'turns':long},APPROVED]) as request:
             _,result=writer.generate([('Haber','Doğrulanmış not')],long_form=True)
         self.assertEqual(result,long);self.assertEqual(request.call_count,4)
-        self.assertIn('2446',str(request.call_args_list[2]))
+        self.assertIn('2200',str(request.call_args_list[2]))
         self.assertIn('2800',str(request.call_args_list[2]))
         self.assertIn('titiz bir doğruluk',str(request.call_args_list[3]))
+
+    def test_2446_word_script_does_not_need_filler_to_meet_an_arbitrary_boundary(self):
+        with patch.object(writer,'_request',side_effect=[{'turns':turns(2446)},{'turns':turns(2446)},APPROVED]) as request:
+            _,result=writer.generate([('Haber','Doğrulanmış not')],long_form=True)
+        self.assertEqual(request.call_count,3);self.assertEqual(result,turns(2446))
+
+    def test_small_word_deviation_does_not_bypass_evidence_review(self):
+        with patch.object(writer,'_request',side_effect=[{'turns':turns(2446)},{'turns':turns(2446)},REJECTED,{'turns':turns(2446)},REJECTED]):
+            with self.assertRaisesRegex(RuntimeError,'Unverified numerical claim'):
+                writer.generate([('Haber','Doğrulanmış not')],long_form=True)
 
     def test_length_failure_is_bounded_and_draft_resumes_without_rewriting(self):
         with tempfile.TemporaryDirectory() as tmp:
             audit=Path(tmp)/'podcast-review.json'
-            with patch.object(writer,'_request',return_value={'turns':turns(2446)}) as request:
+            with patch.object(writer,'_request',return_value={'turns':turns(2200)}) as request:
                 with self.assertRaisesRegex(RuntimeError,'bounded length repair'):
                     writer.generate([('Haber','Doğrulanmış not')],long_form=True,audit_path=audit)
             self.assertEqual(request.call_count,4)
@@ -58,7 +68,7 @@ class MorningRecoveryTests(unittest.TestCase):
             self.assertEqual(request.call_count,3);self.assertEqual(result,turns(2700))
 
     def test_correct_length_never_overrides_an_evidence_rejection(self):
-        with patch.object(writer,'_request',side_effect=[{'turns':turns(2446)},{'turns':turns(2446)},{'turns':turns(2800)},REJECTED,{'turns':turns(2800)},REJECTED]):
+        with patch.object(writer,'_request',side_effect=[{'turns':turns(2200)},{'turns':turns(2200)},{'turns':turns(2800)},REJECTED,{'turns':turns(2800)},REJECTED]):
             with self.assertRaisesRegex(RuntimeError,'Unverified numerical claim'):
                 writer.generate([('Haber','Doğrulanmış not')],long_form=True)
 
