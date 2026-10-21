@@ -4,7 +4,7 @@ TARGETS = {'teknoloji': (15, 20), 'oyun': (12, 18)}
 MIN_STORIES = {'teknoloji': 12, 'oyun': 10}
 WORDS = {'teknoloji': (2500, 3100), 'oyun': (2000, 2700)}
 # Planning estimate, not a substitute for independent review or real duration.
-SCRIPT_WORD_TOLERANCE = 0.05
+SCRIPT_ESTIMATED_WORDS_PER_MINUTE = (120, 180)
 PODCAST_SECONDS = {'teknoloji': (900, 1500), 'oyun': (720, 1320)}
 
 

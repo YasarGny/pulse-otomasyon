@@ -27,11 +27,11 @@ class MorningRecoveryTests(unittest.TestCase):
                 checked_selection({'stories':[bad]},source,'teknoloji')
 
     def test_short_script_is_length_repaired_before_independent_review(self):
-        short,long=turns(2200),turns(2800)
+        short,long=turns(1000),turns(2800)
         with patch.object(writer,'_request',side_effect=[{'turns':short},{'turns':short},{'turns':long},APPROVED]) as request:
             _,result=writer.generate([('Haber','Doğrulanmış not')],long_form=True)
         self.assertEqual(result,long);self.assertEqual(request.call_count,4)
-        self.assertIn('2200',str(request.call_args_list[2]))
+        self.assertIn('1000',str(request.call_args_list[2]))
         self.assertIn('2800',str(request.call_args_list[2]))
         self.assertIn('titiz bir doğruluk',str(request.call_args_list[3]))
 
@@ -39,6 +39,28 @@ class MorningRecoveryTests(unittest.TestCase):
         with patch.object(writer,'_request',side_effect=[{'turns':turns(2446)},{'turns':turns(2446)},APPROVED]) as request:
             _,result=writer.generate([('Haber','Doğrulanmış not')],long_form=True)
         self.assertEqual(request.call_count,3);self.assertEqual(result,turns(2446))
+
+    def test_3429_word_script_can_be_reviewed_without_chasing_a_word_target(self):
+        with patch.object(writer,'_request',side_effect=[{'turns':turns(3429)},{'turns':turns(3429)},APPROVED]) as request:
+            _,result=writer.generate([('Haber','Doğrulanmış not')],long_form=True)
+        self.assertEqual(request.call_count,3);self.assertEqual(result,turns(3429))
+
+    def test_approved_text_never_allows_an_actually_short_recording_to_publish(self):
+        import hashlib,json
+        from fixtures import DATE,ready_release,tone
+        from pulse.publication import read_json,write_json,seal_release
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'release';ready_release(root,tone(Path(tmp)/'tone.mp3'))
+            for section in ('teknoloji','oyun'):
+                data=read_json(root/(section+'.json'));data['publication_profile']='expanded-v1'
+                first=data['stories'][0]
+                data['stories']=[{**copy.deepcopy(first),'id':f'item-{i}','source_url':f'https://example.com/{i}', 'event_key':f'event-{i}',
+                    'body':['Yalnız test için yazılmış ilk doğrulanmış kaynak paragrafıdır.', 'Bu ikinci paragraf gerçek bir haber değildir, sentetik test verisidir.'], 'body_reviewed':True} for i in range(12)]
+                for story in data['stories']:
+                    story['body_sha256']=hashlib.sha256(json.dumps(story['body'],ensure_ascii=False).encode()).hexdigest()
+                write_json(root/(section+'.json'),data)
+            with self.assertRaisesRegex(ValueError,'short MP3'):
+                seal_release(root,DATE,DATE)
 
     def test_small_word_deviation_does_not_bypass_evidence_review(self):
         with patch.object(writer,'_request',side_effect=[{'turns':turns(2446)},{'turns':turns(2446)},REJECTED,{'turns':turns(2446)},REJECTED]):
@@ -48,7 +70,7 @@ class MorningRecoveryTests(unittest.TestCase):
     def test_length_failure_is_bounded_and_draft_resumes_without_rewriting(self):
         with tempfile.TemporaryDirectory() as tmp:
             audit=Path(tmp)/'podcast-review.json'
-            with patch.object(writer,'_request',return_value={'turns':turns(2200)}) as request:
+            with patch.object(writer,'_request',return_value={'turns':turns(1000)}) as request:
                 with self.assertRaisesRegex(RuntimeError,'bounded length repair'):
                     writer.generate([('Haber','Doğrulanmış not')],long_form=True,audit_path=audit)
             self.assertEqual(request.call_count,4)
@@ -68,7 +90,7 @@ class MorningRecoveryTests(unittest.TestCase):
             self.assertEqual(request.call_count,3);self.assertEqual(result,turns(2700))
 
     def test_correct_length_never_overrides_an_evidence_rejection(self):
-        with patch.object(writer,'_request',side_effect=[{'turns':turns(2200)},{'turns':turns(2200)},{'turns':turns(2800)},REJECTED,{'turns':turns(2800)},REJECTED]):
+        with patch.object(writer,'_request',side_effect=[{'turns':turns(1000)},{'turns':turns(1000)},{'turns':turns(2800)},REJECTED,{'turns':turns(2800)},REJECTED]):
             with self.assertRaisesRegex(RuntimeError,'Unverified numerical claim'):
                 writer.generate([('Haber','Doğrulanmış not')],long_form=True)
 
