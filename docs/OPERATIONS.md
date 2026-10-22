@@ -811,3 +811,18 @@ kullanmaz. Ayrıntılar özel `pulse-state` artifact'ında kalır; site build'i 
 kopyalamaz. Actions hata mesajında yalnız kaynak kimlikleri ve özel rapor dosya
 adı yer alır. API/servis ve cron gecikmeleri için mutlak saat garantisi yoktur;
 bu değişiklik bağımsız incelemeyi atlayarak yayın garantisi vermez.
+
+### Hazır seslerde bölüm/kesit kurtarma
+
+Çakışan haber kesitleri bir kez, hatalı öneri ve gerçek döküm zamanlarıyla
+tekrar önerilir; düzeltilen önerinin bağımsız onayı yine zorunludur. Tekrarlayan
+şema hataları da özel `chapter-feedback` kaydında saklanır; tekrarlar körlemesine
+aynı öneriden başlamaz. Zamanlar otomatik kırpılarak geçerli sayılmaz.
+
+`publish-ready.yml` manuel `complete_chapters=true` seçeneği yalnız bugünün
+mühürlü, hazır dört sesli checkpoint'inde eksik bölüm verisini tamamlar; haber,
+konuşma veya ses üretimi yapmaz. Sadece güvenilir günlük main artifact'ı yüklenir;
+özel kurtarma metadata artifact'ı ayrıca kendi workflow kökeniyle doğrulanır.
+Kurtarma çıktıları hata sonrasında da saklanır. Normal zamanlanmış yayına hazır
+checkpoint kontrolü bu opsiyonu açmaz. Tam ses/yayın denetimi, Drive doğrulaması
+ve canlı Pages doğrulaması tamamlanmadan yayın başarılı sayılmaz.

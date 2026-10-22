@@ -1,6 +1,11 @@
 name: Publish completed checkpoint without generating content
 on:
   workflow_dispatch:
+    inputs:
+      complete_chapters:
+        description: Complete missing final-audio chapter metadata; never generate news or voices
+        type: boolean
+        default: false
   schedule:
     # Start before 07:30 Istanbul; this job can only validate/publish existing files.
     - cron: '15 4 * * *'
@@ -17,6 +22,7 @@ jobs:
   publish:
     if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.PULSE_AUTOMATION_ENABLED != 'false')
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     environment: pulse-production
     env:
       PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
@@ -50,10 +56,23 @@ jobs:
           ref: main
           path: .published
           persist-credentials: false
+      - name: Install final-audio chapter analysis only when explicitly requested
+        if: inputs.complete_chapters == true
+        run: python -m pip install -r requirements-chapters.txt
+      - uses: actions/cache@v4
+        if: inputs.complete_chapters == true
+        continue-on-error: true
+        with:
+          path: ~/.cache/huggingface/hub
+          key: pulse-whisper-small-${{ runner.os }}-v1
       - name: Restore and publish only a complete verified current-day checkpoint
         id: build
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          COMPLETE_CHAPTERS: ${{ inputs.complete_chapters == true }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+          HF_HUB_DISABLE_XET: '1'
         run: |
           python - <<'PY'
           import os
@@ -80,6 +99,22 @@ jobs:
               source = Path('.pulse-work') / date
           manifest = read_json(source / 'release.json')
           assert manifest['status'] == 'ready' and manifest['publish_date'] == date, 'Checkpoint is incomplete or stale'
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('RECOVERY_DATE=' + date + '\n')
+          if os.environ['COMPLETE_CHAPTERS'] == 'true':
+              from scripts.prepare_chapters import prepare
+              from pulse.chapter_completion import copy_state
+              restored = restore(os.environ['GITHUB_REPOSITORY'], date, '.chapter-recovery',
+                                 artifact_prefix='pulse-ready-chapters-',
+                                 workflow_path='.github/workflows/publish-ready.yml',
+                                 allowed_events=('workflow_dispatch',))
+              if restored:
+                  copy_state(Path('.chapter-recovery') / date, source)
+              os.environ['PULSE_USAGE_LOG'] = str(source / 'api-usage.jsonl')
+              try:
+                  prepare(source, '.published')
+              finally:
+                  copy_state(source, Path('.chapter-recovery') / date)
           from pulse.release_checks import check
           from pulse.pipeline import wait_for
           check(source, '.published')
@@ -89,6 +124,13 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('date=' + date + '\npublish=true\n')
           PY
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.complete_chapters == true
+        with:
+          name: pulse-ready-chapters-${{ env.RECOVERY_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .chapter-recovery/
+          retention-days: 2
+          if-no-files-found: ignore
       - uses: ./.github/actions/deploy-site
         if: steps.build.outputs.publish == 'true'
         with:

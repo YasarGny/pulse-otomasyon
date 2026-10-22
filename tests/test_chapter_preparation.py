@@ -112,3 +112,29 @@ class ChapterPreparationTests(unittest.TestCase):
             transcribe.assert_not_called()
             generate.assert_not_called()
             self.assertEqual(json.loads((root / 'chapters' / (self.asset['sha256'] + '.json')).read_text()), accepted)
+
+    def test_overlapping_ranges_are_repaired_then_independently_reviewed(self):
+        from unittest.mock import Mock
+        from scripts.prepare_chapters import ChapterProposalInvalid
+        transcript={**self.transcript,'section':'teknoloji',
+                    'canonical_stories':[{'id':'a','title':'Çip','brief':'Çip haberi'}, {'id':'b','title':'Uzay','brief':'Uzay haberi'}],
+                    'segments':[{'start':0,'end':10,'text':'Çip haberi.'},
+                                {'start':10,'end':20,'text':'Çip ayrıntıları.'},
+                                {'start':20,'end':30,'text':'Uzay haberi.'}]}
+        bad={'chapters':[{'segment_id':0,'title':'Çip'}, {'segment_id':2,'title':'Uzay'}],
+             'story_ranges':[{'story_id':'a','start_segment_id':0,'end_segment_id':2},
+                             {'story_id':'b','start_segment_id':2,'end_segment_id':2}]}
+        good={**bad,'story_ranges':[{'story_id':'a','start_segment_id':0,'end_segment_id':1},
+                                   {'story_id':'b','start_segment_id':2,'end_segment_id':2}]}
+        generate=Mock(side_effect=[bad,good,{'approved':True}])
+        result=propose(transcript,self.asset,generate)
+        self.assertEqual([(r['start'],r['end']) for r in result['story_ranges']],[(0,20),(20,30)])
+        self.assertEqual(generate.call_count,3)
+        self.assertIn('overlap',generate.call_args_list[1].args[0])
+        self.assertIn('proposal',generate.call_args_list[1].args[0])
+        self.assertIn('bağımsız denetle',generate.call_args_list[2].args[0])
+        invalid=Mock(side_effect=[bad,bad])
+        with self.assertRaises(ChapterProposalInvalid) as raised:
+            propose(transcript,self.asset,invalid)
+        self.assertEqual(raised.exception.proposal,bad)
+        self.assertEqual(invalid.call_count,2)
