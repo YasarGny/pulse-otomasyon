@@ -24,6 +24,8 @@ bağlamın ardından soruya cevap, önceki fikre yanıt ve gerekçeli farklı ba
 gelişsin. Sunucu değişimi veya "bence" eklemek tek başına derinlik değildir.
 Sorular uydurma olgu, şirket niyeti, sahte deneyim veya yapay karşıtlık içermesin.
 Her haberi konuşmak veya süre/kelime/konu sayısı doldurmak zorunda değilsin.
+Plan, haber kimlikleri ve seçme/eleme gerekçeleri sunucuların okuyacağı metin değildir;
+konuşmaya üretim planı açıklaması ekleme.
 Düzenleme ve düzeltmelerde plan ile diyalog birlikte tutarlı kalmalı; planı da döndür.
 '''
 
@@ -34,7 +36,8 @@ gerekçelerini bütün kaynak notları ve önem değerlendirmeleriyle karşıla�
 seçim gerekçesine kaynaksız olgu eklenmişse veya kapsam tek olay etrafında
 gereksiz daraltılmışsa onaylama. Diyalogdaki gerçek sohbeti planın sorularıyla
 karşılaştır: plan güzel yazılmış olsa bile konuşma sadece haber aktarıyorsa,
-sorular yanıtsız kalıyorsa, yorumlar genel/geçiştirilmişse veya sunucular aynı
+sorular kaynakların izin verdiği ölçüde ele alınmıyorsa, yorumlar genel veya
+geçiştirilmişse ya da sunucular aynı
 bilgiyi sırayla tamamlıyorsa concerns ile reddet. Plan diyaloğun yerine geçmez.
 Kısa süre, her haberin konuşulmaması veya doğrudan konu değişimi tek başına kusur
 değildir. Derinliği kaynakların sunduğu gerçek tartışma alanına göre değerlendir.
