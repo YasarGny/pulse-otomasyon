@@ -793,3 +793,21 @@ Kategori başlıklarında çıplak haber sayısı bulunmaz; arama/filtre sonuçl
 `ozet-teknoloji` ve `ozet-oyun` adıyla 192/768px WebP olarak saklanır; günlük
 görsel üretimi gerekmez. Güncelleme yalnız `refresh-website.yml` ile mevcut
 haber ve dört MP3 korunarak, yenilenmiş Drive yedeği doğrulandıktan sonra yayımlanır.
+
+### Haber doğruluk reddinden sonra devam etme
+
+Tam haber doğruluk denetiminde önem gerekçesi kaynak kanıtı değildir: taslağın
+`editorial_priority` alanında yazılır, düzeltilebilir ve onaylı sürümü yayına taşınır.
+Gerekçesi veya puan şeması geçersiz olan bir haber onaylanmış sayılmaz. Denetim
+kapısı kaldırılmaz. İki denetim de reddederse o çalışma başarısız olur.
+
+Her dört haberlik grubun son taslağı, kullanılan kaynak kanıtları ve denetim
+bulguları özel günlük çalışma alanındaki `articles/*.review.json` dosyalarına
+kaydedilir. Sonraki deneme aynı girdiler için bu bulgularla başlar; onaylanmış
+haber grupları yeniden üretilmez. Kaynak, tarih ve geçmiş olay bağlamı aynıysa
+seçki de `articles/selection.json` üzerinden tekrar doğrulanarak kullanılır;
+girdi değişirse önbellek geçersizdir. v2 haber önbelleği eski denetim sözleşmesini
+kullanmaz. Ayrıntılar özel `pulse-state` artifact'ında kalır; site build'i bunları
+kopyalamaz. Actions hata mesajında yalnız kaynak kimlikleri ve özel rapor dosya
+adı yer alır. API/servis ve cron gecikmeleri için mutlak saat garantisi yoktur;
+bu değişiklik bağımsız incelemeyi atlayarak yayın garantisi vermez.

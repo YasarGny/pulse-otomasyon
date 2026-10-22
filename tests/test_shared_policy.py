@@ -99,7 +99,7 @@ class SharedPolicyTests(unittest.TestCase):
         from pulse.editorial import create_edition
         story=daily(count=1)['stories'][0]
         source={**story,'original_title':'Source title','source_excerpt':'Verified source evidence. '*100}
-        article={k:story[k] for k in ('id','title','summary','why','body')}
+        article={k:story[k] for k in ('id','title','summary','why','body','editorial_priority')}
         article['brief']='Yalnız kaynakta bulunan doğrulanmış olguların yorumsuz kısa özeti.'
         approved={'approved':True,'unsupported_claims':[],'concerns':[]}
         with patch('pulse.editorial.enrich_selection_sources'),patch('pulse.source_media.trusted_hosts',return_value={'example.com'}),patch('pulse.source_media.verified_article_image',return_value=None),patch('pulse.editorial.gemini',side_effect=[{'stories':[story]},{'articles':[article]},approved]) as generate:

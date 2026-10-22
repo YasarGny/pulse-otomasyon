@@ -377,7 +377,11 @@ timeliness bugün okunmasının önemi; evidence verilen kaynak kanıtının aç
 0 düşük/yetersiz, 2 orta, 4 güçlü/yüksek; ara değerler kullanılabilir. Bu editoryal bir değerlendirmedir.
 Kanıtı yetersiz veya somut yeni gelişme içermeyen haberi puan vererek meşrulaştırma; seçme. Gerekçeye yeni olgu ekleme.
 Haberleri toplam puana göre önem sırasına koy. Kategori, yayıncı popülerliği veya görsel güzelliği puanı etkilemesin.'''
-    generated = gemini(prompt, system=system)
+    selection_key = hashlib.sha256((system + prompt).encode()).hexdigest()
+    selection_cache = Path(article_cache) / 'selection.json' if article_cache else None
+    saved_selection = read_json(selection_cache) if selection_cache and selection_cache.exists() else None
+    generated = (saved_selection['selection'] if saved_selection and saved_selection.get('input_sha256') == selection_key
+                 else gemini(prompt, system=system))
     try:
         selected = checked_selection(generated, sources, section, previous_events, profile=profile)
     except ValueError as error:
@@ -389,6 +393,8 @@ Haberleri toplam puana göre önem sırasına koy. Kategori, yayıncı popülerl
                            'aynı olayı bölme veya zayıf kaynak seçme. Yeterli kanıt yoksa boş stories döndür. '
                            'Önceki seçki: ' + json.dumps(generated, ensure_ascii=False), system=system)
         selected = checked_selection(generated, sources, section, previous_events, profile=profile)
+    if selection_cache:
+        write_json(selection_cache, {'input_sha256':selection_key,'selection':{'stories':selected}})
     stories = []
     for story in selected:
         if not category_allowed(section, story.get("category")):

@@ -101,3 +101,19 @@ class SelectionGateTests(unittest.TestCase):
         self.assertEqual(generate.call_count,2)
         self.assertIn('why',generate.call_args.args[0])
         self.assertEqual(len(articles.call_args.args[0]),15)
+
+    def test_retry_reuses_valid_selection_but_changed_evidence_invalidates_it(self):
+        import tempfile
+        research={'publish_date':'2026-10-19','sections':{'teknoloji':list(self.sources.values())}}
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch('pulse.editorial.gemini',return_value={'stories':self.rows}) as generate, \
+             patch('pulse.articles.full_articles',side_effect=ValueError('Article rejected')) as articles:
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError,'Article rejected'):
+                    create_edition(research,'teknoloji','2026-10-19',4,'2026-10-16',article_cache=tmp)
+            self.assertEqual(generate.call_count,1)
+            self.assertEqual(articles.call_count,2)
+            research['sections']['teknoloji'][0]['source_excerpt'] += ' New verified facts.'
+            with self.assertRaisesRegex(ValueError,'Article rejected'):
+                create_edition(research,'teknoloji','2026-10-19',4,'2026-10-16',article_cache=tmp)
+            self.assertEqual(generate.call_count,2)
