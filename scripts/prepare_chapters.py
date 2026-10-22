@@ -18,6 +18,13 @@ class ChapterReviewRejected(ValueError):
         super().__init__('Topic review rejected: ' + reason)
 
 
+class ChapterProposalInvalid(ValueError):
+    def __init__(self, reason, proposal):
+        self.reason = reason
+        self.proposal = proposal
+        super().__init__(reason)
+
+
 def cached_editor(folder, generate, model, *, context=None):
     """Reuse exact paid responses after interruptions without skipping review."""
     folder = Path(folder)
@@ -56,7 +63,7 @@ def propose(transcript, asset, generate, *, retry=True):
     segments = transcript['segments']
     if transcript['audio_sha256'] != asset['sha256'] or not segments:
         raise ValueError('Transcript does not match the final recording')
-    evidence = [{'id': i, 'text': row['text']} for i, row in enumerate(segments)]
+    evidence = [{'id': i, 'text': row['text'], 'start': row['start'], 'end': row.get('end')} for i, row in enumerate(segments)]
     spelling_guide = transcript.get('canonical_headlines', [])
     stories = transcript.get('canonical_stories')
     system = ('Türkçe podcast için bölüm içi konu işaretleri hazırlayan editörsün. '
@@ -73,7 +80,9 @@ def propose(transcript, asset, generate, *, retry=True):
                         'Başlıklar anlaşılır, kısa ve yorumsuz olsun. '
                         'Ayrıca stories içindeki haberlerle kesin eşleştirebildiğin sohbet kesitlerini story_ranges olarak ekle. '
                         'Her kesitte story_id, ilk tam cümlenin start_segment_id ve son tam cümlenin end_segment_id değerini ver. '
-                        'Bitiş segmenti kesite dahildir. Başlık benzerliği yeterli değildir; konuşmadaki bilgiyle eşleştir. '
+                        'Bitiş segmenti kesite dahildir. Farklı kesitler aynı segmenti paylaşamaz; gerçek zaman aralıkları da çakışamaz. '
+                        'Bir kesitin bitiş zamanı sonraki kesitin başlangıcını aşmamalı. Süreleri değiştirme veya tahmin etme. '
+                        'Başlık benzerliği yeterli değildir; konuşmadaki bilgiyle eşleştir. '
                         'Birden çok haberi ayrıştıramayan sohbetleri veya belirsiz eşleşmeleri ekleme. Aynı habere birden çok ayrı kesit olabilir. '
                         'JSON: {"chapters":[{"segment_id":0,"title":"Açılış"}],"story_ranges":[{"story_id":"id","start_segment_id":1,"end_segment_id":5}]}.\n'
                         + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system)
@@ -84,7 +93,7 @@ def propose(transcript, asset, generate, *, retry=True):
         discard = getattr(generate, 'invalidate', None)
         if callable(discard):
             discard()
-        raise ValueError(message)
+        raise ChapterProposalInvalid(message, response)
     if not isinstance(response, dict):
         invalid('Invalid proposed topics response')
     rows = response.get('chapters')
@@ -123,6 +132,13 @@ def propose(transcript, asset, generate, *, retry=True):
         try:
             validate_ranges(result, asset, stories)
         except ValueError as error:
+            if retry and 'overlap' in str(error):
+                discard = getattr(generate, 'invalidate', None)
+                if callable(discard):
+                    discard()
+                revised = dict(transcript)
+                revised['review_feedback'] = json.dumps({'error':str(error), 'proposal':response}, ensure_ascii=False)
+                return propose(revised, asset, generate, retry=False)
             invalid(str(error))
     review = generate('Aşağıdaki öneriyi döküme karşı bağımsız denetle. '
                       'Her başlık ilgili segmentte başlayan konuyu gerçekten anlatmalı, '
@@ -193,6 +209,8 @@ def prepare(release, previous=None):
                     and saved_feedback.get('model') == MODEL
                     and isinstance(saved_feedback.get('reason'), str)):
                 transcript['review_feedback'] = saved_feedback['reason'][:600]
+                if 'proposal' in saved_feedback:
+                    transcript['review_feedback'] += '\nGeçersiz öneri: ' + json.dumps(saved_feedback['proposal'],ensure_ascii=False)
             generate = cached_editor(release / 'chapter-requests', gemini, MODEL,
                                      context={'audio_sha256': asset['sha256'],
                                               'transcript_sha256': transcript_sha})
@@ -203,10 +221,11 @@ def prepare(release, previous=None):
             print(f'::notice title=PULSE verified chapters::{section}: {len(result["chapters"])} markers; audio {asset["sha256"]}', flush=True)
         except Exception as error:
             failures.append(section)
-            if isinstance(error, ChapterReviewRejected) and transcript_sha:
+            if isinstance(error, (ChapterReviewRejected, ChapterProposalInvalid)) and transcript_sha:
                 write_json(feedback_path, {'audio_sha256': asset['sha256'],
                                           'transcript_sha256': transcript_sha,
-                                          'model': MODEL, 'reason': error.reason[:600]})
+                                          'model': MODEL, 'reason': error.reason[:600],
+                                          **({'proposal':error.proposal} if isinstance(error, ChapterProposalInvalid) else {})})
             print(section, 'chapter metadata omitted:', type(error).__name__)
             detail = re.sub(r'(?:https?|wss?)://\S+', '[service URL]', str(error))
             secret = os.environ.get('GEMINI_API_KEY')
