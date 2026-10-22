@@ -826,3 +826,30 @@ konuşma veya ses üretimi yapmaz. Sadece güvenilir günlük main artifact'ı y
 Kurtarma çıktıları hata sonrasında da saklanır. Normal zamanlanmış yayına hazır
 checkpoint kontrolü bu opsiyonu açmaz. Tam ses/yayın denetimi, Drive doğrulaması
 ve canlı Pages doğrulaması tamamlanmadan yayın başarılı sayılmaz.
+
+### Podcast için gerekçeli yayın planı (23.10.2026)
+
+23 Ekim 2026 ve sonrasındaki `daily-v2` üretiminde haberlerin gerçek kimlikleri,
+önem puanları/gerekçeleri, olay kimlikleri ve kaynak kanıtları podcast yazarına
+birlikte verilir. Mevcut ilk yazım çağrısı hem yayın planı hem diyalog üretir;
+ayrı model çağrısı eklenmez. Planın her sohbet kümesinde ilgili haberler, seçilme/
+birleştirilme gerekçesi ve gerçek değerlendirme soruları; dışarıda kalan her
+haberde habere özel gerekçe bulunur. Bütün haberler tam bir kez hesaba katılır.
+Aynı şirket/oyun adı tek başına birleşme gerekçesi değildir. Konu sayısı veya
+süre kotası yoktur; bütün gündemi kapsayan Günün Özeti ayrı kalır.
+
+Mevcut editör hem planı hem konuşmayı düzenler. Bağımsız denetçi kaynak doğruluğu
+ve yanıltıcı yorum denetimine ek olarak seçim gerekçelerini, diyaloğun plana
+uyumunu ve gerçek sohbet derinliğini ayrı boolean alanlarla onaylamalıdır.
+Genel `approved=true`, bu üç onay olmadan yeterli değildir. Planın güzel yazılması
+konuşmanın derin olduğuna kanıt sayılmaz; önemli konuların gerekçesiz atlanması,
+yüzeysel haber aktarımı ve zorlama bağlantılar reddedilir. Onaysız çalışma bir
+kez bulgularla düzeltilir ve yeniden denetlenir; kota için uzatılmaz.
+
+Plan özel `podcast-draft.json` ve `podcast-review.json` içinde tutulur. Onay kaydı
+planın ve kaynak kataloğunun SHA-256'sını, ayrıca son diyaloğun kimliğini içerir.
+Ücretli podcast seslendirmesinden önce bu bağlar yeniden kontrol edilir. Girdiler
+aynıysa taslak/plan tekrar kullanılır; bağımsız inceleme atlanmaz. Raporlar siteye
+ve taşınabilir yayın ZIP'ine kopyalanmaz. 22 Ekim ve önceki mühürlü yayınların
+sözleşmesi korunur; bu değişiklik için ses üretimi veya günlük iş elle başlatılmaz.
+Otomatik model incelemesi insan dinlemesinin veya hatasızlığın garantisi değildir.

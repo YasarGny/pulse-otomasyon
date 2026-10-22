@@ -2,6 +2,7 @@
 PROFILE = 'expanded-v1'
 DAILY_PROFILE = 'daily-v2'
 POLICY_START = '2026-10-22'
+PODCAST_PLAN_START = '2026-10-23'
 DAILY_TARGET = (15, 20)
 DAILY_WORDS = (2500, 3100)
 DAILY_PODCAST_SECONDS = (900, 1500)
@@ -19,6 +20,10 @@ def expanded(data):
 
 def shared_policy(data):
     return data.get('publication_profile') == DAILY_PROFILE
+
+
+def planned_podcast(data):
+    return shared_policy(data) and data.get('publish_date', '') >= PODCAST_PLAN_START
 
 
 def profile_for(date):

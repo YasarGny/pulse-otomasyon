@@ -61,7 +61,7 @@ def generate_audio(root, data):
     import pulse_podcast_audio
     import pulse_podcast_writer
 
-    from pulse.profile import expanded, podcast_minimum, podcast_maximum, summary_minimum, shared_policy, DAILY_PROFILE
+    from pulse.profile import expanded, podcast_minimum, podcast_maximum, summary_minimum, shared_policy, planned_podcast, DAILY_PROFILE
     minimum_podcast = podcast_minimum(data)
     minimum_summary = summary_minimum(data)
     section = data["section"]
@@ -135,6 +135,8 @@ def generate_audio(root, data):
             audit_path=review_path,
             **({"long_form": True} if expanded(data) else {}),
             **({"publication_profile": DAILY_PROFILE} if shared_policy(data) else {}),
+            **({'require_plan':True, 'story_catalogue':data['stories']}
+               if planned_podcast(data) else {}),
         )
         write_json(turns_path, {"turns": turns})
     review = read_json(review_path)
@@ -143,6 +145,9 @@ def generate_audio(root, data):
     turns = pulse_podcast_writer._validate(read_json(turns_path))
     if review.get("turns_sha256") != pulse_podcast_writer.dialogue_digest(turns):
         raise ValueError("Podcast dialogue differs from its approved review")
+    if planned_podcast(data):
+        from pulse.podcast_plan import catalogue, verify_audit
+        verify_audit(review, catalogue([(s['title'],s['summary']) for s in data['stories']], data['stories']))
     if turns[0]["speaker"] != "Yaşar":
         raise ValueError("The main host must open the episode")
     speech = spoken_turns(turns)
