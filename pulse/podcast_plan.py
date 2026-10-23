@@ -39,8 +39,7 @@ geçişleri azalt; sonra düşük öncelikli ayrıntıları kısalt. Önemli yor
 silerek bir dakikaya çok konu sıkıştırma. Her haberi almak için 20 dakikayı aşma.
 Dışarıda kalan her habere kaynak derinliği, öncelik ve kalan kapsamla ilişkili
 somut gerekçe ver; sırf kısa podcast yapmak veya yorum alanı yok demek yeterli
-değil. Plan ve gerekçeler konuşmada okunmaz. Ek çıktı alanı veya ayrı üretim
-aşaması ekleme; mevcut plan ve turns sözleşmesini koru.
+değil. Plan ve gerekçeler konuşmada okunmaz.
 '''
 
 BROAD_REVIEW = '''
