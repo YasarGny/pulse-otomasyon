@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from pulse.usage import invoke
 
 from pulse.publication import (
     category_allowed,
@@ -381,17 +382,17 @@ Haberleri toplam puana göre önem sırasına koy. Kategori, yayıncı popülerl
     selection_cache = Path(article_cache) / 'selection.json' if article_cache else None
     saved_selection = read_json(selection_cache) if selection_cache and selection_cache.exists() else None
     generated = (saved_selection['selection'] if saved_selection and saved_selection.get('input_sha256') == selection_key
-                 else gemini(prompt, system=system))
+                 else invoke('news.select',gemini,prompt,system=system,section=section))
     try:
         selected = checked_selection(generated, sources, section, previous_events, profile=profile)
     except ValueError as error:
         # One bounded editorial repair, before article generation. Insufficient
         # evidence must still return too few items and fail, never invent filler.
-        generated = gemini(prompt + '\nÖnceki seçki doğrulanamadı: ' + str(error)
+        generated = invoke('news.select_repair',gemini,prompt + '\nÖnceki seçki doğrulanamadı: ' + str(error)
                            + '\nSeçkiyi aynı kaynaklardan yeniden değerlendir. Yalnız gerçek, '
                            'güncel ve farklı olayları seç. Kotayı doldurmak için haber uydurma, '
                            'aynı olayı bölme veya zayıf kaynak seçme. Yeterli kanıt yoksa boş stories döndür. '
-                           'Önceki seçki: ' + json.dumps(generated, ensure_ascii=False), system=system)
+                           'Önceki seçki: ' + json.dumps(generated, ensure_ascii=False), system=system,section=section)
         selected = checked_selection(generated, sources, section, previous_events, profile=profile)
     if selection_cache:
         write_json(selection_cache, {'input_sha256':selection_key,'selection':{'stories':selected}})
@@ -418,7 +419,7 @@ Haberleri toplam puana göre önem sırasına koy. Kategori, yayıncı popülerl
             }
         )
     from pulse.articles import full_articles
-    stories = full_articles(stories, sources, gemini, cache_dir=article_cache)
+    stories = full_articles(stories, sources, gemini, cache_dir=article_cache,section=section)
     if profile == DAILY_PROFILE:
         from pulse.news_priority import rank_key
         stories.sort(key=rank_key)

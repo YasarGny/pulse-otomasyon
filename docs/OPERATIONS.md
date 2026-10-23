@@ -853,3 +853,38 @@ aynıysa taslak/plan tekrar kullanılır; bağımsız inceleme atlanmaz. Raporla
 ve taşınabilir yayın ZIP'ine kopyalanmaz. 22 Ekim ve önceki mühürlü yayınların
 sözleşmesi korunur; bu değişiklik için ses üretimi veya günlük iş elle başlatılmaz.
 Otomatik model incelemesi insan dinlemesinin veya hatasızlığın garantisi değildir.
+
+### Tüketim, kaynak paketi ve geçerli onayların yeniden kullanımı
+
+`api-usage.jsonl` sağlayıcı yanıtlarının token sayaçlarını çağrı kimliği, aşama,
+model ve yayınla kaydeder; prompt/yanıt/anahtar içermez. Haber seçimi, haber
+metni/denetimi/düzeltmesi, podcast yazımı/editörü/denetimi/düzeltmesi/sesi ve bölüm
+önerisi/denetimi ayrılır. Yerel yeniden kullanım ayrı olaydır; API çağrısı sayılmaz.
+Her günlük çalışmanın sonunda, hata sonrasında da, özel `api-usage-summary.json`
+ve Actions özeti oluşur. Checkpoint kopyalarındaki aynı çağrı kimlikleri ikinci
+kez toplanmaz. Eksik sayaç bilinmeyendir; sıfır veya TL tasarrufu varsayılmaz.
+Düşünme/önbellek sayaçları toplamın üstüne tekrar eklenmez. Bu rapor API faturası
+değildir; sağlayıcının raporlamadığı veya yanıt alınamayan tüketimi kanıtlayamaz.
+
+Kaynak paketi yalnız birebir aynı uzun metinleri açık referansla tekilleştirir;
+net olarak daha kısa değilse normal JSON kullanılır. Hiçbir kaynak olgusu veya
+URL kesilmez, benzer haberler birleştirilmez. Podcast kaynaklarında tek bir
+haberle açıkça eşleşen tekrar başlık yerine haber kimliği kullanılır; belirsiz
+başlıklar korunur. Her kaynak rolü ve tam metin ilişkisi korunur.
+
+Podcastte geçerli bağımsız onay; model, tam denetim isteği (talimatlar, kaynaklar,
+parametreler, diyalog ve varsa plan), onay kaydının checksum'u ve diyalog/plan
+kimlikleri eşleşiyorsa yeniden kullanılabilir. Eksik/eski/reddedilmiş/bozulmuş
+kayıt yeni denetimi atlatamaz. Haber önbelleği de model ve üretim/denetim kodu
+sözleşmesine bağlıdır; değişiklikte güvenli biçimde yeniden değerlendirilir.
+Daha önceki plandaki "her tekrar yeni bağımsız çağrı" davranışı yerine, aynı
+incelemenin hâlâ geçerli olduğu doğrulanır. Gerçek ses üretimi için manuel onay
+kuralı değişmez. Bu çalışma mevcut sesleri yeniden üretmez.
+
+Üretim ve hazır yayın dağıtımı ortak setup-runtime action'ını kullanır. Python
+ortamı OS/mimari, tam Python sürümü ve requirements.txt SHA'sıyla önbelleklenir.
+Sürüm/import/pip check denetiminden geçen ortam yeniden indirilmez; başarısız veya
+bulunmayan önbellek normal kurulumla onarılır. Önbellek hizmeti arızası yayını
+engellemez. FFmpeg/ffprobe kuruluysa tekrar apt kurulumu yapılmaz. Yeni bir kısa
+kurulum süre sınırı eklenmez; hazır checkpoint korunur, kurulum hatası içerik
+veya ses üretimine dönüşmez.
