@@ -1,0 +1,139 @@
+name: Publish completed checkpoint without generating content
+on:
+  workflow_dispatch:
+    inputs:
+      complete_chapters:
+        description: Complete missing final-audio chapter metadata; never generate news or voices
+        type: boolean
+        default: false
+  schedule:
+    # Start before 07:30 Istanbul; this job can only validate/publish existing files.
+    - cron: '15 4 * * *'
+    - cron: '25 4 * * *'
+    - cron: '45 4 * * *'
+    - cron: '15 5 * * *'
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: pulse-github-daily
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.PULSE_AUTOMATION_ENABLED != 'false')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: pulse-production
+    env:
+      PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+      PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+      PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+      PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+      PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check production and backup authorization
+        env:
+          LIVE_APPROVED: ${{ vars.PULSE_LIVE_APPROVED }}
+        run: |
+          python - <<'PY'
+          import json, os
+          assert json.load(open('pulse/deployment.json')).get('live_enabled') is True, 'Live publication is disabled'
+          assert os.environ['LIVE_APPROVED'] == 'true', 'Live publication is not approved'
+          assert os.environ['PULSE_DRIVE_ENABLED'] == 'true', 'A verified Drive backup is required for this rollout'
+          PY
+      - uses: ./.github/actions/setup-runtime
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
+      - name: Install final-audio chapter analysis only when explicitly requested
+        if: inputs.complete_chapters == true
+        run: python -m pip install -r requirements-chapters.txt
+      - uses: actions/cache@v4
+        if: inputs.complete_chapters == true
+        continue-on-error: true
+        with:
+          path: ~/.cache/huggingface/hub
+          key: pulse-whisper-small-${{ runner.os }}-v1
+      - name: Restore and publish only a complete verified current-day checkpoint
+        id: build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COMPLETE_CHAPTERS: ${{ inputs.complete_chapters == true }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+          HF_HUB_DISABLE_XET: '1'
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from pulse.build import build
+          from pulse.publication import read_json, expected_date, now
+          from scripts.state import restore
+          date = expected_date(now())
+          current = read_json('.published/data/publication.json')
+          assert current['publish_date'] == date, 'Current publication date must match today'
+          if current['status'] == 'ready':
+              from pulse.release_checks import check
+              from pulse.verify_site import wait_for_site
+              source = Path('.published/releases') / current['release_id']
+              check(source, '.published')
+              wait_for_site(current, timeout=180, tree='.published')
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                  output.write('publish=false\n')
+              print('Today is already complete and verified live; no upload or new backup needed.')
+              raise SystemExit(0)
+          else:
+              assert current['status'] == 'preparing', 'Unexpected publication state'
+              assert restore(os.environ['GITHUB_REPOSITORY'], date, '.pulse-work'), 'No trusted checkpoint available'
+              source = Path('.pulse-work') / date
+          manifest = read_json(source / 'release.json')
+          assert manifest['status'] == 'ready' and manifest['publish_date'] == date, 'Checkpoint is incomplete or stale'
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('RECOVERY_DATE=' + date + '\n')
+          if os.environ['COMPLETE_CHAPTERS'] == 'true':
+              from scripts.prepare_chapters import prepare
+              from pulse.chapter_completion import copy_state
+              restored = restore(os.environ['GITHUB_REPOSITORY'], date, '.chapter-recovery',
+                                 artifact_prefix='pulse-ready-chapters-',
+                                 workflow_path='.github/workflows/publish-ready.yml',
+                                 allowed_events=('workflow_dispatch',))
+              if restored:
+                  copy_state(Path('.chapter-recovery') / date, source)
+              os.environ['PULSE_USAGE_LOG'] = str(source / 'api-usage.jsonl')
+              try:
+                  prepare(source, '.published')
+              finally:
+                  copy_state(source, Path('.chapter-recovery') / date)
+          from pulse.release_checks import check
+          from pulse.pipeline import wait_for
+          check(source, '.published')
+          wait_for(date, '07:30:00')
+          result = build('site', 'dist', release=source, previous='.published')
+          assert result == manifest, 'The verified checkpoint identity must be preserved'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('date=' + date + '\npublish=true\n')
+          PY
+      - uses: ./.github/actions/save-state
+        if: always() && inputs.complete_chapters == true
+        with:
+          name: pulse-ready-chapters-${{ env.RECOVERY_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
+          source: .chapter-recovery/
+      - uses: ./.github/actions/deploy-site
+        if: steps.build.outputs.publish == 'true'
+        with:
+          mode: release
+          date: ${{ steps.build.outputs.date }}
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          refresh-backup: "true"

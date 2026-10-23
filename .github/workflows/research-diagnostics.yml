@@ -1,0 +1,56 @@
+name: Inspect current research without AI or audio generation
+on:
+  workflow_dispatch:
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          path: .published
+          persist-credentials: false
+      - name: Inspect source coverage without paid calls
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os, json
+          from pathlib import Path
+          from collections import Counter
+          from pulse.publication import expected_date, now, read_json
+          from pulse.editorial import research
+          from pulse.history import exclude_published
+          from scripts.state import restore
+          date = expected_date(now())
+          def notice(title, text):
+              text = str(text).replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+              print(f'::notice title={title}::{text}', flush=True)
+          restore(os.environ['GITHUB_REPOSITORY'], date, '.diagnostic-state')
+          cached = Path('.diagnostic-state') / date / 'research.json'
+          fresh = research(date, '.diagnostic-research.json')
+          for label, data in [('cached', read_json(cached) if cached.exists() else None), ('fresh', fresh)]:
+              if not data: continue
+              notice(label + ' feed failures', json.dumps(data.get('feed_failures', [])))
+              clean = exclude_published(data, '.published', date)
+              for section, rows in clean['sections'].items():
+                  notice(label + ' ' + section, json.dumps({'researched_at': data.get('researched_at'), 'count': len(rows), 'sources': dict(Counter(s['source_name'] for s in rows))}, ensure_ascii=False))
+                  # GitHub limits notice annotations per step. Keep a single
+                  # bounded report per category instead of losing later rows.
+                  notice(label + ' ' + section + ' candidates', json.dumps([
+                      {'publisher': row['source_name'], 'title': row['original_title'],
+                       'excerpt_chars': len(row['source_excerpt'])} for row in rows
+                  ], ensure_ascii=False))
+          PY

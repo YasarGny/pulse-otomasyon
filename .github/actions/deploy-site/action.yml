@@ -1,0 +1,93 @@
+name: Deploy reviewed public files
+description: Publish only a validated public tree using a repository-scoped GitHub App
+inputs:
+  app-id:
+    required: true
+    description: GitHub App ID
+  private-key:
+    required: true
+    description: GitHub App private key (secret)
+  mode:
+    required: true
+    description: prepare or release
+  date:
+    required: true
+    description: Istanbul publication date
+  refresh-backup:
+    required: false
+    default: "false"
+    description: Rebuild the active daily archive after a website-only revision
+runs:
+  using: composite
+  steps:
+    - uses: actions/create-github-app-token@v2
+      id: app
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: YasarGny
+        repositories: YasarGny.github.io
+        permission-contents: write
+    - uses: actions/checkout@v4
+      with:
+        repository: YasarGny/YasarGny.github.io
+        ref: main
+        path: .published
+        token: ${{ steps.app.outputs.token }}
+        fetch-depth: 1
+    - name: Build preparation status without closing an already-ready issue
+      if: inputs.mode == 'prepare'
+      shell: bash
+      env:
+        PULSE_DATE: ${{ inputs.date }}
+      run: python -m pulse.build --preparing "$PULSE_DATE" --previous .published
+    - name: Require complete audio and reviewed chapters before a ready publication
+      if: inputs.mode == 'release'
+      shell: bash
+      run: |
+        python - <<'PY'
+        from pathlib import Path
+        from pulse.publication import read_json
+        from pulse.release_checks import check
+        manifest=read_json('dist/data/publication.json')
+        check(Path('dist/releases') / manifest['release_id'], 'dist')
+        PY
+    - name: Back up complete publications to private Drive before any cleanup
+      if: env.PULSE_DRIVE_ENABLED == 'true'
+      shell: bash
+      env:
+        REFRESH_BACKUP: ${{ inputs.refresh-backup }}
+      run: |
+        if [ "$REFRESH_BACKUP" = 'true' ]; then
+          python -m pulse.drive_backup --source dist --published .published --receipts .drive-receipts.json --refresh-current
+        else
+          python -m pulse.drive_backup --source dist --published .published --receipts .drive-receipts.json
+        fi
+    - name: Validate and synchronize public files
+      shell: bash
+      run: python scripts/sync_site.py dist .published
+    - name: Retain only active daily issue; prune only verified Drive backups
+      if: env.PULSE_DRIVE_ENABLED == 'true'
+      shell: bash
+      run: python scripts/prune_backed_up.py .published .drive-receipts.json
+    - name: Commit public files atomically
+      shell: bash
+      env:
+        PULSE_DATE: ${{ inputs.date }}
+        PULSE_MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        cd .published
+        git config user.name 'pulse-publisher[bot]'
+        git config user.email 'pulse-publisher[bot]@users.noreply.github.com'
+        for path in index.html 404.html robots.txt sitemap.xml manifest.webmanifest sw.js .nojekyll assets teknoloji oyun haberler podcastler akis gizlilik kosullar data releases; do
+          if [ -e "$path" ]; then git add -- "$path"; fi
+        done
+        if ! git diff --cached --quiet; then
+          git commit -m "PULSE $PULSE_DATE: $PULSE_MODE verified website"
+          PYTHONPATH="$GITHUB_WORKSPACE" python -c "import os; from pulse.publication import expected_date, now; assert expected_date(now()) == os.environ['PULSE_DATE'], 'Issue expired before push'"
+          git push origin HEAD:main
+        fi
+    - name: Wait for Pages and verify public HTML, JSON and all MP3 hashes
+      shell: bash
+      run: python -m pulse.verify_site --expected dist/data/publication.json --tree dist --timeout 900

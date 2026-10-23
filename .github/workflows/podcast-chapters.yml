@@ -1,0 +1,127 @@
+name: Transcribe existing podcasts for chapter review
+on:
+  workflow_dispatch:
+    inputs:
+      review_run_id:
+        description: 'Reuse this workflow’s existing transcript artifact instead of transcribing again'
+        type: string
+        required: false
+        default: ''
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  transcribe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pulse.secure_state check
+      - name: Validate transcript artifact provenance
+        if: inputs.review_run_id != ''
+        env:
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          run_id = int(os.environ['REVIEW_RUN_ID'])
+          repo = os.environ['GITHUB_REPOSITORY']
+          def get(path):
+              request = urllib.request.Request('https://api.github.com/repos/' + repo + path, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+          run = get('/actions/runs/' + str(run_id))
+          assert run['event'] == 'workflow_dispatch' and run['head_repository']['full_name'] == repo
+          assert run['path'] == '.github/workflows/podcast-chapters.yml'
+          assert run['status'] == 'completed'
+          jobs = get('/actions/runs/' + str(run_id) + '/jobs')['jobs']
+          assert any(step['conclusion'] == 'success' and step['name'] in ('Transcribe immutable existing audio without generating new voices', 'Reuse a trusted existing transcription') for job in jobs for step in job['steps'])
+          PY
+      - name: Reuse a trusted existing transcription
+        if: inputs.review_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: podcast-chapter-review
+          path: chapter-review
+          run-id: ${{ inputs.review_run_id }}
+          github-token: ${{ github.token }}
+      - name: Decrypt the verified transcript checkpoint
+        if: inputs.review_run_id != ''
+        run: python -m pulse.secure_state extract --source chapter-review/state.enc --output chapter-review
+      - run: python -m pip install -r requirements-chapters.txt
+        if: inputs.review_run_id == ''
+
+      - name: Transcribe immutable existing audio without generating new voices
+        if: inputs.review_run_id == ''
+        env:
+          HF_HUB_DISABLE_XET: '1'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.transcribe_podcasts import transcribe
+          manifest = json.loads(Path('.published/data/publication.json').read_text())
+          assert manifest['status'] == 'ready'
+          try:
+              transcribe(Path('.published/releases') / manifest['release_id'], 'chapter-review')
+          except Exception:
+              import traceback
+              Path('chapter-review').mkdir(exist_ok=True)
+              detail = traceback.format_exc()
+              Path('chapter-review/error.txt').write_text(detail)
+              print('::error::' + detail[-2500:].replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+              raise
+          PY
+      - name: Remove the consumed encrypted container before saving updated state
+        run: rm -f chapter-review/state.enc
+      - name: Prepare and independently review topic markers from the transcript
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+        run: |
+          python -m pip install -r requirements.txt
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          from pulse.editorial import gemini
+          from scripts.prepare_chapters import propose
+          failures = []
+          for section in ('teknoloji', 'oyun'):
+              transcript = json.loads(Path('chapter-review', section + '.json').read_text())
+              manifest = json.loads(Path('.published/data/publication.json').read_text())
+              edition = json.loads((Path('.published/releases') / manifest['release_id'] / (section + '.json')).read_text())
+              asset = edition['podcast']
+              transcript['canonical_headlines'] = [story['title'] for story in edition['stories']]
+              try:
+                  result = propose(transcript, asset, gemini)
+              except Exception as error:
+                  message = (type(error).__name__ + ': ' + str(error))[:1500]
+                  print('::error::' + message.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+                  failures.append(section)
+                  continue
+              Path('chapter-review', asset['sha256'] + '.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
+              # Public-safe metadata is also available to reviewers through check annotations.
+              notice = json.dumps({'section': section, 'data': result}, ensure_ascii=False)
+              print('::notice title=Verified chapter proposal::' + notice.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+          if failures:
+              raise ValueError('Chapter review incomplete for: ' + ', '.join(failures))
+          PYCODE
+      - uses: ./.github/actions/save-state
+        if: always()
+        with:
+          name: podcast-chapter-review
+          source: chapter-review/

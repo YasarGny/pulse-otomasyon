@@ -1,0 +1,55 @@
+name: Reuse verified Python runtime and installed audio tools
+description: Cache dependency environments; never generate content or weaken release checks
+runs:
+  using: composite
+  steps:
+    - id: python
+      shell: bash
+      run: |
+        echo "image=$(python -c 'import platform; d=platform.freedesktop_os_release(); print(d["ID"]+"-"+d["VERSION_ID"])')" >> "$GITHUB_OUTPUT"
+        echo "version=$(python -c 'import platform; print(platform.python_version())')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache/restore@v4
+      id: runtime
+      continue-on-error: true
+      with:
+        path: .pulse-runtime
+        key: pulse-runtime-v1-${{ runner.os }}-${{ steps.python.outputs.image }}-${{ runner.arch }}-${{ steps.python.outputs.version }}-${{ hashFiles('requirements.txt') }}
+    - name: Verify cached dependencies or install missing environment
+      shell: bash
+      run: |
+        runtime_python="$GITHUB_WORKSPACE/.pulse-runtime/bin/python"
+        valid=false
+        if [ -x "$runtime_python" ]; then
+          if "$runtime_python" -m pip check && "$runtime_python" - <<'PY'
+        from importlib.metadata import version
+        from pathlib import Path
+        import requests, edge_tts, truststore
+        for line in Path('requirements.txt').read_text().splitlines():
+            if not line.strip() or line.lstrip().startswith('#'): continue
+            package, expected = line.strip().split('==')
+            assert version(package) == expected, 'Dependency version mismatch: ' + package
+        PY
+          then valid=true; fi
+        fi
+        if [ "$valid" != true ]; then
+          python -m venv --clear "$GITHUB_WORKSPACE/.pulse-runtime"
+          "$runtime_python" -m pip install -r requirements.txt
+          "$runtime_python" -m pip check
+          "$runtime_python" -c 'import requests, edge_tts, truststore'
+        fi
+        if [ "${PULSE_REQUIRE_ENCRYPTED_STATE:-false}" = true ]; then
+          "$runtime_python" -m pulse.secure_state check
+        fi
+        echo "$GITHUB_WORKSPACE/.pulse-runtime/bin" >> "$GITHUB_PATH"
+        if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+        fi
+        ffmpeg -version >/dev/null
+        ffprobe -version >/dev/null
+    - uses: actions/cache/save@v4
+      if: steps.runtime.outputs.cache-hit != 'true'
+      continue-on-error: true
+      with:
+        path: .pulse-runtime
+        key: pulse-runtime-v1-${{ runner.os }}-${{ steps.python.outputs.image }}-${{ runner.arch }}-${{ steps.python.outputs.version }}-${{ hashFiles('requirements.txt') }}

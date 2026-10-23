@@ -1,0 +1,67 @@
+name: Check configuration without generating content
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Check required values and authenticated checkpoint roundtrip
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          PULSE_DEPLOY_APP_PRIVATE_KEY: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+          PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+          PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
+          PULSE_DEPLOY_APP_ID: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+          PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+        run: |
+          python - <<'PY'
+          import os
+          from pulse.secure_state import decrypt, encrypt
+          required = ('GEMINI_API_KEY', 'PULSE_STATE_KEY', 'PULSE_DEPLOY_APP_PRIVATE_KEY',
+                      'PULSE_DRIVE_CLIENT_ID', 'PULSE_DRIVE_CLIENT_SECRET',
+                      'PULSE_DRIVE_REFRESH_TOKEN', 'PULSE_DEPLOY_APP_ID', 'PULSE_DRIVE_FOLDER_ID')
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing configuration names: ' + ', '.join(missing))
+          assert os.environ['PULSE_DRIVE_ENABLED'] == 'true', 'Drive backup must be enabled'
+          assert decrypt(encrypt(b'synthetic-checkpoint')) == b'synthetic-checkpoint'
+          print('Required configuration present; checkpoint authentication verified. No content generated.')
+          PY
+      - uses: actions/create-github-app-token@v2
+        id: publisher
+        with:
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: YasarGny
+          repositories: YasarGny.github.io
+          permission-contents: read
+      - name: Read publishing repository and private backup folder without writing
+        env:
+          PUBLISH_TOKEN: ${{ steps.publisher.outputs.token }}
+          PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+          PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+          PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
+          PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+        run: |
+          python - <<'PY'
+          import os, requests
+          from pulse.drive_backup import Drive
+          response = requests.get('https://api.github.com/repos/YasarGny/YasarGny.github.io/contents/data/publication.json',
+              headers={'Authorization':'Bearer '+os.environ['PUBLISH_TOKEN'], 'Accept':'application/vnd.github+json'}, timeout=30)
+          assert response.ok, 'Publishing repository read failed'
+          drive = Drive()
+          folder = drive.request('GET', drive.api+'/'+os.environ['PULSE_DRIVE_FOLDER_ID'], params={'fields':'id,mimeType,trashed'}).json()
+          assert folder['mimeType'] == 'application/vnd.google-apps.folder' and not folder.get('trashed'), 'Invalid backup folder'
+          print('Publishing repository and backup folder are readable. No files changed.')
+          PY

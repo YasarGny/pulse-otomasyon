@@ -1,0 +1,74 @@
+name: Verify PULSE publisher access
+on:
+  workflow_dispatch:
+    inputs:
+      inspect_media:
+        description: Read-only diagnostics of image responses in the latest daily checkpoint
+        type: boolean
+        default: false
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check required configuration without exposing values
+        env:
+          APP_ID: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_ID" ]; then
+            echo '::error::Missing repository variable PULSE_DEPLOY_APP_ID'
+            exit 1
+          fi
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo '::error::Missing repository secret PULSE_DEPLOY_APP_PRIVATE_KEY'
+            exit 1
+          fi
+      - name: Authenticate only for the publication repository
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: YasarGny
+          repositories: YasarGny.github.io
+          permission-contents: write
+      - name: Verify repository access without writing files
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          gh api repos/YasarGny/YasarGny.github.io --jq '.full_name'
+          gh api repos/YasarGny/YasarGny.github.io/contents/ --jq 'length'
+          echo 'Publisher authentication and Contents write permission verified. No live files changed.' >> "$GITHUB_STEP_SUMMARY"
+      - name: "Daily schedule enabled: ${{ vars.PULSE_AUTOMATION_ENABLED != 'false' }}; live approved: ${{ vars.PULSE_LIVE_APPROVED == 'true' }}; Drive backup enabled: ${{ vars.PULSE_DRIVE_ENABLED == 'true' }}"
+        env:
+          DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED == 'true' }}
+          SCHEDULE_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED != 'false' }}
+          LIVE_APPROVED: ${{ vars.PULSE_LIVE_APPROVED == 'true' }}
+        run: |
+          echo "Drive backup enabled: $DRIVE_ENABLED"
+          echo "Drive backup enabled: $DRIVE_ENABLED" >> "$GITHUB_STEP_SUMMARY"
+          echo "Daily schedule enabled: $SCHEDULE_ENABLED"
+          echo "Live publication approved: $LIVE_APPROVED"
+          echo "Daily schedule enabled: $SCHEDULE_ENABLED; live publication approved: $LIVE_APPROVED" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        if: inputs.inspect_media == true
+      - uses: actions/setup-python@v5
+        if: inputs.inspect_media == true
+        with:
+          python-version: "3.12"
+      - name: Inspect source image MIME types without changing publications or Drive
+        if: inputs.inspect_media == true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install -r requirements.txt
+          date=$(python -c "from pulse.publication import expected_date, now; print(expected_date(now()))")
+          python scripts/state.py --repo "$GITHUB_REPOSITORY" --date "$date"
+          python scripts/inspect_media.py --release ".pulse-work/$date/expanded-v1"

@@ -1,0 +1,151 @@
+name: Complete and publish current podcast chapters
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['PULSE GitHub daily publication']
+    types: [completed]
+    branches: [main]
+  schedule:
+    # Hourly recovery, 08:17–23:17 Istanbul. Never generates news or voices.
+    - cron: '17 5-20 * * *'
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: pulse-github-daily
+  cancel-in-progress: false
+jobs:
+  complete:
+    if: >-
+      github.ref == 'refs/heads/main' && vars.PULSE_CHAPTERS_ENABLED != 'false' &&
+      vars.PULSE_LIVE_APPROVED == 'true' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    environment: pulse-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pulse.secure_state check
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          persist-credentials: false
+      - name: Check current publication and identify missing chapter metadata
+        id: inspect
+        env:
+          PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+        run: |
+          python - <<'PY'
+          import os
+          from pulse.publication import read_json
+          assert read_json('pulse/deployment.json').get('live_enabled') is True, 'Live publication is disabled'
+          assert os.environ['PULSE_DRIVE_ENABLED'] == 'true', 'Verified Drive backup required'
+          PY
+          python -m pulse.chapter_completion inspect
+      - name: Restore trusted chapter-only checkpoint
+        if: steps.inspect.outputs.needed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PULSE_DATE: ${{ steps.inspect.outputs.date }}
+        run: |
+          python - <<'PY'
+          import os
+          from pulse.chapter_completion import bootstrap_daily
+          from scripts.state import restore
+          date = os.environ['PULSE_DATE']
+          resumed = restore(os.environ['GITHUB_REPOSITORY'], date, '.chapter-state',
+                            artifact_prefix='pulse-chapter-state-',
+                            workflow_path='.github/workflows/complete-chapters.yml',
+                            allowed_events=('schedule', 'workflow_dispatch', 'workflow_run'))
+          if not resumed:
+              restore(os.environ['GITHUB_REPOSITORY'], date, '.daily-chapter-state')
+              bootstrap_daily('.published', '.daily-chapter-state/' + date, '.chapter-state/' + date)
+          PY
+      - name: Stage and validate immutable current recordings
+        if: steps.inspect.outputs.needed == 'true'
+        env:
+          PULSE_DATE: ${{ steps.inspect.outputs.date }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pulse.chapter_completion stage --work ".chapter-work/$PULSE_DATE" --state ".chapter-state/$PULSE_DATE"
+      - name: Reuse the public transcription model cache
+        if: steps.inspect.outputs.needed == 'true'
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: pulse-whisper-small-${{ runner.os }}-v1
+      - name: Complete transcription and independent chapter review without synthesis
+        id: prepare
+        if: steps.inspect.outputs.needed == 'true'
+        continue-on-error: true
+        timeout-minutes: 40
+        env:
+          PULSE_DATE: ${{ steps.inspect.outputs.date }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
+          HF_HUB_DISABLE_XET: '1'
+        run: |
+          python -m pip install -r requirements-chapters.txt
+          python scripts/prepare_chapters.py --release ".chapter-work/$PULSE_DATE" --previous .published
+      - name: Save successful chapter stages even after partial failure
+        if: always() && steps.inspect.outputs.needed == 'true'
+        env:
+          PULSE_DATE: ${{ steps.inspect.outputs.date }}
+        run: python -m pulse.chapter_completion save --work ".chapter-work/$PULSE_DATE" --state ".chapter-state/$PULSE_DATE"
+      - uses: ./.github/actions/save-state
+        if: always() && steps.inspect.outputs.needed == 'true'
+        with:
+          name: pulse-chapter-state-${{ steps.inspect.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
+          source: .chapter-state/
+      - name: Rebuild only verified chapter additions without changing news or audio
+        id: build
+        if: steps.inspect.outputs.needed == 'true'
+        env:
+          PULSE_DATE: ${{ steps.inspect.outputs.date }}
+        run: python -m pulse.chapter_completion build --work ".chapter-work/$PULSE_DATE"
+      - uses: ./.github/actions/deploy-site
+        id: deploy
+        if: steps.build.outputs.changed == 'true'
+        env:
+          PULSE_DRIVE_ENABLED: ${{ vars.PULSE_DRIVE_ENABLED }}
+          PULSE_DRIVE_FOLDER_ID: ${{ vars.PULSE_DRIVE_FOLDER_ID }}
+          PULSE_DRIVE_CLIENT_ID: ${{ secrets.PULSE_DRIVE_CLIENT_ID }}
+          PULSE_DRIVE_CLIENT_SECRET: ${{ secrets.PULSE_DRIVE_CLIENT_SECRET }}
+          PULSE_DRIVE_REFRESH_TOKEN: ${{ secrets.PULSE_DRIVE_REFRESH_TOKEN }}
+        with:
+          mode: release
+          date: ${{ steps.inspect.outputs.date }}
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          refresh-backup: 'true'
+      - name: Report completion honestly and leave failed metadata eligible for recovery
+        if: always() && steps.inspect.outputs.needed == 'true'
+        env:
+          COMPLETE: ${{ steps.build.outputs.complete }}
+          PUBLISHED: ${{ steps.build.outcome }}
+          CHANGED: ${{ steps.build.outputs.changed }}
+          DEPLOYED: ${{ steps.deploy.outcome }}
+          PREPARED: ${{ steps.prepare.outcome }}
+        run: |
+          if [ "$COMPLETE" != 'true' ] || [ "$PUBLISHED" != 'success' ]; then
+            echo "::error title=PULSE chapters incomplete::Unverified chapters were not published. Preparation outcome: $PREPARED. Successful private stages are retained for recovery without voice generation."
+            exit 1
+          fi
+          if [ "$CHANGED" = 'true' ] && [ "$DEPLOYED" != 'success' ]; then
+            echo '::error title=PULSE chapter deployment incomplete::Prepared chapters are retained privately, but backup or live verification did not complete. The next recovery will retry publication.'
+            exit 1
+          fi

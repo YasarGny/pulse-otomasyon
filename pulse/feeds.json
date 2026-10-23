@@ -1,0 +1,184 @@
+{
+  "teknoloji": [
+    {
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "hosts": [
+        "arstechnica.com"
+      ]
+    },
+    {
+      "name": "NASA",
+      "url": "https://www.nasa.gov/feed/",
+      "hosts": [
+        "www.nasa.gov",
+        "science.nasa.gov"
+      ]
+    },
+    {
+      "name": "The Verge",
+      "url": "https://www.theverge.com/rss/index.xml",
+      "hosts": [
+        "www.theverge.com",
+        "theverge.com"
+      ]
+    },
+    {
+      "name": "BleepingComputer",
+      "url": "https://www.bleepingcomputer.com/feed/",
+      "hosts": [
+        "www.bleepingcomputer.com"
+      ]
+    },
+    {
+      "name": "Google Blog",
+      "url": "https://blog.google/rss/",
+      "hosts": [
+        "blog.google"
+      ]
+    },
+    {
+      "name": "Microsoft Blog",
+      "url": "https://blogs.microsoft.com/feed/",
+      "hosts": [
+        "blogs.microsoft.com"
+      ]
+    },
+    {
+      "name": "Microsoft DevBlogs",
+      "url": "https://devblogs.microsoft.com/feed/",
+      "hosts": [
+        "devblogs.microsoft.com"
+      ]
+    },
+    {
+      "name": "SpaceNews",
+      "url": "https://spacenews.com/feed/",
+      "hosts": [
+        "spacenews.com",
+        "www.spacenews.com"
+      ]
+    },
+    {
+      "name": "TechCrunch",
+      "url": "https://techcrunch.com/feed/",
+      "hosts": [
+        "techcrunch.com"
+      ]
+    },
+    {
+      "name": "BBC Technology",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "hosts": [
+        "www.bbc.com",
+        "www.bbc.co.uk",
+        "bbc.com"
+      ]
+    },
+    {
+      "name": "BBC Science",
+      "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+      "hosts": [
+        "www.bbc.com",
+        "www.bbc.co.uk",
+        "bbc.com"
+      ]
+    },
+    {
+      "name": "MIT News",
+      "url": "https://news.mit.edu/rss/feed",
+      "hosts": [
+        "news.mit.edu"
+      ]
+    },
+    {
+      "name": "ScienceDaily",
+      "url": "https://www.sciencedaily.com/rss/all.xml",
+      "hosts": [
+        "www.sciencedaily.com"
+      ]
+    },
+    {
+      "name": "Phys.org",
+      "url": "https://phys.org/rss-feed/technology-news/",
+      "hosts": [
+        "phys.org"
+      ]
+    },
+    {
+      "name": "IEEE Spectrum",
+      "url": "https://spectrum.ieee.org/feeds/feed.rss",
+      "hosts": [
+        "spectrum.ieee.org"
+      ]
+    },
+    {
+      "name": "Engadget",
+      "url": "https://www.engadget.com/rss.xml",
+      "hosts": [
+        "www.engadget.com",
+        "engadget.com"
+      ]
+    }
+  ],
+  "oyun": [
+    {
+      "name": "PC Gamer",
+      "url": "https://www.pcgamer.com/rss/",
+      "hosts": [
+        "www.pcgamer.com"
+      ]
+    },
+    {
+      "name": "IGN",
+      "url": "https://feeds.feedburner.com/ign/all",
+      "hosts": [
+        "www.ign.com",
+        "ign.com"
+      ]
+    },
+    {
+      "name": "GameSpot",
+      "url": "https://www.gamespot.com/feeds/mashup/",
+      "hosts": [
+        "www.gamespot.com"
+      ]
+    },
+    {
+      "name": "Xbox Wire",
+      "url": "https://news.xbox.com/en-us/feed/",
+      "hosts": [
+        "news.xbox.com"
+      ]
+    },
+    {
+      "name": "PlayStation Blog",
+      "url": "https://blog.playstation.com/feed/",
+      "hosts": [
+        "blog.playstation.com"
+      ]
+    },
+    {
+      "name": "Eurogamer",
+      "url": "https://www.eurogamer.net/feed",
+      "hosts": [
+        "www.eurogamer.net"
+      ]
+    },
+    {
+      "name": "Rock Paper Shotgun",
+      "url": "https://www.rockpapershotgun.com/feed",
+      "hosts": [
+        "www.rockpapershotgun.com"
+      ]
+    },
+    {
+      "name": "Steam News",
+      "url": "https://store.steampowered.com/feeds/news.xml",
+      "hosts": [
+        "store.steampowered.com",
+        "steamcommunity.com"
+      ]
+    }
+  ]
+}

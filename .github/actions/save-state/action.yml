@@ -1,0 +1,24 @@
+name: Save encrypted workflow checkpoint
+description: Upload only authenticated ciphertext, never source evidence or drafts
+inputs:
+  source:
+    required: true
+    description: Private checkpoint directory
+  name:
+    required: true
+    description: Artifact identity
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        STATE_SOURCE: ${{ inputs.source }}
+      run: |
+        rm -f "$RUNNER_TEMP/pulse-state/state.enc"
+        python -m pulse.secure_state pack --source "$STATE_SOURCE" --output "$RUNNER_TEMP/pulse-state/state.enc"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ runner.temp }}/pulse-state/state.enc
+        retention-days: 2
+        if-no-files-found: ignore

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "reviewed": true,
+  "audio_sha256": "dc62864c5dc4cc58c112960a6e65f67ba359880a23063653971200f32a26d181",
+  "chapters": [
+    {
+      "start": 0.0,
+      "title": "Açılış"
+    },
+    {
+      "start": 39.24,
+      "title": "Bağımsız oyunlarda yapay zekâ ve klonlama endişesi"
+    },
+    {
+      "start": 196.38,
+      "title": "Wizards of the Coast’ta sendikalaşma"
+    },
+    {
+      "start": 320.84,
+      "title": "Liquid Swords’un iflas başvurusu"
+    },
+    {
+      "start": 405.56,
+      "title": "Funcom’da yeniden yapılanma ve işten çıkarmalar"
+    },
+    {
+      "start": 518.46,
+      "title": "Wardogs’ta takım bonuslarının geri çekilmesi"
+    },
+    {
+      "start": 624.82,
+      "title": "World of Warcraft: Forever’da ırk yetenekleri"
+    },
+    {
+      "start": 745.2,
+      "title": "The Blood of Dawnwalker’ın 1.1 güncellemesi"
+    },
+    {
+      "start": 818.26,
+      "title": "Ghostwire: Tokyo ve GOG koruma programı"
+    },
+    {
+      "start": 887.5,
+      "title": "Cyberpunk filmi ve kapanış"
+    }
+  ],
+  "review_method": "timed-transcript+independent-model+canonical-source-name-check"
+}
