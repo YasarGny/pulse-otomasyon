@@ -22,6 +22,9 @@ Sonuncusu isteğe bağlıdır: verilmezse mevcut GitHub App özel anahtarından 
 Repository Variables: `PULSE_DEPLOY_APP_ID`, `PULSE_DRIVE_FOLDER_ID`,
 `PULSE_DRIVE_ENABLED=true`. Mevcut `PULSE_LIVE_APPROVED` ve `PULSE_AUTOMATION_ENABLED` ayarları korunur. Yeni kurulumda yalnız doğrulama tamamlanınca etkinleştirilir.
 Mevcut çalışan model değişkenleri değişmeden taşınır.
+`PULSE_DRIVE_FOLDER_ID` isteğe bağlıdır; boşsa Drive kökündeki mevcut `PULSE`
+klasörü bulunur. Salt okunur kontrol, eksik klasör oluşturmaz ve aynı isimli
+birden fazla kayıt varsa belirsiz hedefi kabul etmez.
 
 Önce `Check configuration without generating content` ve kalite kontrolleri
 çalıştırılır. Bu kontrol üretim yapmaz; yayın deposu ve Drive klasörünü yalnız okur.
