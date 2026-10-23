@@ -270,7 +270,7 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
             reviewer += podcast_plan.REVIEW
         local_metrics = ''
         if broad:
-            reviewer += BROAD_CONVERSATION + BROAD_REVIEW
+            reviewer += BROAD_REVIEW
             selected_count = len({identity for topic in plan['topics'] for identity in topic['story_ids']})
             local_metrics = (f'\nYerel ölçüm: toplam {len(source)} haber; planda seçilen {selected_count}; '
                              f'diyalog {sum(len(t["text"].split()) for t in turns)} kelime. '

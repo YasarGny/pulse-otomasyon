@@ -43,7 +43,9 @@ değil. Plan ve gerekçeler konuşmada okunmaz.
 '''
 
 BROAD_REVIEW = '''
-Kapsamlı sohbet denetimi: haberlerin çoğu gerçekten konuşulmuş mu, yoksa planda
+Kapsamlı sohbet denetimi: haberlerin ÇOĞUNU (yarıdan fazlasını) gerçekten konuşmuş
+olmalı; bu asgari oran hedef değil, kaynaklar elverdiğince geniş kapsam beklenir.
+Seçilenler gerçekten konuşulmuş mu, yoksa planda
 seçilip diyalogda yalnız başlık mı okunmuş? Yüksek öncelikli konularda gerekçeli
 yorum ve önceki cevaba gerçek karşılık var mı? Kısa haberler bütün ana konuların
 yerini almışsa veya yalnız genel tepkiler varsa discussion_substantive false olsun.
