@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pulse.chapters import validate_chapters, load_chapters
 from pulse.publication import write_json, read_json
+from pulse.usage import invoke, reused
 
 
 class ChapterReviewRejected(ValueError):
@@ -37,6 +38,7 @@ def cached_editor(folder, generate, model, *, context=None):
             saved = read_json(path)
             checksum = hashlib.sha256(json.dumps(saved['response'], ensure_ascii=False, sort_keys=True).encode()).hexdigest()
             if saved.get('request_sha256') == identity and saved.get('response_sha256') == checksum:
+                reused()
                 return saved['response']
         except (OSError, ValueError, KeyError, TypeError):
             pass
@@ -72,7 +74,7 @@ def propose(transcript, asset, generate, *, retry=True):
               'Özel adların yazımında spelling_guide içindeki kaynak başlıklarını kullan; '
               'yalnız yazım rehberidir, konuşulmayan habere işaret ekleme.')
     feedback = transcript.get('review_feedback', '')
-    response = generate(('Önceki önerinin denetim gerekçesi: ' + feedback + '\nDöküme sadık yeni bir öneri hazırla; belirtilen eksikleri gider.\n' if feedback else '') + 'Bu zamanlı dökümde konuşulan BÜTÜN ana sohbet konularının geçişlerini seç. '
+    response = invoke('chapters.propose',generate,('Önceki önerinin denetim gerekçesi: ' + feedback + '\nDöküme sadık yeni bir öneri hazırla; belirtilen eksikleri gider.\n' if feedback else '') + 'Bu zamanlı dökümde konuşulan BÜTÜN ana sohbet konularının geçişlerini seç. '
                         'Sayısal bir hedefe sığdırmak için önemli konu atlama. '
                         'Her kısa değinmeye ayrı işaret koyma. Konuyu açan cümlenin '
                         'başındaki segment_id seç. Doğal açılış/kapanış varsa ekle. '
@@ -85,7 +87,7 @@ def propose(transcript, asset, generate, *, retry=True):
                         'Başlık benzerliği yeterli değildir; konuşmadaki bilgiyle eşleştir. '
                         'Birden çok haberi ayrıştıramayan sohbetleri veya belirsiz eşleşmeleri ekleme. Aynı habere birden çok ayrı kesit olabilir. '
                         'JSON: {"chapters":[{"segment_id":0,"title":"Açılış"}],"story_ranges":[{"story_id":"id","start_segment_id":1,"end_segment_id":5}]}.\n'
-                        + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system)
+                        + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system,section=transcript.get('section'))
     proposal_path = getattr(generate, 'last_path', None)
     def invalid(message):
         # Structurally invalid proposals must not trap future recovery in a bad
@@ -140,11 +142,11 @@ def propose(transcript, asset, generate, *, retry=True):
                 revised['review_feedback'] = json.dumps({'error':str(error), 'proposal':response}, ensure_ascii=False)
                 return propose(revised, asset, generate, retry=False)
             invalid(str(error))
-    review = generate('Aşağıdaki öneriyi döküme karşı bağımsız denetle. '
+    review = invoke('chapters.review',generate,'Aşağıdaki öneriyi döküme karşı bağımsız denetle. '
                       'Her başlık ilgili segmentte başlayan konuyu gerçekten anlatmalı, '
                       'önemli geçişler kapsanmalı, önceki cümlenin ortasından başlanmamalı. '
                       'story_ranges eşleşmelerinin her birini stories ve dökümle denetle; başlangıç/bitiş tam cümle olmalı, başka konu taşmamalı. Emin değilsen reddet. JSON {"approved":true/false,"reason":"..."}.\n'
-                      + json.dumps({'proposal': response, 'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system)
+                      + json.dumps({'proposal': response, 'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system,section=transcript.get('section'))
     if not isinstance(review, dict) or type(review.get('approved')) is not bool:
         invalid('Invalid independent chapter review')
     if review.get('approved') is True:

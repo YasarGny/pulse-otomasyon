@@ -101,14 +101,14 @@ class PodcastPlanTests(unittest.TestCase):
             self.assertEqual(read_json(audit)['plan'],fixed['plan'])
             verify_audit(read_json(audit),catalogue(STORIES,META))
 
-    def test_checkpoint_reuses_plan_and_dialogue_but_still_requires_review(self):
+    def test_checkpoint_reuses_approved_plan_only_for_exact_inputs(self):
         with tempfile.TemporaryDirectory() as tmp:
             audit=Path(tmp)/'review.json'
             with patch.object(writer,'_request',side_effect=copy.deepcopy([RESULT,RESULT,APPROVED])):
                 generate(audit_path=audit)
             with patch.object(writer,'_request',return_value=copy.deepcopy(APPROVED)) as request:
                 generate(audit_path=audit)
-            self.assertEqual(request.call_count,1)
+            self.assertEqual(request.call_count,0)
             changed=copy.deepcopy(META);changed[0]['editorial_priority']['reason']='Kaynakta yeni ve daha geniş etki açıkça belirtiliyor.'
             with patch.object(writer,'_request',side_effect=copy.deepcopy([RESULT,RESULT,APPROVED])) as request:
                 generate(audit_path=audit,story_catalogue=changed)
