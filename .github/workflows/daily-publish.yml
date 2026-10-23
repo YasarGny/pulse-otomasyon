@@ -91,10 +91,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: |
-          python -m pip install -r requirements.txt
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+      - uses: ./.github/actions/setup-runtime
       - name: Do not close the previous issue before 06:00
         env:
           PULSE_DATE: ${{ needs.plan.outputs.date }}
@@ -129,10 +126,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: |
-          python -m pip install -r requirements.txt
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+      - uses: ./.github/actions/setup-runtime
       - uses: actions/checkout@v4
         with:
           repository: YasarGny/YasarGny.github.io
@@ -290,10 +284,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: |
-          python -m pip install -r requirements.txt
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+      - uses: ./.github/actions/setup-runtime
       - uses: actions/download-artifact@v4
         with:
           name: pulse-site-${{ github.run_id }}

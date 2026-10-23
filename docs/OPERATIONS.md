@@ -881,6 +881,10 @@ Daha önceki plandaki "her tekrar yeni bağımsız çağrı" davranışı yerine
 incelemenin hâlâ geçerli olduğu doğrulanır. Gerçek ses üretimi için manuel onay
 kuralı değişmez. Bu çalışma mevcut sesleri yeniden üretmez.
 
-Hazır yayın dağıtımında FFmpeg/ffprobe kuruluysa tekrar apt kurulumu yapılmaz;
-ağ kurulumuna beş dakika sınırı konur. Hazır checkpoint korunur; ortam kurulum
-hatası içerik veya ses üretimine dönüşmez.
+Üretim ve hazır yayın dağıtımı ortak setup-runtime action'ını kullanır. Python
+ortamı OS/mimari, tam Python sürümü ve requirements.txt SHA'sıyla önbelleklenir.
+Sürüm/import/pip check denetiminden geçen ortam yeniden indirilmez; başarısız veya
+bulunmayan önbellek normal kurulumla onarılır. Önbellek hizmeti arızası yayını
+engellemez. FFmpeg/ffprobe kuruluysa tekrar apt kurulumu yapılmaz. Yeni bir kısa
+kurulum süre sınırı eklenmez; hazır checkpoint korunur, kurulum hatası içerik
+veya ses üretimine dönüşmez.

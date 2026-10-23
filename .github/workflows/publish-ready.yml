@@ -46,16 +46,7 @@ jobs:
           assert os.environ['LIVE_APPROVED'] == 'true', 'Live publication is not approved'
           assert os.environ['PULSE_DRIVE_ENABLED'] == 'true', 'A verified Drive backup is required for this rollout'
           PY
-      - name: Install runtime with bounded network waits and reuse installed FFmpeg
-        timeout-minutes: 5
-        run: |
-          python -m pip install --timeout 30 --retries 2 -r requirements.txt
-          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
-            sudo timeout 120 apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
-            sudo timeout 120 apt-get install -y ffmpeg
-          fi
-          ffmpeg -version >/dev/null
-          ffprobe -version >/dev/null
+      - uses: ./.github/actions/setup-runtime
       - uses: actions/checkout@v4
         with:
           repository: YasarGny/YasarGny.github.io
