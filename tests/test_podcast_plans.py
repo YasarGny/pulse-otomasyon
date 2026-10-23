@@ -31,11 +31,56 @@ APPROVED={'approved':True,'unsupported_claims':[],'misleading_opinions':[],'conc
 
 
 def generate(**kwargs):
+    kwargs.setdefault('date', '23.10.2026')
     return writer.generate(STORIES,section='oyun',publication_profile=DAILY_PROFILE,
                            require_plan=True,story_catalogue=kwargs.pop('story_catalogue',META),**kwargs)
 
 
 class PodcastPlanTests(unittest.TestCase):
+    def test_broad_policy_starts_tomorrow_with_both_date_formats(self):
+        from pulse.podcast_plan import broad_conversation
+        for date, expected in [('23.10.2026',False),('2026-10-23',False),
+                               ('24.10.2026',True),('2026-10-24',True),('01.11.2026',True)]:
+            self.assertEqual(broad_conversation(date),expected)
+        with self.assertRaises(ValueError):
+            broad_conversation('24.99.2026')
+
+    def test_broad_depth_and_budget_use_three_existing_calls_for_both_programs(self):
+        for section in ('oyun','teknoloji'):
+            with self.subTest(section=section),patch.object(writer,'_request',side_effect=copy.deepcopy([RESULT,RESULT,APPROVED])) as request:
+                writer.generate(STORIES, section=section, date='24.10.2026', long_form=True,
+                    publication_profile=DAILY_PROFILE, require_plan=True, story_catalogue=META)
+            self.assertEqual(request.call_count,3)
+            for call in request.call_args_list:
+                prompt=call.args[0]['system_instruction']['parts'][0]['text']
+                self.assertIn('20 dakikalık',prompt)
+                self.assertIn('ÇOĞUNU',prompt)
+                self.assertNotIn('15–25 dakika',prompt)
+                self.assertNotIn('Bir konuyu konuşmak yeterliyse',prompt)
+            review=request.call_args_list[-1].args[0]
+            self.assertIn('toplam 3 haber; planda seçilen 2',review['contents'][0]['parts'][0]['text'])
+            self.assertIn('önceki cevaba gerçek karşılık',review['system_instruction']['parts'][0]['text'])
+
+    def test_minority_cannot_bypass_coverage_even_with_model_approval(self):
+        minority=copy.deepcopy(RESULT)
+        minority['plan']['topics'][0]['story_ids']=['a']
+        minority['plan']['omitted'].append({'story_id':'b','reason':'Kaynağın açıkladığı ayrıntı sınırlı.'})
+        with patch.object(writer,'_request',side_effect=copy.deepcopy([minority,minority,APPROVED,minority,APPROVED])) as request:
+            with self.assertRaisesRegex(RuntimeError,'meaningfully cover most'):
+                generate(date='24.10.2026',long_form=True)
+        self.assertEqual(request.call_count,5)
+
+    def test_new_policy_reuses_approval_but_changed_policy_cannot_reuse_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            audit=Path(tmp)/'review.json'
+            for date in ('23.10.2026','24.10.2026'):
+                with patch.object(writer,'_request',side_effect=copy.deepcopy([RESULT,RESULT,APPROVED])) as request:
+                    generate(date=date,audit_path=audit,long_form=True)
+                self.assertEqual(request.call_count,3)
+            with patch.object(writer,'_request') as request:
+                generate(date='24.10.2026',audit_path=audit,long_form=True)
+            request.assert_not_called()
+
     def test_group_related_news_and_explain_omission_without_duration_or_topic_quota(self):
         self.assertEqual(validate(PLAN,['a','b','c']),PLAN)
         for field in ('impact','development','timeliness','evidence'):

@@ -122,6 +122,28 @@ bırakabilir; aynı gün yeniden çalıştırmak sayıyı artırmaz.
 
 ## İçerik ve ses
 
+### 24.10.2026'dan itibaren podcast kapsamı ve sohbet
+
+Her iki podcast aynı politikayı kullanır: editoryal seçkinin çoğu anlamlı biçimde
+konuşulur; önemli, kaynakça zengin konular karşılıklı yorum ve takip sorularıyla
+derinleştirilir. Diğer haberler daha kısa ele alınabilir. İlişkili gelişmeler
+birleştirilebilir, fakat aynı şirket/oyun adı tek başına ilişki değildir. Sabit
+4–6 konu kotası veya her konuya eşit süre yoktur. Dışarıda kalan haberlerin
+somut gerekçeleri özel planda korunur. Yerel kapsam kontrolü, yalnız haberlerin
+yarısı veya daha azını seçen planın model onayıyla geçmesini engeller; bağımsız
+denetçi ayrıca seçilen haberlerin gerçekten konuşulduğunu ve yorumların kaynaklara
+dayandığını kontrol eder. Kimlik sayısı tek başına sohbet kalitesinin kanıtı değildir.
+
+20 dakika editoryal üst bütçedir; yazım yaklaşık 17–19 dakika ve 2200–2500 kelime
+üzerinden planlanır. Kelime sayısı kesin ses süresi değildir. Sırf bu hedefi
+tutturmak için ses kesilmez/hızlandırılmaz, yeni süre onarım döngüsü veya üretim
+zaman aşımı eklenmez. Önce tekrarlar ve gereksiz giriş/geçişler azaltılır;
+gündem kısaysa dolgu yapılmaz. Plan, düzenleme ve kapsam/derinlik denetimi mevcut
+üç çağrıda kalır; yeni bir ücretli aşama yoktur. Mevcut tek düzeltme hakkı ve tam
+kaynak doğrulaması korunur. Değişmeyen girdilerin onaylı taslak/denetim kayıtları
+yeniden kullanılır. Yeni politika yayın tarihine bağlıdır; önceki tamamlanmış
+yayınların sesleri ve doğrulama sözleşmesi değiştirilmez.
+
 Kaynaklar `pulse/feeds.json` içindedir. Model URL, görsel ve tarih yazamaz; yalnız
 RSS'te bulunan ID'leri seçer ve özetler. Haberlerin zaman aralığı yayın saatinden
 önceki 40 saat ile en fazla iki saat sonrasıdır; RSS'te geleceğe tarih atılmış bir

@@ -1,6 +1,60 @@
 """Private, source-bound podcast selection decisions; never a duration quota."""
 import hashlib
 import json
+from datetime import datetime
+
+
+CONVERSATION_START = '2026-10-24'
+
+
+def broad_conversation(date):
+    """Date-version writing policy, leaving already sealed editions intact."""
+    for pattern in ('%d.%m.%Y', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(date, pattern).date().isoformat() >= CONVERSATION_START
+        except ValueError:
+            continue
+    raise ValueError('Podcast policy requires a valid publication date')
+
+
+BROAD_CONVERSATION = '''
+Bu yayın için kapsamlı sohbet politikası önceki dar konu seçimi önerilerinin yerini alır.
+Zaten editoryal olarak seçilmiş haberlerin ÇOĞUNU konuş: seçilen benzersiz haber
+kimliği sayısı toplamın yarısından fazla olmalı. Bu asgari oran hedef değildir;
+kaynak ve süre elverdiğince gündemin daha geniş kısmını kapsa. Her habere eşit süre
+verme, 4–6 konu gibi sabit bir kota koyma. Ana konuları önem, dinleyiciye etki ve
+kaynakların sunduğu gerçek değerlendirme alanına göre derinleştir; diğer haberleri
+kısa olgusal bağlam ve anlamlı değerlendirmeyle işle. Sadece adını geçirmek kapsam
+sayılmaz. İlişkili gelişmeleri birleştir; aynı şirket adı tek başına ilişki değildir.
+Önemli konularda Yaşar'ın somut sorusu, Necdet'in gerekçeli karşılığı ve bu karşılığa
+gerçek takip gelişsin. Her konuya aynı soru-cevap şablonunu dayatma; genel onay,
+başlığı farklı kelimelerle tekrar etmek ve sırayla bilgi tamamlamak yorum değildir.
+Yorumlar kaynaklarla desteklenen sonuçlar veya açıkça koşullu değerlendirmeler
+olsun; sahte deneyim, yeni olgu, şirket niyeti veya yapay karşıtlık ekleme.
+Yayın için 20 dakikalık üst süre bütçesi kullan; yazımı yaklaşık 17–19 dakikaya,
+doğal konuşma hızında yaklaşık 2200–2500 kelimeye göre planla. Bu kelime aralığı
+bir kota veya kesin süre ölçümü değildir. Anlamlı gündem daha kısaysa uzatma.
+Bütçe aşılır görünüyorsa önce tekrarları, uzun giriş/kapanışı ve gereksiz
+geçişleri azalt; sonra düşük öncelikli ayrıntıları kısalt. Önemli yorumları
+silerek bir dakikaya çok konu sıkıştırma. Her haberi almak için 20 dakikayı aşma.
+Dışarıda kalan her habere kaynak derinliği, öncelik ve kalan kapsamla ilişkili
+somut gerekçe ver; sırf kısa podcast yapmak veya yorum alanı yok demek yeterli
+değil. Plan ve gerekçeler konuşmada okunmaz. Ek çıktı alanı veya ayrı üretim
+aşaması ekleme; mevcut plan ve turns sözleşmesini koru.
+'''
+
+BROAD_REVIEW = '''
+Kapsamlı sohbet denetimi: haberlerin çoğu gerçekten konuşulmuş mu, yoksa planda
+seçilip diyalogda yalnız başlık mı okunmuş? Yüksek öncelikli konularda gerekçeli
+yorum ve önceki cevaba gerçek karşılık var mı? Kısa haberler bütün ana konuların
+yerini almışsa veya yalnız genel tepkiler varsa discussion_substantive false olsun.
+Kapsam sayısı tek başına kalite kanıtı değildir. Düşük öncelikli konular kısa
+işlenebilir; her haber için zorunlu dönüş sayısı veya aynı şablonu arama.
+20 dakikalık bütçeyi ve verilen yerel kelime sayımını birlikte değerlendir;
+kelime sayısından kesin ses süresi çıkarma, alt kelime/süre sınırı yüzünden reddetme.
+Gereksiz tekrarları ve kaynak dışı yorumları reddet. Var olan inceleme JSON'unu
+kullan; ayrı bir araştırma, planlama veya denetim çağrısı isteme.
+'''
 
 
 CONTRACT = '''
