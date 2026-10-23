@@ -29,6 +29,9 @@ on:
     # Bounded late recovery: 08:30/09:00 TRT; already-ready issues skip production.
     - cron: "30 5 * * *"
     - cron: "0 6 * * *"
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
   contents: read
   actions: read
@@ -37,7 +40,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED != 'false')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED == 'true')
     runs-on: ubuntu-24.04
     outputs:
       date: ${{ steps.plan.outputs.date }}
@@ -262,15 +265,12 @@ jobs:
       - name: Summarize provider-reported usage without prompts or credentials
         if: always()
         run: python -m pulse.usage --work ".pulse-work/$PULSE_DATE"
-      - name: Save successful intermediate stages, also after failures
+      - name: Save encrypted intermediate stages, also after failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/save-state
         with:
           name: pulse-state-${{ env.PULSE_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .pulse-work/
-          include-hidden-files: true
-          if-no-files-found: warn
-          retention-days: 2
+          source: .pulse-work/
   publish:
     permissions:
       contents: read

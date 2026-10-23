@@ -37,6 +37,9 @@ runs:
           "$runtime_python" -m pip check
           "$runtime_python" -c 'import requests, edge_tts, truststore'
         fi
+        if [ "${PULSE_REQUIRE_ENCRYPTED_STATE:-false}" = true ]; then
+          "$runtime_python" -m pulse.secure_state check
+        fi
         echo "$GITHUB_WORKSPACE/.pulse-runtime/bin" >> "$GITHUB_PATH"
         if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
           sudo apt-get update

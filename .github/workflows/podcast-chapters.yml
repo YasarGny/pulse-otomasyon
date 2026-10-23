@@ -7,6 +7,9 @@ on:
         type: string
         required: false
         default: ''
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
   contents: read
   actions: read
@@ -25,6 +28,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pulse.secure_state check
       - name: Validate transcript artifact provenance
         if: inputs.review_run_id != ''
         env:
@@ -54,6 +59,9 @@ jobs:
           path: chapter-review
           run-id: ${{ inputs.review_run_id }}
           github-token: ${{ github.token }}
+      - name: Decrypt the verified transcript checkpoint
+        if: inputs.review_run_id != ''
+        run: python -m pulse.secure_state extract --source chapter-review/state.enc --output chapter-review
       - run: python -m pip install -r requirements-chapters.txt
         if: inputs.review_run_id == ''
 
@@ -78,6 +86,8 @@ jobs:
               print('::error::' + detail[-2500:].replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
               raise
           PY
+      - name: Remove the consumed encrypted container before saving updated state
+        run: rm -f chapter-review/state.enc
       - name: Prepare and independently review topic markers from the transcript
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -110,9 +120,8 @@ jobs:
           if failures:
               raise ValueError('Chapter review incomplete for: ' + ', '.join(failures))
           PYCODE
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/save-state
         if: always()
         with:
           name: podcast-chapter-review
-          path: chapter-review/
-          retention-days: 3
+          source: chapter-review/

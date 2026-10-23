@@ -84,7 +84,8 @@ def restore(repo, date, target, *, artifact_prefix='pulse-state-',
         raise ValueError("Checkpoint from untrusted workflow")
     archive = session.get(artifact["archive_download_url"], timeout=120)
     archive.raise_for_status()
-    unpack(archive.content, target, date)
+    from pulse.secure_state import artifact_payload
+    unpack(artifact_payload(archive.content), target, date)
     print("Restored verified workflow checkpoint for", date)
     return True
 

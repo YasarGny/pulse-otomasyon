@@ -6,6 +6,9 @@ on:
         description: Read-only diagnostics of image responses in the latest daily checkpoint
         type: boolean
         default: false
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
   contents: read
   actions: read

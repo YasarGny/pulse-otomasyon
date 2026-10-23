@@ -12,6 +12,9 @@ on:
     - cron: '25 4 * * *'
     - cron: '45 4 * * *'
     - cron: '15 5 * * *'
+env:
+  PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY }}
+  PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
   contents: read
   actions: read
@@ -20,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.PULSE_AUTOMATION_ENABLED != 'false')
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.PULSE_AUTOMATION_ENABLED == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: pulse-production
@@ -121,13 +124,11 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('date=' + date + '\npublish=true\n')
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/save-state
         if: always() && inputs.complete_chapters == true
         with:
           name: pulse-ready-chapters-${{ env.RECOVERY_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .chapter-recovery/
-          retention-days: 2
-          if-no-files-found: ignore
+          source: .chapter-recovery/
       - uses: ./.github/actions/deploy-site
         if: steps.build.outputs.publish == 'true'
         with:

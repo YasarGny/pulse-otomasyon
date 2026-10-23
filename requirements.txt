@@ -1,3 +1,4 @@
 requests==2.34.2
 edge-tts==7.3.1
 truststore==0.10.4
+cryptography==46.0.3
