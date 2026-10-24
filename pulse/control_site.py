@@ -71,7 +71,7 @@ def cancel_paused_runs(repo, desired, previous):
     if not global_pause and not newly_disabled:
         return
     podcast_work = {'daily-publish.yml', 'complete-chapters.yml', 'podcast-chapters.yml', 'publish-ready.yml'}
-    for status in ('in_progress', 'queued', 'waiting', 'pending'):
+    for status in ('in_progress', 'queued', 'waiting', 'pending', 'requested'):
         result = subprocess.run(['gh', 'api', '--paginate', f'repos/{repo}/actions/runs?status={status}&per_page=100',
                                  '--jq', '.workflow_runs[].id'], check=True, capture_output=True, text=True)
         for line in result.stdout.splitlines():
