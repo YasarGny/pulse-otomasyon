@@ -33,6 +33,10 @@ class CostControlsTests(unittest.TestCase):
         self.assertEqual(audio.rejection_details(response), 'detail: required, schema, speech-config')
         response.json.return_value = {'error': 'Model not supported PRIVATE-TEXT'}
         self.assertEqual(audio.rejection_details(response), 'error: model, unsupported')
+        response.json.return_value = [{'error': {'status': 'INVALID_ARGUMENT',
+            'message': 'Invalid speech_config field PRIVATE-TEXT'}}]
+        self.assertEqual(audio.rejection_details(response),
+                         'nonstandard: INVALID_ARGUMENT, invalid, schema, speech-config')
 
     def test_selection_is_smaller_without_mutating_full_source_evidence(self):
         source = {'id': 'a', 'original_title': 'Source headline', 'source_name': 'Publisher',
