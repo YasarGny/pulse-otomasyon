@@ -9,11 +9,22 @@ CONVERSATION_START = '2026-10-24'
 
 def broad_conversation(date):
     """Date-version writing policy, leaving already sealed editions intact."""
+    if not isinstance(date, str):
+        raise ValueError('Podcast policy requires a valid publication date')
     for pattern in ('%d.%m.%Y', '%Y-%m-%d'):
         try:
             return datetime.strptime(date, pattern).date().isoformat() >= CONVERSATION_START
         except ValueError:
             continue
+    # Compatibility for callers holding the validated Turkish display date.
+    from pulse.publication import MONTHS
+    parts = date.split()
+    if len(parts) == 3 and parts[1] in MONTHS:
+        try:
+            parsed = datetime(int(parts[2]), MONTHS.index(parts[1]) + 1, int(parts[0]))
+            return parsed.date().isoformat() >= CONVERSATION_START
+        except ValueError:
+            pass
     raise ValueError('Podcast policy requires a valid publication date')
 
 

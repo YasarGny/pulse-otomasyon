@@ -161,7 +161,7 @@ def dialogue_digest(turns):
     return hashlib.sha256(json.dumps(turns, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
-def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=None, audit_path=None, long_form=False, publication_profile=None, require_plan=False, story_catalogue=None):
+def generate(stories, *, section="teknoloji", date=None, publish_date=None, issue=None, evidence=None, audit_path=None, long_form=False, publication_profile=None, require_plan=False, story_catalogue=None):
     if section not in ("teknoloji", "oyun"):
         raise ValueError("Unknown podcast section")
     source = [{"id": i + 1, "headline": title, "verified_summary": summary} for i, (title, summary) in enumerate(stories)]
@@ -172,7 +172,7 @@ def generate(stories, *, section="teknoloji", date=None, issue=None, evidence=No
         plan_ids = [row['id'] for row in source]
     today = date or datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%d.%m.%Y")
     from pulse.podcast_plan import broad_conversation, BROAD_CONVERSATION, BROAD_REVIEW
-    broad = require_plan and broad_conversation(today)
+    broad = require_plan and broad_conversation(publish_date if publish_date is not None else today)
     system, editor = SYSTEM, EDITOR
     if section == "oyun":
         system = system.replace("Yeni Sekme", "Moradon FM").replace("teknoloji podcast", "oyun podcast")

@@ -284,10 +284,13 @@ module.exports = async (browser, run, base) => {
       await page.locator('.nav a[href*="akis/"]').click();
       assert.equal(await page.locator('.flow-story:visible').getAttribute('data-story'),id);
       assert.equal(await page.locator('.flow-category').inputValue(),'teknoloji');
+      // Image/font layout may briefly clamp the offset before deferred restore.
+      await page.waitForFunction(expected=>document.querySelector('.flow-viewport').scrollTop===expected,position);
       assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),position);
       const fresh=await context.newPage();await fresh.setViewportSize({width:390,height:500});
       await fresh.goto(base+'/akis/');await fresh.waitForSelector('.flow-story:visible');
       assert.equal(await fresh.locator('.flow-story:visible').getAttribute('data-story'),id);
+      await fresh.waitForFunction(expected=>document.querySelector('.flow-viewport').scrollTop===expected,position);
       assert.equal(await fresh.locator('.flow-viewport').evaluate(el=>el.scrollTop),position);
       assert.equal(await fresh.locator('audio').evaluate(a=>a.paused),true);
       await fresh.close();

@@ -40,10 +40,43 @@ class PodcastPlanTests(unittest.TestCase):
     def test_broad_policy_starts_tomorrow_with_both_date_formats(self):
         from pulse.podcast_plan import broad_conversation
         for date, expected in [('23.10.2026',False),('2026-10-23',False),
-                               ('24.10.2026',True),('2026-10-24',True),('01.11.2026',True)]:
+                               ('24.10.2026',True),('2026-10-24',True),('01.11.2026',True),
+                               ('23 Ekim 2026',False),('24 Ekim 2026',True)]:
             self.assertEqual(broad_conversation(date),expected)
         with self.assertRaises(ValueError):
             broad_conversation('24.99.2026')
+
+    def test_all_production_turkish_months_and_invalid_calendar_dates(self):
+        from pulse.podcast_plan import broad_conversation, CONVERSATION_START
+        from pulse.publication import turkish_date
+        for month in range(1,13):
+            iso=f'2026-{month:02d}-24'
+            self.assertEqual(broad_conversation(turkish_date(iso)),iso>=CONVERSATION_START)
+        for value in ('31 Şubat 2026','24 Unknown 2026',None,'2026-99-24'):
+            with self.subTest(value=value),self.assertRaises(ValueError):broad_conversation(value)
+
+    def test_real_audio_pipeline_uses_canonical_date_and_keeps_spoken_turkish_date(self):
+        from pulse.pipeline import generate_audio
+        from pulse.publication import turkish_date
+        for section in ('oyun','teknoloji'):
+            data={'section':section,'publication_profile':DAILY_PROFILE,'publish_date':'2026-10-24',
+                  'issue':9,'date':turkish_date('2026-10-24'),'stories':[
+                      {**row,'summary':summary,'brief':'Kaynağın doğruladığı yeni gelişme.',
+                       'source_url':'https://example.test/'+row['id']}
+                      for row,(_,summary) in zip(META,STORIES)]}
+            with self.subTest(section=section),tempfile.TemporaryDirectory() as tmp, \
+                 patch('pulse.pipeline.valid_audio',return_value=True), \
+                 patch('pulse.pipeline.audio_info',return_value={'duration':60,'bytes':40000,'sha256':'f'*64}), \
+                 patch('edge_tts.Communicate') as summary_voice, \
+                 patch('pulse_podcast_audio.render') as podcast_voice, \
+                 patch.object(writer,'generate',wraps=writer.generate) as generate_script, \
+                 patch.object(writer,'_request',side_effect=copy.deepcopy([RESULT,RESULT,APPROVED])) as request:
+                self.assertTrue(generate_audio(Path(tmp),data)['ready'])
+                self.assertEqual(generate_script.call_args.kwargs['publish_date'],'2026-10-24')
+                self.assertEqual(generate_script.call_args.kwargs['date'],'24 Ekim 2026')
+                self.assertIn('20 dakikalık',request.call_args_list[0].args[0]['system_instruction']['parts'][0]['text'])
+                self.assertEqual(request.call_count,3)
+                summary_voice.assert_not_called();podcast_voice.assert_not_called()
 
     def test_broad_depth_and_budget_use_three_existing_calls_for_both_programs(self):
         for section in ('oyun','teknoloji'):

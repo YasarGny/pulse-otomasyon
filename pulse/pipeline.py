@@ -135,7 +135,7 @@ def generate_audio(root, data):
             audit_path=review_path,
             **({"long_form": True} if expanded(data) else {}),
             **({"publication_profile": DAILY_PROFILE} if shared_policy(data) else {}),
-            **({'require_plan':True, 'story_catalogue':data['stories']}
+            **({'require_plan':True, 'story_catalogue':data['stories'], 'publish_date':data['publish_date']}
                if planned_podcast(data) else {}),
         )
         write_json(turns_path, {"turns": turns})
