@@ -53,15 +53,18 @@ def make_parts(turns):
 def rejection_details(result):
     """Expose only fixed diagnostic labels, never provider text or credentials."""
     try:
-        error = result.json().get('error', {})
-        if not isinstance(error, dict):
-            return 'unclassified'
-        message = str(error.get('message', '')).lower()
+        body = result.json()
+    except ValueError:
+        body = result.text
+    try:
+        # Gateways may return {detail: ...}, a string error, or plain text.
+        # Inspect them for fixed labels without exposing arbitrary values.
+        message = json.dumps(body, ensure_ascii=False).lower()
         labels = []
-        status = error.get('status')
-        if status in ('INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'NOT_FOUND',
-                      'PERMISSION_DENIED', 'UNAUTHENTICATED', 'RESOURCE_EXHAUSTED'):
-            labels.append(status)
+        for status in ('INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'NOT_FOUND',
+                       'PERMISSION_DENIED', 'UNAUTHENTICATED', 'RESOURCE_EXHAUSTED'):
+            if status.lower() in message:
+                labels.append(status)
         # Provider errors sometimes quote user input. Do not print that text.
         for label, pattern in {
             'voice': r'voice', 'speaker': r'speaker', 'model': r'model',
@@ -70,10 +73,17 @@ def rejection_details(result):
             'expired': r'expir', 'api-key': r'api.?key', 'permission': r'permission|access|denied',
             'single-speaker': r'single.?speaker|one speaker|at least two|at least 2',
             'input': r'input|content', 'invalid': r'invalid',
+            'required': r'required|missing', 'schema': r'schema|validation|field|parameter',
+            'endpoint': r'endpoint|interactions|route|method', 'response-format': r'response_format',
+            'speech-config': r'speech_config', 'speech-metadata': r'speech_metadata',
+            'user-input': r'user_input', 'blocked': r'block|forbid|restrict',
+            'billing': r'billing|payment|credit|balance', 'disabled': r'disabl',
         }.items():
             if re.search(pattern, message):
                 labels.append(label)
-        return ', '.join(labels) or 'unclassified'
+        shape = next((key for key in ('error', 'detail', 'message', 'errors')
+                      if isinstance(body, dict) and key in body), 'nonstandard')
+        return shape + ': ' + (', '.join(labels) or 'unclassified')
     except (ValueError, AttributeError, TypeError):
         return 'unclassified'
 

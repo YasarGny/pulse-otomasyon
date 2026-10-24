@@ -26,7 +26,13 @@ class CostControlsTests(unittest.TestCase):
         self.assertNotIn('PRIVATE', str(error.exception))
         self.assertEqual(post.call_count, 1)
         response.json.side_effect = ValueError('non-JSON error')
-        self.assertEqual(audio.rejection_details(response), 'unclassified')
+        response.text = 'PRIVATE-TEXT: invalid API key'
+        self.assertEqual(audio.rejection_details(response), 'nonstandard: api-key, invalid')
+        response.json.side_effect = None
+        response.json.return_value = {'detail': [{'msg': 'required speech_config parameter PRIVATE-TEXT'}]}
+        self.assertEqual(audio.rejection_details(response), 'detail: required, schema, speech-config')
+        response.json.return_value = {'error': 'Model not supported PRIVATE-TEXT'}
+        self.assertEqual(audio.rejection_details(response), 'error: model, unsupported')
 
     def test_selection_is_smaller_without_mutating_full_source_evidence(self):
         source = {'id': 'a', 'original_title': 'Source headline', 'source_name': 'Publisher',
