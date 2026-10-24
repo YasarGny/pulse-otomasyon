@@ -362,7 +362,8 @@ class ReleaseTests(unittest.TestCase):
             for i in range(12)
         ]
 
-        def render(dialogue, target, *, strict_audio=False):
+        def render(dialogue, target, *, strict_audio=False, checkpoint_dir=None):
+            self.assertEqual(checkpoint_dir, root / 'teknoloji' / 'tts-parts')
             self.assertIn("podcast", read_json(root / "teknoloji/pronunciation-review.json"))
             shutil.copyfile(self.audio, target)
 
