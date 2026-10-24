@@ -1699,6 +1699,7 @@ async function run(name, fn) {
     await require("./publication-recovery-browser.cjs")(browser, run, base);
     await require("./chapters-browser.cjs")(browser, run, base);
     await require("./flow-browser.cjs")(browser, run, base);
+    await require("./controls-browser.cjs")(browser, run, base);
     await require("./install-browser.cjs")(browser, run, base);
     await run("no browser runtime errors", async () =>
       assert.deepEqual(errors, []),

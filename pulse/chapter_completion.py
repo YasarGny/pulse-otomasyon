@@ -38,7 +38,10 @@ def missing(previous, manifest, release):
         if entry['file'] != section + '.json' or digest(release / entry['file']) != entry['sha256']:
             raise ValueError('Edition identity/hash mismatch')
         edition = read_json(release / entry['file'])
-        asset = edition['podcast']
+        from pulse.controls import podcast_enabled
+        asset = edition.get('podcast')
+        if not asset or not podcast_enabled(section):
+            continue
         data = load_chapters(previous / 'assets/chapters', asset)
         try:
             validate_ranges(data or {}, asset, edition['stories'])
@@ -94,14 +97,19 @@ def stage(previous, work, state):
     work.mkdir(parents=True, exist_ok=True)
     files = ['release.json']
     for section in SECTIONS:
-        files.extend([section + '.json', section + '/summary.mp3', section + '/podcast.mp3'])
+        from pulse.controls import audio_kinds
+        files.append(section + '.json')
+        files.extend(section + '/' + kind + '.mp3' for kind in audio_kinds(read_json(release / (section + '.json'))))
     for name in files:
         destination = work / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(release / name, destination)
     copy_state(state, work)
     for section in SECTIONS:
-        asset = read_json(work / (section + '.json'))['podcast']
+        from pulse.controls import podcast_enabled
+        asset = read_json(work / (section + '.json')).get('podcast')
+        if not asset or not podcast_enabled(section):
+            continue
         try:
             transcript = read_json(work / 'chapter-transcripts' / (section + '.json'))
         except (OSError, ValueError):
@@ -138,7 +146,10 @@ def rebuild(previous, work, output='dist'):
     complete = True
     missing_before = set(missing(previous, manifest, release))
     for section in SECTIONS:
-        asset = read_json(work / (section + '.json'))['podcast']
+        from pulse.controls import podcast_enabled
+        asset = read_json(work / (section + '.json')).get('podcast')
+        if not asset or not podcast_enabled(section):
+            continue
         prepared = load_chapters(work / 'chapters', asset)
         published = load_chapters(Path(previous) / 'assets/chapters', asset)
         if (prepared and prepared != published) or ((prepared or published) and section in missing_before):

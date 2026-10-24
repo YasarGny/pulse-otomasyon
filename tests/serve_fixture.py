@@ -61,6 +61,21 @@ seal_release(large_release, DATE, DATE)
 build('site', root / 'site' / 'expanded', release=large_release, at=not_before(DATE))
 
 
+# Owner-controlled podcast combinations exercise fully valid daily publications.
+import shutil
+for fixture_name, disabled in [('without-podcasts', ('teknoloji', 'oyun')),
+                               ('tech-podcast-paused', ('teknoloji',)),
+                               ('game-podcast-paused', ('oyun',))]:
+    candidate = root / (fixture_name + '-release')
+    shutil.copytree(release, candidate, dirs_exist_ok=True)
+    for section in disabled:
+        data = read_json(candidate / (section + '.json'))
+        data.update(podcast_enabled=False, podcast=None)
+        write_json(candidate / (section + '.json'), data)
+    seal_release(candidate, DATE, DATE)
+    build('site', root / 'site' / fixture_name, release=candidate, at=not_before(DATE))
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(root / "site"), **kwargs)

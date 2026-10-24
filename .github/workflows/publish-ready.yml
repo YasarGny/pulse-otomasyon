@@ -13,6 +13,9 @@ on:
     - cron: '45 4 * * *'
     - cron: '15 5 * * *'
 env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
   PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
@@ -23,7 +26,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.PULSE_AUTOMATION_ENABLED != 'false')
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: pulse-production

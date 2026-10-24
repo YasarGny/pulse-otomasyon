@@ -63,7 +63,8 @@ def check_site(session, base, expected):
         if hashlib.sha256(result.content).hexdigest() != entry["sha256"]:
             raise SiteVerificationError("Deployed edition hash mismatch")
         data = result.json()
-        for kind in ("summary", "podcast"):
+        from pulse.controls import audio_kinds
+        for kind in audio_kinds(data):
             asset = data[kind]
             with session.get(
                 urljoin(release, asset["file"]), stream=True, timeout=60

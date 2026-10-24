@@ -8,6 +8,9 @@ on:
         required: false
         default: ''
 env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
   PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
@@ -15,6 +18,7 @@ permissions:
   actions: read
 jobs:
   transcribe:
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (vars.PULSE_TECH_PODCAST_ENABLED != 'false' || vars.PULSE_GAME_PODCAST_ENABLED != 'false')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -100,11 +104,16 @@ jobs:
           from pulse.editorial import gemini
           from scripts.prepare_chapters import propose
           failures = []
+          from pulse.controls import podcast_enabled
           for section in ('teknoloji', 'oyun'):
-              transcript = json.loads(Path('chapter-review', section + '.json').read_text())
+              if not podcast_enabled(section):
+                  continue
               manifest = json.loads(Path('.published/data/publication.json').read_text())
               edition = json.loads((Path('.published/releases') / manifest['release_id'] / (section + '.json')).read_text())
-              asset = edition['podcast']
+              asset = edition.get('podcast')
+              if not asset:
+                  continue
+              transcript = json.loads(Path('chapter-review', section + '.json').read_text())
               transcript['canonical_headlines'] = [story['title'] for story in edition['stories']]
               try:
                   result = propose(transcript, asset, gemini)

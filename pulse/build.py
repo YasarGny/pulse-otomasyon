@@ -70,7 +70,8 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
         for section in SECTIONS:
             shutil.copyfile(release / (section + ".json"), target / (section + ".json"))
             (target / section).mkdir()
-            for kind in ("summary", "podcast"):
+            from pulse.controls import audio_kinds
+            for kind in audio_kinds(read_json(release / (section + '.json'))):
                 shutil.copyfile(
                     release / section / (kind + ".mp3"),
                     target / section / (kind + ".mp3"),
@@ -107,6 +108,8 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
         registry = {}
         for section in SECTIONS:
             edition = read_json(output / 'releases' / manifest['release_id'] / (section + '.json'))
+            if not edition.get('podcast'):
+                continue
             asset = edition['podcast']
             chapters = (load_chapters(Path(release) / 'chapters', asset) if release else None) or load_chapters(source / 'assets/chapters', asset) or (load_chapters(Path(previous) / 'assets/chapters', asset) if previous else None)
             if chapters:
@@ -118,6 +121,17 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
         build_clips(output, manifest, editions, registry, previous)
         build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
+    from pulse.controls import settings
+    control = Path(previous) / 'data/controls.json' if previous else None
+    controls = read_json(control) if control and control.is_file() else settings()
+    write_json(output / 'data/controls.json', controls)
+    for page in output.rglob('*.html'):
+        content = page.read_text()
+        if 'assets/controls.js' not in content:
+            prefix = '../' * len(page.parent.relative_to(output).parts) or './'
+            script = '<script src="' + prefix + 'assets/controls.js?v=1" defer></script>'
+            updated = re.sub(r'(?=<script src="[^"]*assets/publication\.js)', lambda _: script, content, count=1)
+            page.write_text(updated if updated != content else content.replace('</head>', script + '</head>'))
     assert_public_tree(output)
     return manifest
 

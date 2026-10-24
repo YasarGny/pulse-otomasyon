@@ -53,7 +53,9 @@ def main():
     args = parser.parse_args()
     for section in ('teknoloji', 'oyun'):
         edition = json.loads((Path(args.release) / (section + '.json')).read_text())
-        asset = edition['podcast']
+        asset = edition.get('podcast')
+        if not asset:
+            continue
         data = load_chapters(args.source, asset)
         print(section, str(len(data['chapters'])) + ' verified chapter markers' if data else 'no verified chapters; audio remains available')
 

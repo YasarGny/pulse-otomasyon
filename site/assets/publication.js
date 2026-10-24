@@ -136,7 +136,9 @@
       })
     )
       return false;
+    if (d.podcast_enabled !== undefined && typeof d.podcast_enabled !== "boolean") return false;
     return ["summary", "podcast"].every((kind) => {
+      if (kind === "podcast" && d.podcast_enabled === false) return d.podcast === null;
       const a = d[kind],
         min =
           kind === "summary"

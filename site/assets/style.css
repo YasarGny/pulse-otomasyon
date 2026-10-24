@@ -2706,3 +2706,10 @@ body.in-news-flow { overflow:hidden; }
 .image-missing .image-fallback { aspect-ratio:3/2; }
 
 .flow-viewport { overflow-anchor:none; }
+
+.section-audio:has(> :only-child) { grid-template-columns: minmax(0, 232px); }
+.pulse-owner-pause { min-height: 100dvh; display: grid; place-items: center; margin: 0; padding: 0; }
+.owner-pause-card { width: min(440px, calc(100vw - 48px)); padding: 48px 0; }
+.owner-pause-card .brand { font-size: 40px; letter-spacing: -2px; }
+.owner-pause-card h1 { font-size: clamp(30px, 7vw, 42px); line-height: 1.15; margin: 64px 0 20px; }
+.owner-pause-card p { color: var(--muted); font-size: 17px; line-height: 1.7; }

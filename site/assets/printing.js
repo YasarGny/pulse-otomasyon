@@ -51,6 +51,7 @@
     return n;
   };
   function lock(reason = "", mode = null) {
+    if (window.PulseControls?.state.enabled === false) return;
     const moveFocus =
       shell.contains(document.activeElement) ||
       !!document.activeElement.closest(".audio-session");
@@ -178,6 +179,7 @@
     window.dispatchEvent(new CustomEvent("pulse:locked"));
   }
   function reveal() {
+    if (window.PulseControls?.state.enabled === false) return;
     if (
       !window.PULSE_RELEASE ||
       (document.body.dataset.page !== "legal" &&
@@ -249,6 +251,10 @@
     const signal = controller.signal;
     let retry = false;
     try {
+      if (window.PulseControls) {
+        await window.PulseControls.ready;
+        if (!window.PulseControls.state.enabled) return;
+      }
       const response = await get(
         new URL("data/publication.json?check=" + performance.now(), base), signal,
       );
@@ -280,6 +286,7 @@
             await Promise.all(
               ["summary", "podcast"].map(async (kind) => {
                 const a = data[kind];
+                if (kind === "podcast" && data.podcast_enabled === false) return;
                 const r = await fetch(new URL(a.file, url), {
                   method: "HEAD",
                   cache: "no-store",

@@ -41,6 +41,39 @@ Standart bağımlılık/model cache alanlarına kaynak kanıtları, taslaklar ve
 bilgileri eklenmez. Kalite kontrolünün ekran görüntüleri yalnız sentetik veri içerir.
 Günlükler herkese açıktır; gizli değerler veya tam kaynak metinleri yazdırılmaz.
 
+## Üç çalışma anahtarı
+
+Repository **Variables** alanında üç bağımsız anahtar vardır. Boş veya tanımsız
+olanlar mevcut yayını korumak için `true` kabul edilir; kapatmak için tam olarak
+`false`, açmak için `true` kullanılır.
+
+- `PULSE_AUTOMATION_ENABLED`: ana anahtar. Kapalıyken tüm üretim, yayın, bölüm
+  kurtarma, yedekleme ve tanı iş akışları manuel başlatılsa da çalışmaz. Kontrol
+  işi çalışan işleri iptal etmeyi dener; site tüm HTML sayfalarında ara ekranına
+  geçer. Haberler, sesler ve yeniden açılacak sayfalar silinmez.
+- `PULSE_TECH_PODCAST_ENABLED`: Yeni Sekme'nin senaryo, editör, inceleme, ses,
+  döküm ve bölüm üretimi. Kapalıysa teknoloji haberleri ve Günün Özeti devam eder.
+- `PULSE_GAME_PODCAST_ENABLED`: aynı kontrol Moradon FM için geçerlidir.
+
+Kapalı bir podcast açıkça `podcast_enabled=false, podcast=null` olarak mühürlenir;
+bozuk veya yanlışlıkla eksik podcast bu istisnadan yararlanamaz. Site oynatıcıları
+ve Drive'ın taşınabilir günlük ZIP'i yalnız o gün gerçekten mevcut sesleri kullanır.
+İki podcast kapalıyken de haberler ve iki özetle tam bir yayın yapılabilir.
+`PULSE_CHAPTERS_ENABLED` artık kullanılmaz. `PULSE_LIVE_APPROVED` ayrı canlı yayın
+iznidir; çalışma anahtarı değildir ve mevcut değeri korunur.
+
+**Apply owner pause and podcast controls** işi 10 dakikada bir değişkenleri okuyup
+siteye taşır; GitHub cron gecikebilir. Hemen uygulamak için Actions sayfasından bu
+iş akışında **Run workflow** seçilir. Bu iş içerik/ses üretmez, Google/AI çağrısı
+ve token tüketimi yapmaz. Ana anahtar kapalıyken yalnız bu küçük kontrol işi
+(yeniden açılmayı uygulamak için) ve geliştirme kalite testleri çalışabilir.
+Değişken kaydı anlık bildirim değildir. Açık tarayıcılar yayınlanan kontrolü
+30 saniyede bir ve yeniden odaklanınca alır; mevcut dinleme durur. Dış servise
+önceden gönderilmiş istek geri alınamaz. Podcast kapatılırken aktif üretim işi
+iptal edilirse başarılı şifreli ara kayıtlar sonraki zamanlanmış denemede kullanılır.
+Tekrar açma yeni ses üretimi başlatmaz; korunmuş site sayfaları açılır ve günlük
+üretim mevcut takviminde devam eder. Eski tarih güncel yayın gibi gösterilmez.
+
 ## Podcast sohbet denetimi
 
 25.10.2026 ve sonrası için yazım, editör ve bağımsız inceleme aynı üç rutin
@@ -57,8 +90,8 @@ onay ses üretimine geçemez. Eski mühürlenmiş yayınlar yeniden üretilmez.
 
 ## Yayın
 
-Her iki yayın, dört ses dosyası ve doğrulanmış bölüm bilgileri birlikte hazır
-olmadan yayın açılmaz. Drive yedeği doğrulanmadan eski yayın temizlenmez.
+Her iki yayının haberleri ve özetleri ile yalnız açık podcastlerin sesleri ve
+doğrulanmış bölüm bilgileri birlikte hazır olmadan yayın açılmaz. Drive yedeği doğrulanmadan eski yayın temizlenmez.
 Yalnız hazır site dosyaları yayın deposuna aktarılır. Başarılı ara aşamalar yeniden
 kullanılır. Aynı gün yeniden çalıştırma yeni sayı oluşturmaz.
 Git geçmişi yeniden yazılsa da GitHub eski PR commit bağlantılarını tutabilir; bunların kalıcı silinmesi için GitHub desteği gerekebilir.

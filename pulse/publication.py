@@ -232,8 +232,10 @@ def validate_release(root, date, game_start):
         if data.get("ready") is not True:
             raise ValueError("Edition not ready")
         from pulse.profile import podcast_minimum, podcast_maximum, summary_minimum
-        for kind, minimum in [("summary", summary_minimum(data)), ("podcast", podcast_minimum(data))]:
-            asset = data.get(kind, {})
+        from pulse.controls import audio_kinds
+        for kind in audio_kinds(data):
+            minimum = summary_minimum(data) if kind == 'summary' else podcast_minimum(data)
+            asset = data.get(kind) or {}
             if asset.get("file") != section + "/" + kind + ".mp3":
                 raise ValueError("Unexpected audio path")
             actual = audio_info(safe_file(root, asset["file"]), minimum)

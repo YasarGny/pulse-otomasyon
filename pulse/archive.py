@@ -1,4 +1,4 @@
-"""Portable offline publication: HTML, local pictures, four MP3s, integrity inventory."""
+"""Portable offline publication: HTML, local pictures, available MP3s, integrity inventory."""
 import copy
 import hashlib
 import json
@@ -59,12 +59,15 @@ def package(site, destination, *, fetch=fetch_public):
             content = re.sub(r'<script src="[^"]*install\.js(?:\?[^\"]*)?" defer></script>', '', content)
             content = re.sub(r'<link rel="manifest"[^>]*>', '', content)
             content = re.sub(r'<script src="[^"]*printing\.js(?:\?[^\"]*)?" defer></script>', '', content)
+            content = re.sub(r'<script src="[^"]*controls\.js[^"]*" defer></script>', '', content)
             # Explicit filenames work with file:// and don't need a local HTTP server.
             content = re.sub(r'(href=")((?!https?:|#)[^"]*/)(")', r'\1\2index.html\3', content)
             content = content.replace('<main id="main"', '<div class="archive-label">Arşiv · ' + display_date(manifest['publish_date']) + '</div><main id="main"', 1)
             chapters = {}
             from pulse.chapters import load_chapters
             for data in editions.values():
+                if not data.get('podcast'):
+                    continue
                 asset = data['podcast']
                 chapter_data = load_chapters(site / 'assets/chapters', asset)
                 if chapter_data:

@@ -30,6 +30,9 @@ on:
     - cron: "30 5 * * *"
     - cron: "0 6 * * *"
 env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
   PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
@@ -40,7 +43,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || vars.PULSE_AUTOMATION_ENABLED != 'false')
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     outputs:
       date: ${{ steps.plan.outputs.date }}
@@ -86,7 +89,7 @@ jobs:
           PY
   gate:
     needs: plan
-    if: needs.plan.outputs.live == 'true' && needs.plan.outputs.phase != 'complete'
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (needs.plan.outputs.live == 'true' && needs.plan.outputs.phase != 'complete')
     runs-on: ubuntu-24.04
     environment: pulse-production
     steps:
@@ -113,7 +116,7 @@ jobs:
           private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   generate:
     needs: [plan, gate]
-    if: always() && !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.phase == 'produce' && (needs.gate.result == 'success' || needs.gate.result == 'skipped')
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (always() && !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.phase == 'produce' && (needs.gate.result == 'success' || needs.gate.result == 'skipped'))
     runs-on: ubuntu-24.04
     timeout-minutes: 170
     outputs:
@@ -220,6 +223,7 @@ jobs:
           path: ~/.cache/huggingface/hub
           key: pulse-whisper-small-${{ runner.os }}-v1
       - name: Required final-audio chapter analysis (never regenerates voices)
+        if: vars.PULSE_TECH_PODCAST_ENABLED != 'false' || vars.PULSE_GAME_PODCAST_ENABLED != 'false'
         id: chapters
         timeout-minutes: 45
         env:
@@ -276,7 +280,7 @@ jobs:
       contents: read
       actions: write
     needs: [plan, generate]
-    if: needs.plan.outputs.live == 'true' && needs.plan.outputs.phase != 'complete' && needs.generate.outputs.has_site == 'true'
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (needs.plan.outputs.live == 'true' && needs.plan.outputs.phase != 'complete' && needs.generate.outputs.has_site == 'true')
     runs-on: ubuntu-24.04
     environment: pulse-production
     steps:

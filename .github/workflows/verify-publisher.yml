@@ -7,6 +7,9 @@ on:
         type: boolean
         default: false
 env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
   PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
@@ -14,7 +17,7 @@ permissions:
   actions: read
 jobs:
   verify:
-    if: github.ref == 'refs/heads/main'
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     steps:
       - name: Check required configuration without exposing values

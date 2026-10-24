@@ -1,11 +1,15 @@
 name: Check configuration without generating content
 on:
   workflow_dispatch:
+env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
 permissions:
   contents: read
 jobs:
   check:
-    if: github.ref == 'refs/heads/main'
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

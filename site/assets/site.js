@@ -399,7 +399,8 @@
   }
   function configure(section, kind, context = release) {
     if (
-      !context ||
+      !context || window.PulseControls?.state.enabled === false ||
+      (kind === "podcast" && window.PulseControls?.state.podcasts[section] === false) ||
       !context.editions[section]?.[kind] ||
       !["podcast", "summary"].includes(kind)
     )
@@ -756,6 +757,7 @@
     const slots = all('.story-clip-slot');
     if (!slots.length || !release) return;
     const context = release;
+    if (!slots.some(slot => { const s = slot.dataset.section || document.body.dataset.section; return context.editions[s]?.podcast && window.PulseControls?.state.podcasts[s] !== false; })) return;
     const index = await clipsForStories();
     if (context !== release || index?.schema_version !== 1 || index.release_id !== context.manifest.release_id) return;
     for (const slot of slots) {
@@ -955,6 +957,7 @@
     const kind = new URLSearchParams(location.search).get("ses") === "ozet" ? "summary" : "podcast";
     if (kind !== "podcast") return;
     const asset = release.editions[section].podcast;
+    if (!asset || window.PulseControls?.state.podcasts[section] === false) return;
     const data = await chaptersFor(asset);
     if (!data || !listen.isConnected || listen.closest(".episode")?.querySelector(".episode-chapters")) return;
     const container = make("section","episode-chapters");
@@ -968,9 +971,9 @@
     const missingPlayer = !selectedClip && selected?.kind === "podcast" && !currentChapters &&
       selectedRelease.manifest.release_id === release.manifest.release_id;
     const listenPage = $(".listen-player");
-    const missingPage = listenPage &&
+    const missingPage = listenPage && release.editions[listenPage.dataset.listenSection]?.podcast &&
       new URLSearchParams(location.search).get("ses") !== "ozet" && !$(".episode-chapters");
-    const missingClips = all('.story-clip-slot').some(slot => !slot.childElementCount);
+    const missingClips = all('.story-clip-slot').some(slot => { const s = slot.dataset.section || document.body.dataset.section; return !slot.childElementCount && release.editions[s]?.podcast && window.PulseControls?.state.podcasts[s] !== false; });
     if (!missingPlayer && !missingPage && !missingClips) return;
     chapterRefreshRunning = true;
     try {
@@ -1405,8 +1408,7 @@
       start.addEventListener(
         "click",
         () => {
-          configure(start.dataset.section, start.dataset.kind);
-          toggle();
+          if (configure(start.dataset.section, start.dataset.kind)) toggle();
         },
         { signal: pageEvents.signal },
       );
@@ -1414,7 +1416,7 @@
     if (listen) {
       const section = listen.dataset.listenSection,
         kind =
-          new URLSearchParams(location.search).get("ses") === "ozet"
+          new URLSearchParams(location.search).get("ses") === "ozet" || !release.editions[section].podcast || window.PulseControls?.state.podcasts[section] === false
             ? "summary"
             : "podcast";
       const edition = release.editions[section];
@@ -1467,6 +1469,7 @@
         start.closest(".listen-player");
       if (copy) copy.append(make("p", "resume-note", "Kaldığın yer · " + format(record.position)));
     }
+    window.PulseControls?.refreshView();
     window.dispatchEvent(new Event("pulse:navigate"));
   }
   async function documentAt(url, signal) {
@@ -1645,6 +1648,7 @@
       navigate(new URL(location.href), { pop: true, state: event.state });
   });
   async function ready(next) {
+    if (window.PulseControls?.state.enabled === false) return;
     if (release?.manifest.release_id === next.manifest.release_id) return;
     // A verified new issue must not replace the listener’s active immutable recording.
     release = next;
@@ -1692,6 +1696,11 @@
     miniLink.removeAttribute("href");
     release = null;
     pendingNav?.abort();
+  });
+  window.addEventListener("pulse:controls", () => {
+    const controls = window.PulseControls?.state;
+    if (controls && (!controls.enabled || (selected?.kind === 'podcast' && controls.podcasts[selected.section] === false))) close.click();
+    window.PulseControls?.refreshView();
   });
   if (window.PULSE_RELEASE) receiveRelease(window.PULSE_RELEASE);
 })();

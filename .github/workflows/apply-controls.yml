@@ -1,0 +1,63 @@
+name: Apply owner pause and podcast controls
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: pulse-owner-controls
+  cancel-in-progress: false
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/main' && (vars.PULSE_LIVE_APPROVED == 'true' || vars.PULSE_AUTOMATION_ENABLED == 'false')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.PULSE_DEPLOY_APP_ID }}
+          private-key: ${{ secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
+          owner: YasarGny
+          repositories: YasarGny.github.io
+          permission-contents: write
+      - uses: actions/checkout@v4
+        with:
+          repository: YasarGny/YasarGny.github.io
+          ref: main
+          path: .published
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 1
+      - name: Stop work that the owner has paused
+        id: cancel
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m pulse.control_site .published --cancel-only
+      - name: Apply reversible site controls without AI or audio
+        run: python -m pulse.control_site .published
+      - name: Commit only owner controls and maintenance pages
+        working-directory: .published
+        run: |
+          git config user.name 'pulse-publisher[bot]'
+          git config user.email 'pulse-publisher[bot]@users.noreply.github.com'
+          git add -- data/controls.json assets/controls.js
+          git add -- '*.html'
+          if ! git diff --cached --quiet; then
+            git commit -m "Apply PULSE owner controls"
+            git push origin HEAD:main
+          fi
+      - name: Verify the actual live owner controls
+        run: python -m pulse.control_site .published --verify
+      - name: Report any unsuccessful cancellation after securing the site
+        if: steps.cancel.outcome == 'failure'
+        run: exit 1

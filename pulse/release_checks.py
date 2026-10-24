@@ -13,8 +13,11 @@ def check(root, previous=None):
     verify_manifest(root,manifest)
     for section in ('teknoloji','oyun'):
         edition=read_json(root/(section+'.json'))
-        for kind in ('summary','podcast'):
+        from pulse.controls import audio_kinds, podcast_present
+        for kind in audio_kinds(edition):
             assert_no_long_silence(root/edition[kind]['file'])
+        if not podcast_present(edition):
+            continue
         asset=edition['podcast']
         data=load_chapters(root/'chapters',asset)
         if not data and previous:

@@ -1,6 +1,10 @@
 name: Verify private Drive backup
 on:
   workflow_dispatch:
+env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
 permissions:
   contents: read
 concurrency:
@@ -8,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
-    if: github.ref == 'refs/heads/main'
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     environment: pulse-production
     steps:

@@ -111,5 +111,9 @@ test("shared policy accepts quiet days equally but rejects empty news and invali
     assert(!r.editionValid({...d,stories:[]},section,future));
     assert(!r.editionValid({...d,stories:[{...d.stories[0],editorial_priority:null}]},section,future));
     assert(!r.editionValid({...d,podcast:{...d.podcast,duration:1}},section,future));
+    assert(r.editionValid({...d,podcast_enabled:false,podcast:null},section,future));
+    assert(!r.editionValid({...d,podcast:null},section,future));
+    assert(!r.editionValid({...d,podcast_enabled:false},section,future));
+    assert(!r.editionValid({...d,podcast_enabled:'false',podcast:null},section,future));
   }
 });

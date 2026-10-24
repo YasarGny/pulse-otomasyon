@@ -10,7 +10,6 @@ from pathlib import Path
 
 
 def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun')):
-    from faster_whisper import WhisperModel
     root, output = Path(root), Path(output)
     model = None
     if any(section not in ('teknoloji', 'oyun') for section in sections):
@@ -20,7 +19,10 @@ def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun'))
     for section in sections:
         try:
             data = json.loads((root / (section + '.json')).read_text())
-            asset = data['podcast']
+            from pulse.controls import podcast_enabled
+            asset = data.get('podcast')
+            if not asset or not podcast_enabled(section):
+                continue
             if asset['file'] != section + '/podcast.mp3':
                 raise ValueError('Unexpected audio path')
             path = root / asset['file']
@@ -35,6 +37,7 @@ def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun'))
                 if existing.get('audio_sha256') == asset['sha256'] and existing.get('segments'):
                     continue
             if model is None:
+                from faster_whisper import WhisperModel
                 model = WhisperModel(model_name, device='cpu', compute_type='int8', cpu_threads=4)
             segments, _ = model.transcribe(str(path), language='tr', beam_size=3,
                                            vad_filter=True, word_timestamps=True)

@@ -2,6 +2,9 @@ name: Inspect current research without AI or audio generation
 on:
   workflow_dispatch:
 env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
   PULSE_STATE_KEY: ${{ secrets.PULSE_STATE_KEY || secrets.PULSE_DEPLOY_APP_PRIVATE_KEY }}
   PULSE_REQUIRE_ENCRYPTED_STATE: "true"
 permissions:
@@ -9,6 +12,7 @@ permissions:
   actions: read
 jobs:
   research:
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

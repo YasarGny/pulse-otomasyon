@@ -1,10 +1,15 @@
 name: Audit current image rights evidence
 on:
   workflow_dispatch:
+env:
+  PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
+  PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
 permissions:
   contents: read
 jobs:
   audit:
+    if: vars.PULSE_AUTOMATION_ENABLED != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:

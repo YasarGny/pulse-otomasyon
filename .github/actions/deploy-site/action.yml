@@ -35,6 +35,18 @@ runs:
         path: .published
         token: ${{ steps.app.outputs.token }}
         fetch-depth: 1
+    - name: Respect the owner pause before backup or publishing
+      shell: bash
+      run: |
+        python - <<'PY'
+        from pathlib import Path
+        from pulse.controls import require_running
+        from pulse.publication import read_json
+        require_running()
+        path=Path('.published/data/controls.json')
+        if path.exists() and read_json(path).get('enabled') is False:
+            raise SystemExit('PULSE is paused; only the owner control job may reopen the site')
+        PY
     - name: Build preparation status without closing an already-ready issue
       if: inputs.mode == 'prepare'
       shell: bash

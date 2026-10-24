@@ -57,6 +57,8 @@ def build_clips(output, manifest, editions, registry, previous=None):
     if not isinstance(old, dict) or not isinstance(old.get('stories', {}), dict):
         old = {}
     for section, edition in editions.items():
+        if not edition.get('podcast'):
+            continue
         asset = edition['podcast']
         data = registry.get(asset['sha256'], {})
         if data.get('section', section) != section or data.get('clips_reviewed') is not True:

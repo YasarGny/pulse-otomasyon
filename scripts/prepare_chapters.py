@@ -170,7 +170,10 @@ def prepare(release, previous=None):
     target.mkdir(exist_ok=True)
     missing = []
     for section in ('teknoloji', 'oyun'):
-        asset = read_json(release / (section + '.json'))['podcast']
+        from pulse.controls import podcast_enabled
+        asset = read_json(release / (section + '.json')).get('podcast')
+        if not asset or not podcast_enabled(section):
+            continue
         cached = load_chapters(target, asset)
         if not cached:
             cached = load_chapters(Path('site/assets/chapters'), asset) or (load_chapters(Path(previous) / 'assets/chapters', asset) if previous else None)

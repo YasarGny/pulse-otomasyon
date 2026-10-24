@@ -56,6 +56,8 @@ def wait_for(date, clock):
 
 
 def generate_audio(root, data):
+    from pulse.controls import require_running, podcast_enabled
+    require_running()
     import edge_tts
 
     import pulse_podcast_audio
@@ -110,6 +112,10 @@ def generate_audio(root, data):
         "episode": data["issue"],
         **audio_info(summary, minimum_summary),
     }
+    if not podcast_enabled(section):
+        data.update(podcast_enabled=False, podcast=None, ready=True, audio_revision=AUDIO_REVISION)
+        return data
+    data.pop('podcast_enabled', None)
     turns_path = folder / "turns.json"
     review_path = folder / "podcast-review.json"
     if not turns_path.exists() or not review_path.exists():
@@ -244,6 +250,8 @@ def verified_checkpoint(root):
 
 
 def run(work, date, game_start, scheduled=False, previous=None, refresh_audio=False, expanded_issue=False):
+    from pulse.controls import require_running
+    require_running()
     if refresh_audio:
         return refresh_audio_release(work, date, game_start, previous)
     work = Path(work)
@@ -344,7 +352,8 @@ def main():
         root = root / ('audio-v' + str(AUDIO_REVISION))
     for section in SECTIONS:
         data = read_json(root / (section + '.json'))
-        print(f"::notice title=PULSE verified {section}::{len(data['stories'])} news; summary {data['summary']['duration']:.1f}s; podcast {data['podcast']['duration']:.1f}s; date {data['publish_date']}", flush=True)
+        podcast = str(data['podcast']['duration']) + 's' if data.get('podcast') else 'paused by owner'
+        print(f"::notice title=PULSE verified {section}::{len(data['stories'])} news; summary {data['summary']['duration']:.1f}s; podcast {podcast}; date {data['publish_date']}", flush=True)
 
 
 if __name__ == "__main__":
