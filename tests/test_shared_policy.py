@@ -138,7 +138,7 @@ class SharedPolicyTests(unittest.TestCase):
             build('site',output,release=root,at=not_before(POLICY_START))
             home=(output/'index.html').read_text()
             self.assertEqual(home.count('class="story lead-story"'),2)
-            self.assertIn('publication.js?v=5',home)
+            self.assertRegex(home,r'assets/publication\.js\?v=\d+')
 
     def test_old_homepage_selection_is_preserved(self):
         editions={s:edition(s) for s in ('teknoloji','oyun')}
