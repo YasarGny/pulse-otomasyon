@@ -156,7 +156,6 @@ def synthesize(group, destination, number, *, strict_audio=False):
         "response_format": {"type": "audio", "mime_type": "audio/wav"},
         "generation_config": {
             "speech_config": {
-                "mode": "conversational",
                 "speakers": [
                     {"speaker": speaker, "voice": voice}
                     for speaker, voice in VOICES.items()

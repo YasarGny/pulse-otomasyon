@@ -15,6 +15,25 @@ import pulse_podcast_audio as audio
 
 
 class CostControlsTests(unittest.TestCase):
+    def test_tts_speech_config_uses_supported_speaker_schema_and_existing_voices(self):
+        response = Mock(ok=True, status_code=200)
+        response.json.return_value = {'steps': [{'content': [{'type': 'audio',
+            'data': base64.b64encode(b'RIFF-synthetic-audio').decode()}]}]}
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(os.environ, {'GEMINI_API_KEY': 'synthetic-key'}), \
+                patch.object(audio.requests, 'post', return_value=response) as post, \
+                patch.object(audio, 'run', return_value=''), \
+                patch.object(audio, 'duration', return_value=3):
+            audio.synthesize([{'speaker': 'Yaşar', 'text': 'Sentetik kontrol.'}],
+                             Path(tmp) / 'part.wav', 0, strict_audio=True)
+        request = post.call_args.kwargs['json']
+        self.assertEqual(request['generation_config']['speech_config'], {
+            'speakers': [{'speaker': speaker, 'voice': voice}
+                         for speaker, voice in audio.VOICES.items()]})
+        self.assertEqual(request['model'], audio.MODEL)
+        self.assertEqual(request['input'][0]['content'][0]['annotations'],
+                         [{'type': 'speech_metadata', 'speaker': 'Yaşar'}])
+
     def test_tts_rejection_reports_safe_labels_without_echoing_provider_text(self):
         response = Mock(ok=False, status_code=400)
         response.json.return_value = {'error': {'status': 'INVALID_ARGUMENT',
