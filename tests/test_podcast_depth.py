@@ -149,6 +149,19 @@ class PodcastDepthTests(unittest.TestCase):
         repair = request.call_args_list[3].args[0]['contents'][0]['parts'][0]['text']
         self.assertIn('source-bound editorial justification', repair)
 
+    def test_successful_report_clarification_is_also_reused_without_paid_calls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            audit = Path(tmp) / 'podcast-review.json'
+            with patch.object(writer, '_request', side_effect=copy.deepcopy([RESULT, RESULT, APPROVED, approval()])) as request:
+                generate(audit_path=audit)
+            self.assertEqual(request.call_count, 4)
+            saved = read_json(audit)
+            self.assertNotEqual(saved['review_request_sha256'], saved['review_input_sha256'])
+            with patch.object(writer, '_request') as repeat:
+                generate(audit_path=audit)
+            repeat.assert_not_called()
+            self.assertEqual(read_json(audit)['review_request_sha256'], saved['review_request_sha256'])
+
     def test_substantive_failure_repairs_dialogue_instead_of_seeking_another_approval(self):
         bad = approval()
         bad['discussion_review']['budget']['appropriate'] = False

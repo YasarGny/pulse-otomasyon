@@ -291,8 +291,16 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
         if depth:
             reviewer += podcast_depth.REVIEW
             local_metrics += '\nSohbet bütçesi yerel ölçümü: ' + json.dumps(podcast_depth.metrics(turns), ensure_ascii=False)
-        review_payload = _payload(reviewer, notes + local_metrics + review_contract_feedback + "\nDenetlenecek diyalog: " + json.dumps({"turns": turns, **({'plan':plan} if require_plan else {})}, ensure_ascii=False), .05)
-        review_key = hashlib.sha256(json.dumps({'model':MODEL,'payload':review_payload},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+        review_dialogue = "\nDenetlenecek diyalog: " + json.dumps({"turns": turns, **({'plan':plan} if require_plan else {})}, ensure_ascii=False)
+        base_review_payload = _payload(reviewer, notes + local_metrics + review_dialogue, .05)
+        review_payload = (_payload(reviewer, notes + local_metrics + review_contract_feedback + review_dialogue, .05)
+                          if review_contract_feedback else base_review_payload)
+        # A report-format clarification does not change the evidence, dialogue or
+        # review contract. Bind reusable approval to those exact base inputs,
+        # while retaining the actual request hash for provenance.
+        review_key = hashlib.sha256(json.dumps({'model':MODEL,'payload':base_review_payload},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+        review_request_key = (hashlib.sha256(json.dumps({'model':MODEL,'payload':review_payload},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+                              if review_contract_feedback else review_key)
         cached = None
         if audit_path and Path(audit_path).exists():
             try:
@@ -304,6 +312,7 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
                         podcast_plan.verify_audit(saved,source,date=policy_date,turns=turns)
                         if saved.get('plan')!=plan: raise ValueError('Changed plan')
                     cached=saved['review']
+                    review_request_key=saved.get('review_request_sha256',review_key)
             except (OSError,ValueError,RuntimeError,TypeError,AttributeError):
                 pass
         if cached is not None:
@@ -332,6 +341,7 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
             from pulse.publication import write_json
             write_json(audit_path, {"section": section, "date": today, "turns_sha256": dialogue_digest(turns), "review": review, "review_input_sha256":review_key,
                                    "review_sha256":hashlib.sha256(json.dumps(review,ensure_ascii=False,sort_keys=True).encode()).hexdigest(),
+                                   **({'review_request_sha256':review_request_key} if depth else {}),
                                    **({'discussion_metrics':podcast_depth.metrics(turns)} if depth else {}),
                                    **({'plan':plan, 'plan_sha256':podcast_plan.digest(plan),
                                        'catalogue_sha256':podcast_plan.digest(source)} if require_plan else {})})
