@@ -160,7 +160,7 @@ def generate_audio(root, data):
         from pulse.usage import invoke
         invoke('podcast.tts',pulse_podcast_audio.render,
             speech, temp, strict_audio=True, section=section,
-            **({"checkpoint_dir": folder / "tts-parts"} if expanded(data) else {})
+            checkpoint_dir=folder / "tts-parts",
         )  # Existing Gemini Interactions API and custom voices.
         audio_info(temp, minimum_podcast)
         temp.replace(podcast)

@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 import requests
+import re
 from pulse.audio_quality import assert_no_long_silence
 
 MODEL = os.getenv("PULSE_TTS_MODEL", "gemini-3.8-flash-tts")
@@ -49,6 +50,34 @@ def make_parts(turns):
     return parts
 
 
+def rejection_details(result):
+    """Expose only fixed diagnostic labels, never provider text or credentials."""
+    try:
+        error = result.json().get('error', {})
+        if not isinstance(error, dict):
+            return 'unclassified'
+        message = str(error.get('message', '')).lower()
+        labels = []
+        status = error.get('status')
+        if status in ('INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'NOT_FOUND',
+                      'PERMISSION_DENIED', 'UNAUTHENTICATED', 'RESOURCE_EXHAUSTED'):
+            labels.append(status)
+        # Provider errors sometimes quote user input. Do not print that text.
+        for label, pattern in {
+            'voice': r'voice', 'speaker': r'speaker', 'model': r'model',
+            'format': r'format|mime', 'length': r'length|too long|maximum|limit|tokens',
+            'unsupported': r'not support|unsupported', 'not-found': r'not found|does not exist',
+            'expired': r'expir', 'api-key': r'api.?key', 'permission': r'permission|access|denied',
+            'single-speaker': r'single.?speaker|one speaker|at least two|at least 2',
+            'input': r'input|content', 'invalid': r'invalid',
+        }.items():
+            if re.search(pattern, message):
+                labels.append(label)
+        return ', '.join(labels) or 'unclassified'
+    except (ValueError, AttributeError, TypeError):
+        return 'unclassified'
+
+
 def _provider_audio(payload, number, *, strict_audio):
     # Retry network/server failures only. Never re-bill TTS because ffmpeg fails.
     for attempt in range(3):
@@ -67,6 +96,7 @@ def _provider_audio(payload, number, *, strict_audio):
         if result.status_code in (400, 401, 402, 403, 429):
             raise RuntimeError(
                 "Gemini TTS HTTP " + str(result.status_code)
+                + ' segment ' + str(number) + ': ' + rejection_details(result)
             )
         if not result.ok:
             if attempt == 2:

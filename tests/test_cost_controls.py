@@ -15,6 +15,19 @@ import pulse_podcast_audio as audio
 
 
 class CostControlsTests(unittest.TestCase):
+    def test_tts_rejection_reports_safe_labels_without_echoing_provider_text(self):
+        response = Mock(ok=False, status_code=400)
+        response.json.return_value = {'error': {'status': 'INVALID_ARGUMENT',
+            'message': 'Voice not found. PRIVATE-SOURCE-TEXT api_key=PRIVATE-KEY'}}
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'PRIVATE-KEY'}), \
+                patch.object(audio.requests, 'post', return_value=response) as post:
+            with self.assertRaisesRegex(RuntimeError, 'INVALID_ARGUMENT.*voice.*not-found') as error:
+                audio._provider_audio({}, 2, strict_audio=True)
+        self.assertNotIn('PRIVATE', str(error.exception))
+        self.assertEqual(post.call_count, 1)
+        response.json.side_effect = ValueError('non-JSON error')
+        self.assertEqual(audio.rejection_details(response), 'unclassified')
+
     def test_selection_is_smaller_without_mutating_full_source_evidence(self):
         source = {'id': 'a', 'original_title': 'Source headline', 'source_name': 'Publisher',
                   'source_published_at': '2026-10-18T03:00:00Z', 'source_excerpt': 'x'*5000,
