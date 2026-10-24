@@ -287,6 +287,8 @@ module.exports = async (browser, run, base) => {
       // Image/font layout may briefly clamp the offset before deferred restore.
       await page.waitForFunction(expected=>document.querySelector('.flow-viewport').scrollTop===expected,position);
       assert.equal(await page.locator('.flow-viewport').evaluate(el=>el.scrollTop),position);
+      // A new tab reads the deliberately debounced persistent checkpoint.
+      await page.waitForFunction(expected=>JSON.parse(localStorage.getItem('pulse-flow-progress-v1'))?.position===expected,position);
       const fresh=await context.newPage();await fresh.setViewportSize({width:390,height:500});
       await fresh.goto(base+'/akis/');await fresh.waitForSelector('.flow-story:visible');
       assert.equal(await fresh.locator('.flow-story:visible').getAttribute('data-story'),id);
