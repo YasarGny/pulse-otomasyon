@@ -134,19 +134,36 @@ class PodcastDepthTests(unittest.TestCase):
                 repeat.assert_not_called()
 
     def test_boolean_only_approval_cannot_bypass_new_review_and_repair_is_bounded(self):
-        with patch.object(writer, '_request', side_effect=copy.deepcopy([RESULT, RESULT, APPROVED, RESULT, APPROVED])) as request:
+        with patch.object(writer, '_request', side_effect=copy.deepcopy([RESULT, RESULT, APPROVED, APPROVED])) as request:
             with self.assertRaisesRegex(RuntimeError, 'source/turn-bound assessment'):
                 generate()
-        self.assertEqual(request.call_count, 5)
+        self.assertEqual(request.call_count, 4)
+        self.assertIn('Diyaloğu yeniden yazma', request.call_args_list[3].args[0]['contents'][0]['parts'][0]['text'])
 
-    def test_specific_missing_depth_is_repaired_once_inside_the_existing_cycle(self):
+    def test_missing_short_explanation_rechecks_only_the_report_without_rewriting(self):
         bad = approval()
         bad['discussion_review']['budget']['short_reason'] = None
+        with patch.object(writer, '_request', side_effect=copy.deepcopy([RESULT, RESULT, bad, approval()])) as request:
+            generate()
+        self.assertEqual(request.call_count, 4)
+        repair = request.call_args_list[3].args[0]['contents'][0]['parts'][0]['text']
+        self.assertIn('source-bound editorial justification', repair)
+
+    def test_substantive_failure_repairs_dialogue_instead_of_seeking_another_approval(self):
+        bad = approval()
+        bad['discussion_review']['budget']['appropriate'] = False
         with patch.object(writer, '_request', side_effect=copy.deepcopy([RESULT, RESULT, bad, RESULT, approval()])) as request:
             generate()
         self.assertEqual(request.call_count, 5)
-        repair = request.call_args_list[3].args[0]['contents'][0]['parts'][0]['text']
-        self.assertIn('source-bound editorial justification', repair)
+        self.assertIn('Bu diyalog onaylanmadı', request.call_args_list[3].args[0]['contents'][0]['parts'][0]['text'])
+
+    def test_missing_report_cannot_trigger_report_only_retry_for_unsupported_claims(self):
+        bad = copy.deepcopy(APPROVED)
+        bad.update(approved=False, unsupported_claims=['Kaynakta olmayan bir iddia.'])
+        with patch.object(writer, '_request', side_effect=copy.deepcopy([RESULT, RESULT, bad, RESULT, approval()])) as request:
+            generate()
+        self.assertEqual(request.call_count, 5)
+        self.assertIn('Bu diyalog onaylanmadı', request.call_args_list[3].args[0]['contents'][0]['parts'][0]['text'])
 
     def test_audit_cannot_rebind_report_to_another_dialogue_or_review(self):
         with tempfile.TemporaryDirectory() as tmp:

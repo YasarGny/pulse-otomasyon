@@ -7,6 +7,10 @@ TARGET_MINUTES = (15, 20)
 WORDS_PER_MINUTE = (120, 160)
 
 
+class ReviewFormatError(RuntimeError):
+    """A malformed assessment is not proof that the dialogue needs rewriting."""
+
+
 def enabled(date):
     return publication_date(date) >= START
 
@@ -90,8 +94,9 @@ def metrics(turns):
 
 def validate_review(review, plan, turns, source):
     """Require checkable evidence, not a word quota or self-assessed score."""
-    def reject(message):
-        raise RuntimeError('Podcast discussion review: ' + message)
+    def reject(message, *, substantive=False):
+        error = RuntimeError if substantive else ReviewFormatError
+        raise error('Podcast discussion review: ' + message)
 
     def text(value, minimum=20):
         return isinstance(value, str) and minimum <= len(value.strip()) <= 1200
@@ -144,10 +149,12 @@ def validate_review(review, plan, turns, source):
         elif treatment != 'brief' or row.get('exchange') is not None:
             reject('unknown treatment or invalid brief references')
     if len(covered) * 2 <= len(known):
-        reject('most news must be covered in the actual dialogue, not only the plan')
+        reject('most news must be covered in the actual dialogue, not only the plan', substantive=True)
     if not discussions:
-        reject('a headline/brief tour alone is not a developed conversation')
+        reject('a headline/brief tour alone is not a developed conversation', substantive=True)
     budget = report.get('budget')
+    if isinstance(budget, dict) and budget.get('appropriate') is False:
+        reject('source-grounded scope/depth budget assessment is required', substantive=True)
     if not isinstance(budget, dict) or budget.get('appropriate') is not True or not text(budget.get('reason')):
         reject('source-grounded scope/depth budget assessment is required')
     if metrics(turns)['short_review_required']:

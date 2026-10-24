@@ -255,6 +255,7 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
             plan = edited['plan']
         checkpoint()
     review = None
+    review_contract_feedback = ''
     length_repairs = 0
     for attempt in range(2):
         if long_form and not flexible:
@@ -290,7 +291,7 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
         if depth:
             reviewer += podcast_depth.REVIEW
             local_metrics += '\nSohbet bütçesi yerel ölçümü: ' + json.dumps(podcast_depth.metrics(turns), ensure_ascii=False)
-        review_payload = _payload(reviewer, notes + local_metrics + "\nDenetlenecek diyalog: " + json.dumps({"turns": turns, **({'plan':plan} if require_plan else {})}, ensure_ascii=False), .05)
+        review_payload = _payload(reviewer, notes + local_metrics + review_contract_feedback + "\nDenetlenecek diyalog: " + json.dumps({"turns": turns, **({'plan':plan} if require_plan else {})}, ensure_ascii=False), .05)
         review_key = hashlib.sha256(json.dumps({'model':MODEL,'payload':review_payload},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
         cached = None
         if audit_path and Path(audit_path).exists():
@@ -318,10 +319,14 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
         if broad and selected_count * 2 <= len(source):
             review = {**review, 'approved': False, 'concerns': [*review['concerns'],
                       'Podcast must meaningfully cover most selected news; expand coverage without sacrificing discussion.']}
+        report_only_retry = False
         if depth:
+            otherwise_approved = _approved(review)
             try:
                 podcast_depth.validate_review(review, plan, turns, source)
             except RuntimeError as error:
+                report_only_retry = otherwise_approved and isinstance(error, podcast_depth.ReviewFormatError)
+                report_error = str(error)
                 review = {**review, 'approved': False, 'concerns': [*review['concerns'], str(error)]}
         if audit_path:
             from pulse.publication import write_json
@@ -332,6 +337,11 @@ def generate(stories, *, section="teknoloji", date=None, publish_date=None, issu
                                        'catalogue_sha256':podcast_plan.digest(source)} if require_plan else {})})
         if _approved(review):
             return "\n".join(t["speaker"] + ": " + re.sub(r"\s+", " ", t["text"]).strip() for t in turns), turns
+        if attempt == 0 and report_only_retry:
+            review_contract_feedback = ('\nÖnceki incelemenin rapor biçimi/referans sorunu: ' + report_error
+                + '\nDiyaloğu yeniden yazma. Aynı son replikleri kaynaklarla yeniden denetleyip eksiksiz inceleme JSON\'u ver. '
+                  'Kanıt bulamazsan onaylama ve somut concerns bildir. Bu bir onay talebi değildir.')
+            continue
         if attempt == 0:
             revised = invoke('podcast.repair', _dialogue, editor, notes + "\nBu diyalog onaylanmadı. Kaynaksız iddiaları çıkar; sorunları gider:\n" + json.dumps(review, ensure_ascii=False) + "\nDiyalog: " + json.dumps({"turns": turns, **({'plan':plan} if require_plan else {})}, ensure_ascii=False), .25, plan_ids=plan_ids, section=section)
             turns = _validate(revised)

@@ -48,7 +48,9 @@ Günlükler herkese açıktır; gizli değerler veya tam kaynak metinleri yazdı
 replik indekslerini kaynaklarla karşılaştırır. 15–20 dakika editoryal hedeftir;
 120–160 kelime/dakika yalnız geniş bir planlama tahminidir. 1800 kelimenin altında
 kaynaklara özgü kısa bölüm gerekçesi gerekir; zorunlu alt süre veya kelime kotası
-yoktur. Yetersiz sohbet mevcut tek düzeltme ve yeniden inceleme döngüsüne gider.
+yoktur. Yetersiz sohbet mevcut tek düzeltme ve yeniden inceleme döngüsüne gider;
+yalnız inceleme raporunun biçimi hatalıysa aynı hak yalnız rapor kontrolüne ayrılır,
+doğru diyalog yeniden yazılmaz. Bu hak ek bir denetim döngüsü oluşturmaz.
 Onay ve replik referansları son metin/kaynak kimliklerine bağlanır; değiştirilmiş
 onay ses üretimine geçemez. Eski mühürlenmiş yayınlar yeniden üretilmez.
 İnceleme raporu ve planlama ölçümleri yalnız şifreli ara kayıtlarda kalır.
