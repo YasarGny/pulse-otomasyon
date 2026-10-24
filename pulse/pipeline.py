@@ -147,7 +147,8 @@ def generate_audio(root, data):
         raise ValueError("Podcast dialogue differs from its approved review")
     if planned_podcast(data):
         from pulse.podcast_plan import catalogue, verify_audit
-        verify_audit(review, catalogue([(s['title'],s['summary']) for s in data['stories']], data['stories']))
+        verify_audit(review, catalogue([(s['title'],s['summary']) for s in data['stories']], data['stories']),
+                     date=data['publish_date'], turns=turns)
     if turns[0]["speaker"] != "Yaşar":
         raise ValueError("The main host must open the episode")
     speech = spoken_turns(turns)

@@ -41,6 +41,18 @@ Standart bağımlılık/model cache alanlarına kaynak kanıtları, taslaklar ve
 bilgileri eklenmez. Kalite kontrolünün ekran görüntüleri yalnız sentetik veri içerir.
 Günlükler herkese açıktır; gizli değerler veya tam kaynak metinleri yazdırılmaz.
 
+## Podcast sohbet denetimi
+
+25.10.2026 ve sonrası için yazım, editör ve bağımsız inceleme aynı üç rutin
+çağrıda kalır. İnceleme, kapsanan gerçek haberleri ve gerekçeli yorum/yanıtların
+replik indekslerini kaynaklarla karşılaştırır. 15–20 dakika editoryal hedeftir;
+120–160 kelime/dakika yalnız geniş bir planlama tahminidir. 1800 kelimenin altında
+kaynaklara özgü kısa bölüm gerekçesi gerekir; zorunlu alt süre veya kelime kotası
+yoktur. Yetersiz sohbet mevcut tek düzeltme ve yeniden inceleme döngüsüne gider.
+Onay ve replik referansları son metin/kaynak kimliklerine bağlanır; değiştirilmiş
+onay ses üretimine geçemez. Eski mühürlenmiş yayınlar yeniden üretilmez.
+İnceleme raporu ve planlama ölçümleri yalnız şifreli ara kayıtlarda kalır.
+
 ## Yayın
 
 Her iki yayın, dört ses dosyası ve doğrulanmış bölüm bilgileri birlikte hazır

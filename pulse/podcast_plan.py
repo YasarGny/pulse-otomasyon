@@ -7,13 +7,13 @@ from datetime import datetime
 CONVERSATION_START = '2026-10-24'
 
 
-def broad_conversation(date):
-    """Date-version writing policy, leaving already sealed editions intact."""
+def publication_date(date):
+    """Normalize a canonical or supported display date before policy selection."""
     if not isinstance(date, str):
         raise ValueError('Podcast policy requires a valid publication date')
     for pattern in ('%d.%m.%Y', '%Y-%m-%d'):
         try:
-            return datetime.strptime(date, pattern).date().isoformat() >= CONVERSATION_START
+            return datetime.strptime(date, pattern).date().isoformat()
         except ValueError:
             continue
     # Compatibility for callers holding the validated Turkish display date.
@@ -22,10 +22,15 @@ def broad_conversation(date):
     if len(parts) == 3 and parts[1] in MONTHS:
         try:
             parsed = datetime(int(parts[2]), MONTHS.index(parts[1]) + 1, int(parts[0]))
-            return parsed.date().isoformat() >= CONVERSATION_START
+            return parsed.date().isoformat()
         except ValueError:
             pass
     raise ValueError('Podcast policy requires a valid publication date')
+
+
+def broad_conversation(date):
+    """Date-version writing policy, leaving already sealed editions intact."""
+    return publication_date(date) >= CONVERSATION_START
 
 
 BROAD_CONVERSATION = '''
@@ -173,8 +178,14 @@ def approved(review):
         'selection_justified', 'dialogue_follows_plan', 'discussion_substantive'))
 
 
-def verify_audit(audit, source):
+def verify_audit(audit, source, *, date=None, turns=None):
     validate(audit.get('plan'), [row['id'] for row in source])
     if (audit.get('plan_sha256') != digest(audit['plan'])
             or audit.get('catalogue_sha256') != digest(source) or not approved(audit.get('review'))):
         raise RuntimeError('Podcast plan differs from its approved source/coverage review')
+    if date is not None:
+        from pulse.podcast_depth import enabled, validate_review
+        if enabled(date):
+            if audit.get('turns_sha256') != digest(turns) or audit.get('review_sha256') != digest(audit['review']):
+                raise RuntimeError('Podcast discussion review differs from its approved final dialogue')
+            validate_review(audit['review'], audit['plan'], turns, source)
