@@ -10,6 +10,13 @@ from pulse.publication import https_url, read_json
 from pathlib import Path
 
 
+class SourceTooLarge(ValueError):
+    """A streamed response exceeded its caller's bounded download budget."""
+
+    def __init__(self, limit, received):
+        super().__init__(f'Source response too large: limit={limit} bytes; received>={received} bytes')
+
+
 def trusted_hosts(section=None):
     configured = read_json(Path(__file__).with_name('feeds.json'))
     groups = [configured[section]] if section else configured.values()
@@ -40,9 +47,9 @@ def fetch_public(url, *, limit=8_000_000, hosts=None):
             response.raise_for_status()
             body = bytearray()
             for chunk in response.iter_content(65536):
+                if len(body) + len(chunk) > limit:
+                    raise SourceTooLarge(limit, len(body) + len(chunk))
                 body.extend(chunk)
-                if len(body) > limit:
-                    raise ValueError('Source response too large')
             return bytes(body), response.headers.get('Content-Type', '')
     raise ValueError('Too many source redirects')
 
