@@ -3,6 +3,7 @@ import hashlib
 import json
 import shutil
 import struct
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -181,6 +182,59 @@ class BackupTests(unittest.TestCase):
             self.assertNotIn('https://', str(caught.exception))
             self.assertFalse(destination.exists())
             self.assertFalse(destination.with_suffix('.partial').exists())
+
+    def test_publisher_panorama_exceeding_discovery_pixels_is_archived_losslessly(self):
+        from pulse.archive_media import portable_image
+        with tempfile.TemporaryDirectory() as tmp:
+            original = Path(tmp) / 'panorama.jpg'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i',
+                            'color=c=blue:s=18500x4882', '-frames:v', '1', '-threads', '1',
+                            str(original)], check=True, capture_output=True, timeout=30)
+            body = original.read_bytes()
+            with self.assertRaises(subprocess.CalledProcessError):
+                portable_image(body, 'image/jpeg')
+            destination = Path(tmp) / 'panorama.zip'
+            package(self.site, destination, fetch=Mock(return_value=(body, 'image/jpeg')))
+            verify_package(destination)
+            with zipfile.ZipFile(destination) as archive:
+                images = [name for name in archive.namelist() if name.startswith('media/')]
+                self.assertEqual(len(images), 1)
+                self.assertEqual(archive.read(images[0]), body)
+
+    def test_decoder_failure_remains_fatal_and_public_message_has_no_raw_stderr(self):
+        from pulse.archive import ArchiveImageError
+        error = subprocess.CalledProcessError(69, ['ffmpeg'], stderr=b'untrusted publisher metadata https://private.example.test/?token=hidden')
+        with tempfile.TemporaryDirectory() as tmp, patch('pulse.archive.portable_image', side_effect=error):
+            destination = Path(tmp) / 'broken.zip'
+            with self.assertRaisesRegex(ArchiveImageError, 'image could not be decoded') as caught:
+                package(self.site, destination, fetch=self.media)
+            self.assertNotIn('hidden', str(caught.exception))
+            self.assertNotIn('metadata', str(caught.exception))
+            self.assertFalse(destination.exists())
+
+    def test_image_http_failure_reports_status_without_private_url(self):
+        import requests
+        from pulse.archive import ArchiveImageError
+        response = Mock(status_code=403)
+        error = requests.HTTPError('forbidden https://source.example.test/?token=hidden', response=response)
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(ArchiveImageError, 'image download failed .HTTP 403.') as caught:
+                package(self.site, Path(tmp) / 'blocked.zip', fetch=Mock(side_effect=error))
+            self.assertNotIn('hidden', str(caught.exception))
+
+    def test_archive_failure_is_exposed_as_safe_check_annotation(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        from pulse.archive import image_error
+        from pulse.drive_backup import main
+        error = image_error('oyun', 'https://source.example.test/?token=hidden', 'image could not be decoded')
+        output = StringIO()
+        with patch('sys.argv', ['drive_backup']), patch('pulse.drive_backup.backup_releases', side_effect=error), redirect_stdout(output):
+            with self.assertRaises(SystemExit) as caught:
+                main()
+        self.assertEqual(caught.exception.code, 1)
+        self.assertIn('::error title=Archive image validation failed::Archive image oyun/', output.getvalue())
+        self.assertNotIn('hidden', output.getvalue())
 
     def test_missing_picture_prevents_successful_archive(self):
         with tempfile.TemporaryDirectory() as tmp:

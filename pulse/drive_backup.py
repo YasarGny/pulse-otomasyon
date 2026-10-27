@@ -10,7 +10,7 @@ from pathlib import Path
 
 import requests
 
-from pulse.archive import package
+from pulse.archive import package, ArchiveImageError
 from pulse.build import build
 from pulse.details import display_date
 from pulse.publication import digest, not_before, read_json, write_json
@@ -228,7 +228,12 @@ def main():
     p.add_argument('--receipts', default='.drive-receipts.json')
     p.add_argument('--refresh-current', action='store_true', help='Rebuild the active date archive with the current website before retiring its previous ZIP')
     args = p.parse_args()
-    receipts = backup_releases(args.source, args.published, args.receipts, refresh_current=args.refresh_current)
+    try:
+        receipts = backup_releases(args.source, args.published, args.receipts, refresh_current=args.refresh_current)
+    except ArchiveImageError as error:
+        # Only our own bounded, URL-free messages enter public check annotations.
+        print('::error title=Archive image validation failed::' + str(error), flush=True)
+        raise SystemExit(1) from None
     print(f'Drive: {len(receipts)} complete releases verified by full readback; no credentials logged.')
 
 

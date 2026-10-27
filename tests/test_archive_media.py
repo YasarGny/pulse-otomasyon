@@ -5,6 +5,11 @@ from pathlib import Path
 from pulse.archive_media import portable_image
 
 class PublisherImageTests(unittest.TestCase):
+    def test_unbounded_or_invalid_decode_budgets_are_rejected(self):
+        for limit in (0, -1, 100_000_001, True, '100000000'):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                portable_image(b'anything', 'image/jpeg', max_pixels=limit)
+
     def test_valid_bitmap_bytes_are_preserved(self):
         body=Path('site/assets/covers/teknoloji-768.webp').read_bytes()
         self.assertEqual(portable_image(body,'image/webp'),(body,'.webp'))
