@@ -4,9 +4,12 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
+
+import requests
 
 from pulse.build import assert_public_tree
 from pulse.details import display_date
@@ -19,6 +22,16 @@ from pulse.archive_media import portable_image
 # remain independently enforced by portable_image. Article/discovery limits stay
 # unchanged. Never silently omit a picture from a supposedly complete backup.
 ARCHIVE_IMAGE_MAX_BYTES = 64_000_000
+ARCHIVE_IMAGE_MAX_PIXELS = 100_000_000
+
+
+class ArchiveImageError(ValueError):
+    """Safe public diagnostic containing no publisher URL or decoder metadata."""
+
+
+def image_error(section, url, reason):
+    image_id = hashlib.sha256(url.encode()).hexdigest()[:16]
+    return ArchiveImageError(f'Archive image {section}/{image_id}: {reason}')
 
 
 def fetch_archive_image(url):
@@ -58,9 +71,24 @@ def package(site, destination, *, fetch=fetch_archive_image):
                         body, kind = fetch(url)
                     except SourceTooLarge as exc:
                         # Log a non-sensitive identifier, never a signed source URL.
-                        image_id = hashlib.sha256(url.encode()).hexdigest()[:16]
-                        raise ValueError(f'Archive image {section}/{image_id}: {exc}') from None
-                    body, suffix = portable_image(body, kind)
+                        raise image_error(section, url, str(exc)) from None
+                    except requests.RequestException as exc:
+                        status = exc.response.status_code if exc.response is not None else None
+                        reason = f'image download failed (HTTP {status})' if status else 'image download connection or timeout failure'
+                        raise image_error(section, url, reason) from None
+                    except ValueError:
+                        raise image_error(section, url, 'image URL or download validation failed') from None
+                    try:
+                        body, suffix = portable_image(body, kind, max_pixels=ARCHIVE_IMAGE_MAX_PIXELS)
+                    except subprocess.CalledProcessError as exc:
+                        text = (exc.stderr or b'').decode('utf-8', errors='replace')
+                        dimensions = re.search(r'Picture size (\d{1,9}x\d{1,9}) exceeds specified max pixel count', text)
+                        reason = ('decoder pixel limit exceeded (' + dimensions[1] + ')') if dimensions else 'image could not be decoded'
+                        raise image_error(section, url, reason) from None
+                    except subprocess.TimeoutExpired:
+                        raise image_error(section, url, 'image decoding exceeded its time budget') from None
+                    except ValueError:
+                        raise image_error(section, url, 'image format or passive-content validation failed') from None
                     name = hashlib.sha256(body).hexdigest() + suffix
                     path = root / 'media' / name
                     path.parent.mkdir(exist_ok=True)

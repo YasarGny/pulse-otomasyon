@@ -6,7 +6,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
-def portable_image(body, kind):
+def portable_image(body, kind, *, max_pixels=40_000_000):
+    if type(max_pixels) is not int or not 0 < max_pixels <= 100_000_000:
+        raise ValueError('Invalid image decoding pixel budget')
     if not kind.lower().startswith('image/') and kind.lower().split(';')[0].strip() not in {'application/octet-stream','binary/octet-stream'}:
         raise ValueError('Archive media response is not an image')
     if body.startswith(b'\xff\xd8\xff'):
@@ -55,7 +57,7 @@ def portable_image(body, kind):
         source = Path(tmp) / ('source' + suffix)
         source.write_bytes(body)
         # Full decoding of the displayed frame catches corrupt files beyond magic bytes.
-        command = ['ffmpeg','-v','error','-nostdin','-y','-protocol_whitelist','file,pipe','-max_pixels','40000000','-i',str(source),'-frames:v','1']
+        command = ['ffmpeg','-v','error','-nostdin','-y','-protocol_whitelist','file,pipe','-max_pixels',str(max_pixels),'-threads','2','-i',str(source),'-frames:v','1']
         if suffix == '.avif':
             target = Path(tmp) / 'image.webp'
             subprocess.run(command + ['-c:v','libwebp','-quality','95',str(target)],check=True,capture_output=True,timeout=30)

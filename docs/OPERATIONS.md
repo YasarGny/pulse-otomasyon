@@ -95,7 +95,9 @@ doğrulanmış bölüm bilgileri birlikte hazır olmadan yayın açılmaz. Drive
 Taşınabilir ZIP için orijinal haber görselleri tek URL başına bir kez alınır;
 indirme sınırı görsel başına 64 MB'dır. Haber keşfinin 8 MB ve HTML'in 2 MB
 sınırları değişmez. Görseller küçültülmeden mevcut biçim doğrulamasından geçer;
-40 milyon piksel ve çözümleme süresi sınırları korunur. Sınırı aşan dosya yedeği
+yalnız arşivde 100 milyon piksele kadar panoramalar doğrulanabilir. Keşfin
+40 milyon piksel sınırı, 30 saniyelik çözümleme sınırı ve seri işleme korunur;
+çözücü iki iş parçacığıyla çalışır. Sınırı aşan dosya yedeği
 eksikmiş gibi başarılı gösterilmez; hata bölüm ve güvenli görsel özetiyle bildirilir.
 Yalnız hazır site dosyaları yayın deposuna aktarılır. Başarılı ara aşamalar yeniden
 kullanılır. Aynı gün yeniden çalıştırma yeni sayı oluşturmaz.
