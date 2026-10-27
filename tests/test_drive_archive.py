@@ -2,9 +2,11 @@ import copy
 import hashlib
 import json
 import shutil
+import struct
 import tempfile
 import unittest
 import zipfile
+import zlib
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -14,7 +16,7 @@ from pulse.build import build
 from pulse.details import display_date
 from pulse.drive_backup import Drive, backup_releases
 from pulse.publication import read_json, write_json, not_before, validate_content
-from pulse.source_media import article_image, public_url
+from pulse.source_media import article_image, public_url, SourceTooLarge
 from scripts.prune_backed_up import prune
 
 
@@ -146,6 +148,39 @@ class BackupTests(unittest.TestCase):
             a = package(self.site, Path(tmp) / 'a.zip', fetch=self.media)
             b = package(self.site, Path(tmp) / 'b.zip', fetch=self.media)
             self.assertEqual(a['sha256'], b['sha256'])
+
+    def test_large_original_is_archived_losslessly_and_downloaded_once(self):
+        # A real, decodable 8.7 MB PNG: the former discovery limit rejected it.
+        def chunk(kind, data):
+            return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
+        pixels = (b'\x00' + b'\x20\x40\x80' * 1700) * 1700
+        body = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!IIBBBBB', 1700, 1700, 8, 2, 0, 0, 0))
+                + chunk(b'IDAT', zlib.compress(pixels, 0)) + chunk(b'IEND', b''))
+        self.assertGreater(len(body), 8_000_000)
+        response = Mock()
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.is_redirect = False
+        response.headers = {'Content-Type': 'image/png'}
+        response.iter_content.side_effect = lambda size: (body[i:i+size] for i in range(0, len(body), size))
+        with tempfile.TemporaryDirectory() as tmp, patch('pulse.source_media.public_url'), patch('pulse.source_media.requests.get', return_value=response) as get:
+            destination = Path(tmp) / 'large.zip'
+            package(self.site, destination)
+            verify_package(destination)
+            get.assert_called_once()
+            with zipfile.ZipFile(destination) as archive:
+                images = [name for name in archive.namelist() if name.startswith('media/')]
+                self.assertEqual(len(images), 1)
+                self.assertEqual(archive.read(images[0]), body)
+
+    def test_oversize_image_blocks_backup_without_exposing_signed_url(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / 'too-large.zip'
+            with self.assertRaisesRegex(ValueError, 'Archive image teknoloji/[0-9a-f]{16}: Source response too large') as caught:
+                package(self.site, destination, fetch=Mock(side_effect=SourceTooLarge(64_000_000, 64_000_001)))
+            self.assertNotIn('https://', str(caught.exception))
+            self.assertFalse(destination.exists())
+            self.assertFalse(destination.with_suffix('.partial').exists())
 
     def test_missing_picture_prevents_successful_archive(self):
         with tempfile.TemporaryDirectory() as tmp:

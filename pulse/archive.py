@@ -11,11 +11,21 @@ from pathlib import Path
 from pulse.build import assert_public_tree
 from pulse.details import display_date
 from pulse.publication import SECTIONS, digest, read_json, verify_manifest, write_json
-from pulse.source_media import fetch_public
+from pulse.source_media import fetch_public, SourceTooLarge
 from pulse.archive_media import portable_image
 
+# Original publisher PNGs may legitimately exceed the discovery fetcher's 8 MB.
+# Keep original quality and a finite streaming budget; decoder pixel/time limits
+# remain independently enforced by portable_image. Article/discovery limits stay
+# unchanged. Never silently omit a picture from a supposedly complete backup.
+ARCHIVE_IMAGE_MAX_BYTES = 64_000_000
 
-def package(site, destination, *, fetch=fetch_public):
+
+def fetch_archive_image(url):
+    return fetch_public(url, limit=ARCHIVE_IMAGE_MAX_BYTES)
+
+
+def package(site, destination, *, fetch=fetch_archive_image):
     site, destination = Path(site), Path(destination)
     manifest = read_json(site / 'data/publication.json')
     release = site / 'releases' / manifest['release_id']
@@ -35,17 +45,27 @@ def package(site, destination, *, fetch=fetch_public):
             else:
                 shutil.copyfile(origin, root / name)
         shutil.copytree(release, root / 'releases' / manifest['release_id'])
+        downloaded = {}
         for section, data in editions.items():
             for story in data['stories']:
                 url = story.get('image_url')
                 if not url:
                     continue
-                body, kind = fetch(url)
-                body, suffix = portable_image(body, kind)
-                name = hashlib.sha256(body).hexdigest() + suffix
-                path = root / 'media' / name
-                path.parent.mkdir(exist_ok=True)
-                path.write_bytes(body)
+                if url in downloaded:
+                    name = downloaded[url]
+                else:
+                    try:
+                        body, kind = fetch(url)
+                    except SourceTooLarge as exc:
+                        # Log a non-sensitive identifier, never a signed source URL.
+                        image_id = hashlib.sha256(url.encode()).hexdigest()[:16]
+                        raise ValueError(f'Archive image {section}/{image_id}: {exc}') from None
+                    body, suffix = portable_image(body, kind)
+                    name = hashlib.sha256(body).hexdigest() + suffix
+                    path = root / 'media' / name
+                    path.parent.mkdir(exist_ok=True)
+                    path.write_bytes(body)
+                    downloaded[url] = name
                 story['archive_image'] = '../../media/' + name
         image_paths = {story['image_url']: story['archive_image'].split('/')[-1]
                        for data in editions.values() for story in data['stories'] if story.get('archive_image')}
