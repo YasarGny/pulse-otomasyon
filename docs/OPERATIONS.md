@@ -92,6 +92,20 @@ onay ses üretimine geçemez. Eski mühürlenmiş yayınlar yeniden üretilmez.
 
 Her iki yayının haberleri ve özetleri ile yalnız açık podcastlerin sesleri ve
 doğrulanmış bölüm bilgileri birlikte hazır olmadan yayın açılmaz. Drive yedeği doğrulanmadan eski yayın temizlenmez.
+Podcast bölüm denetimi artık ham ASR parçalarını tam cümle varsaymaz. Mevcut
+dökümler cümle sonuna kadar birleştirilir; yeni dökümlerde saklanan gerçek kelime
+zamanları varsa bir satırdaki ayrı cümleler de ayrılabilir. Eksik bölüm için eski
+dökümde kelime zamanları saklanmamışsa yalnız o programın mevcut sesi bir kez
+yeniden yazıya dökülür; ses yeniden üretilmez. Zaman uydurulmaz;
+eksik veya hatalı kelime hizalamasında ham ölçülmüş aralık korunur. Yarım kalan
+cümle haber kesitinin sonu olamaz. Karışık konu içeren aralıklar tek habere
+atanmaz; bağımsız inceleme ve mevcut tek düzeltme hakkı korunur. Onaylı diğer
+programın bölüm bilgileri ve sesler yeniden üretilmez.
+Başarısız günlük üretimden sonra yalnız mühürlenmiş, bugüne ait hazır ses kaydı
+varsa `publish-ready` bölümleri tamamlayıp aynı yayını doğrular ve yayımlar.
+Eksik içerik/ses üretmez; mühürlenmemiş ara kaydı hazır saymaz. Bölüm kurtarma
+işlerinin kuyruk kilidi iş koşulu değerlendirildikten sonra alınır: atlanan
+`workflow_run` olayları bekleyen günlük üretimi kuyruktan düşüremez.
 Taşınabilir ZIP için orijinal haber görselleri tek URL başına bir kez alınır;
 indirme sınırı görsel başına 64 MB'dır. Haber keşfinin 8 MB ve HTML'in 2 MB
 sınırları değişmez. Görseller küçültülmeden mevcut biçim doğrulamasından geçer;

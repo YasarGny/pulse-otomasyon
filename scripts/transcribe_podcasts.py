@@ -9,7 +9,7 @@ import hashlib
 from pathlib import Path
 
 
-def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun')):
+def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun'), *, require_words=False):
     root, output = Path(root), Path(output)
     model = None
     if any(section not in ('teknoloji', 'oyun') for section in sections):
@@ -34,7 +34,10 @@ def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun'))
                     existing = json.loads(target.read_text())
                 except ValueError:
                     existing = {}
-                if existing.get('audio_sha256') == asset['sha256'] and existing.get('segments'):
+                aligned = (existing.get('word_timestamps_version') == 1 or
+                           all(row.get('words') for row in existing.get('segments', [])))
+                if (existing.get('audio_sha256') == asset['sha256'] and existing.get('segments')
+                        and (not require_words or aligned)):
                     continue
             if model is None:
                 from faster_whisper import WhisperModel
@@ -42,10 +45,14 @@ def transcribe(root, output, model_name='small', sections=('teknoloji', 'oyun'))
             segments, _ = model.transcribe(str(path), language='tr', beam_size=3,
                                            vad_filter=True, word_timestamps=True)
             result = {'audio_sha256': asset['sha256'], 'duration': asset['duration'],
+                      'word_timestamps_version': 1,
                       'publish_date': data['publish_date'], 'section': section, 'segments': []}
             for segment in segments:
-                result['segments'].append({'start': segment.start, 'end': segment.end,
-                                           'text': segment.text})
+                row = {'start': segment.start, 'end': segment.end, 'text': segment.text}
+                words = getattr(segment, 'words', None)
+                if words:
+                    row['words'] = [{'start': w.start, 'end': w.end, 'word': w.word} for w in words]
+                result['segments'].append(row)
             target.write_text(json.dumps(result, ensure_ascii=False, indent=2))
             print(section, 'existing recording transcribed; audio unchanged', flush=True)
         except Exception as error:
