@@ -10,7 +10,8 @@ class RecoveryQueueTests(unittest.TestCase):
                 text = (Path('.github/workflows') / name).read_text()
                 header, jobs = text.split('\njobs:\n', 1)
                 self.assertNotIn('\nconcurrency:', header)
-                self.assertIn(f'  {job}:\n    if:', jobs)
+                self.assertIn(f'  {job}:\n', jobs)
+                self.assertIn('    if:', jobs)
                 self.assertIn('    concurrency:\n      group: pulse-github-daily\n      cancel-in-progress: false', jobs)
                 self.assertIn('github.event.workflow_run.head_repository.full_name == github.repository', jobs)
 
@@ -22,3 +23,4 @@ class RecoveryQueueTests(unittest.TestCase):
         self.assertIn("allowed_events=('workflow_dispatch', 'workflow_run')", text)
         self.assertIn("COMPLETE_CHAPTERS: ${{ inputs.complete_chapters == true || github.event_name == 'workflow_run' }}", text)
         self.assertNotIn('python -m pulse.pipeline', text)
+        self.assertIn("needs.inspect_failure.outputs.recoverable == 'true'", text)
