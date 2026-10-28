@@ -17,9 +17,6 @@ env:
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: pulse-github-daily
-  cancel-in-progress: false
 jobs:
   complete:
     if: >-
@@ -29,6 +26,11 @@ jobs:
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == github.repository))
+    # Evaluate the job condition BEFORE joining the shared publication queue.
+    # A skipped workflow_run must never evict a pending daily production.
+    concurrency:
+      group: pulse-github-daily
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     environment: pulse-production

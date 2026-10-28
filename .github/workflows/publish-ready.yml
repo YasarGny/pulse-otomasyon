@@ -1,5 +1,9 @@
 name: Publish completed checkpoint without generating content
 on:
+  workflow_run:
+    workflows: ['PULSE GitHub daily publication']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       complete_chapters:
@@ -21,12 +25,16 @@ env:
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: pulse-github-daily
-  cancel-in-progress: false
 jobs:
   publish:
-    if: vars.PULSE_AUTOMATION_ENABLED != 'false' && (github.ref == 'refs/heads/main')
+    if: >-
+      vars.PULSE_AUTOMATION_ENABLED != 'false' && github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'failure' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    concurrency:
+      group: pulse-github-daily
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: pulse-production
@@ -59,11 +67,11 @@ jobs:
           ref: main
           path: .published
           persist-credentials: false
-      - name: Install final-audio chapter analysis only when explicitly requested
-        if: inputs.complete_chapters == true
+      - name: Install final-audio chapter analysis for requested or failed-production recovery
+        if: inputs.complete_chapters == true || github.event_name == 'workflow_run'
         run: python -m pip install -r requirements-chapters.txt
       - uses: actions/cache@v4
-        if: inputs.complete_chapters == true
+        if: inputs.complete_chapters == true || github.event_name == 'workflow_run'
         continue-on-error: true
         with:
           path: ~/.cache/huggingface/hub
@@ -72,7 +80,8 @@ jobs:
         id: build
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          COMPLETE_CHAPTERS: ${{ inputs.complete_chapters == true }}
+          COMPLETE_CHAPTERS: ${{ inputs.complete_chapters == true || github.event_name == 'workflow_run' }}
+          AUTOMATIC_RECOVERY: ${{ github.event_name == 'workflow_run' }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PULSE_SCRIPT_MODEL: ${{ vars.PULSE_SCRIPT_MODEL || 'gemini-3.8-flash' }}
           HF_HUB_DISABLE_XET: '1'
@@ -98,8 +107,14 @@ jobs:
               raise SystemExit(0)
           else:
               assert current['status'] == 'preparing', 'Unexpected publication state'
-              assert restore(os.environ['GITHUB_REPOSITORY'], date, '.pulse-work'), 'No trusted checkpoint available'
-              source = Path('.pulse-work') / date
+              from pulse.ready_recovery import restore_ready
+              source = restore_ready(os.environ['GITHUB_REPOSITORY'], date, '.pulse-work',
+                                     automatic=os.environ['AUTOMATIC_RECOVERY'] == 'true')
+              if source is None:
+                  print('::notice title=PULSE recovery deferred::No sealed complete audio checkpoint; no content generated.')
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                      output.write('publish=false\n')
+                  raise SystemExit(0)
           manifest = read_json(source / 'release.json')
           assert manifest['status'] == 'ready' and manifest['publish_date'] == date, 'Checkpoint is incomplete or stale'
           with open(os.environ['GITHUB_ENV'], 'a') as env:
@@ -110,7 +125,7 @@ jobs:
               restored = restore(os.environ['GITHUB_REPOSITORY'], date, '.chapter-recovery',
                                  artifact_prefix='pulse-ready-chapters-',
                                  workflow_path='.github/workflows/publish-ready.yml',
-                                 allowed_events=('workflow_dispatch',))
+                                 allowed_events=('workflow_dispatch', 'workflow_run'))
               if restored:
                   copy_state(Path('.chapter-recovery') / date, source)
               os.environ['PULSE_USAGE_LOG'] = str(source / 'api-usage.jsonl')
@@ -128,7 +143,7 @@ jobs:
               output.write('date=' + date + '\npublish=true\n')
           PY
       - uses: ./.github/actions/save-state
-        if: always() && inputs.complete_chapters == true
+        if: always() && env.RECOVERY_DATE != '' && (inputs.complete_chapters == true || github.event_name == 'workflow_run')
         with:
           name: pulse-ready-chapters-${{ env.RECOVERY_DATE }}-${{ github.run_id }}-${{ github.run_attempt }}
           source: .chapter-recovery/

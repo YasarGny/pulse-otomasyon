@@ -14,8 +14,9 @@ from pulse.usage import invoke, reused
 
 
 class ChapterReviewRejected(ValueError):
-    def __init__(self, reason):
+    def __init__(self, reason, proposal=None):
         self.reason = reason
+        self.proposal = proposal
         super().__init__('Topic review rejected: ' + reason)
 
 
@@ -65,7 +66,9 @@ def propose(transcript, asset, generate, *, retry=True):
     segments = transcript['segments']
     if transcript['audio_sha256'] != asset['sha256'] or not segments:
         raise ValueError('Transcript does not match the final recording')
-    evidence = [{'id': i, 'text': row['text'], 'start': row['start'], 'end': row.get('end')} for i, row in enumerate(segments)]
+    evidence = [{'id': i, 'text': row['text'], 'start': row['start'], 'end': row.get('end'),
+                 **({key: row[key] for key in ('complete_start', 'complete_end') if key in row})}
+                for i, row in enumerate(segments)]
     spelling_guide = transcript.get('canonical_headlines', [])
     stories = transcript.get('canonical_stories')
     system = ('Türkçe podcast için bölüm içi konu işaretleri hazırlayan editörsün. '
@@ -73,6 +76,13 @@ def propose(transcript, asset, generate, *, retry=True):
               'duyurulmayan konu veya iddia ekleme. Zaman tahmin etme. '
               'Özel adların yazımında spelling_guide içindeki kaynak başlıklarını kullan; '
               'yalnız yazım rehberidir, konuşulmayan habere işaret ekleme.')
+    if transcript.get('sentence_units_version'):
+        system += (' Döküm satırları ölçülmüş zamanları koruyan cümle birimleridir; '
+                   'complete_end=false olan satırı haber kesitinin bitişi olarak seçme. '
+                   'Bir satır birden fazla konu içeriyorsa o satırı tek bir habere mal etme; '
+                   'ilgili haberin açıkça başladığı sonraki tam cümleyi seç. '
+                   'Temiz başlangıç/bitiş bulunamayan haber için story_ranges eşleşmesi ekleme; '
+                   'bu durum ana konu başlıklarını atlamak için gerekçe değildir.')
     feedback = transcript.get('review_feedback', '')
     response = invoke('chapters.propose',generate,('Önceki önerinin denetim gerekçesi: ' + feedback + '\nDöküme sadık yeni bir öneri hazırla; belirtilen eksikleri gider.\n' if feedback else '') + 'Bu zamanlı dökümde konuşulan BÜTÜN ana sohbet konularının geçişlerini seç. '
                         'Sayısal bir hedefe sığdırmak için önemli konu atlama. '
@@ -126,6 +136,15 @@ def propose(transcript, asset, generate, *, retry=True):
             a, b = row.get('start_segment_id'), row.get('end_segment_id')
             if type(a) is not int or type(b) is not int or not 0 <= a <= b < len(segments):
                 invalid('Unknown story boundary segment')
+            if segments[a].get('complete_start') is False or segments[b].get('complete_end') is False:
+                if retry:
+                    discard = getattr(generate, 'invalidate', None)
+                    if callable(discard):
+                        discard()
+                    revised = dict(transcript)
+                    revised['review_feedback'] = json.dumps({'error': 'Story range must use complete measured sentence boundaries', 'proposal': response}, ensure_ascii=False)
+                    return propose(revised, asset, generate, retry=False)
+                invalid('Story range must use complete measured sentence boundaries')
             result['story_ranges'].append({'story_id': row.get('story_id'),
                                           'start': segments[a]['start'], 'end': segments[b]['end']})
         result['section'] = transcript.get('section')
@@ -157,9 +176,10 @@ def propose(transcript, asset, generate, *, retry=True):
     reason = str(review.get('reason', 'No review reason supplied'))[:600]
     if retry:
         revised = dict(transcript)
-        revised['review_feedback'] = reason
+        revised['review_feedback'] = json.dumps({'reason': reason, 'proposal': response,
+                                                'instruction': 'Denetimin işaret ettiği eşleşme ve sınırları düzelt; sorun bildirilmeyen konu başlıklarını koru. Son önerinin tamamı yeniden bağımsız denetlenecek.'}, ensure_ascii=False)
         return propose(revised, asset, generate, retry=False)
-    raise ChapterReviewRejected(reason)
+    raise ChapterReviewRejected(reason, response)
 
 
 def prepare(release, previous=None):
@@ -192,7 +212,7 @@ def prepare(release, previous=None):
     if not missing:
         return
     try:
-        transcribe(release, release / 'chapter-transcripts', sections=[section for section, _ in missing])
+        transcribe(release, release / 'chapter-transcripts', sections=[section for section, _ in missing], require_words=True)
     except Exception as error:
         print('Some transcripts unavailable:', type(error).__name__)
         # Review surviving programs independently; never invent missing timings.
@@ -201,7 +221,8 @@ def prepare(release, previous=None):
         feedback_path = release / 'chapter-feedback' / (asset['sha256'] + '.json')
         transcript_sha = None
         try:
-            transcript = read_json(release / 'chapter-transcripts' / (section + '.json'))
+            from pulse.transcript_units import sentence_units
+            transcript = sentence_units(read_json(release / 'chapter-transcripts' / (section + '.json')))
             transcript['canonical_stories'] = [{'id': story['id'], 'title': story['title'], 'brief': story.get('brief', story['summary'])} for story in read_json(release / (section + '.json')).get('stories', [])]
             transcript['canonical_headlines'] = [story['title'] for story in read_json(release / (section + '.json')).get('stories', [])]
             transcript_sha = hashlib.sha256(json.dumps(transcript, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
@@ -230,7 +251,7 @@ def prepare(release, previous=None):
                 write_json(feedback_path, {'audio_sha256': asset['sha256'],
                                           'transcript_sha256': transcript_sha,
                                           'model': MODEL, 'reason': error.reason[:600],
-                                          **({'proposal':error.proposal} if isinstance(error, ChapterProposalInvalid) else {})})
+                                          **({'proposal':error.proposal} if getattr(error, 'proposal', None) is not None else {})})
             print(section, 'chapter metadata omitted:', type(error).__name__)
             detail = re.sub(r'(?:https?|wss?)://\S+', '[service URL]', str(error))
             secret = os.environ.get('GEMINI_API_KEY')
