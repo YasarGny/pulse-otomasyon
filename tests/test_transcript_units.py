@@ -64,6 +64,9 @@ class SentenceUnitTests(unittest.TestCase):
         result = propose(transcript, {'sha256': 'a' * 64, 'duration': 20}, generate)
         self.assertEqual(result['story_ranges'], [{'story_id': 'a', 'start': 5, 'end': 9}])
         self.assertEqual(generate.call_count, 3)
+        self.assertIn('"complete_end": false', generate.call_args_list[0].args[0])
+        self.assertNotIn('"complete_start": true', generate.call_args_list[0].args[0])
+        self.assertNotIn('"complete_end": true', generate.call_args_list[0].args[0])
         self.assertIn('complete measured sentence boundaries', generate.call_args_list[1].args[0])
         self.assertIn('bağımsız denetle', generate.call_args_list[2].args[0])
 
