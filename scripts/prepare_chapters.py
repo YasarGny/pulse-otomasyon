@@ -67,7 +67,7 @@ def propose(transcript, asset, generate, *, retry=True):
     if transcript['audio_sha256'] != asset['sha256'] or not segments:
         raise ValueError('Transcript does not match the final recording')
     evidence = [{'id': i, 'text': row['text'], 'start': row['start'], 'end': row.get('end'),
-                 **({key: row[key] for key in ('complete_start', 'complete_end') if key in row})}
+                 **({key: False for key in ('complete_start', 'complete_end') if row.get(key) is False})}
                 for i, row in enumerate(segments)]
     spelling_guide = transcript.get('canonical_headlines', [])
     stories = transcript.get('canonical_stories')
