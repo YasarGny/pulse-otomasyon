@@ -23,7 +23,7 @@ class ChapterValidationTests(unittest.TestCase):
                 validate_chapters({**self.data, **update}, self.asset)
 
     def test_rejects_invalid_chapter_times_titles_and_order(self):
-        for value in (-1, 120, float('nan'), float('inf'), True, '12', 0, 4):
+        for value in (-1, 120, float('nan'), float('inf'), True, '12', 0):
             data = copy.deepcopy(self.data)
             data['chapters'][1]['start'] = value
             with self.subTest(value=value), self.assertRaises(ValueError):

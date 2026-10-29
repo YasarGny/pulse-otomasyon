@@ -101,6 +101,15 @@ eksik veya hatalı kelime hizalamasında ham ölçülmüş aralık korunur. Yar�
 cümle haber kesitinin sonu olamaz. Karışık konu içeren aralıklar tek habere
 atanmaz; bağımsız inceleme ve mevcut tek düzeltme hakkı korunur. Onaylı diğer
 programın bölüm bilgileri ve sesler yeniden üretilmez.
+Bölüm başlangıçları kayıt içinde ve kesin artan sırada olmalıdır; keyfi bir
+asgari bölüm süresi uygulanmaz. Örneğin 0. saniyede açılış ve 4. saniyede ilk
+konu geçerlidir; zamanı kaydırılmaz veya açılış silinmez. Tarayıcı ve sunucu
+aynı sözleşme örnekleriyle sınanır. Başlık, kimlik, sıra veya sınır kusurları
+satır ve kural bilgisiyle raporlanır; ham başlık/metin günlüğe yazılmaz. Yapısal
+kusurlar da mevcut tek düzeltme hakkını kullanır; düzeltilmiş bütün öneri yine
+bağımsız denetlenir. Düzeltme bağlamı inceleme çağrısından önce şifreli ara kayda
+alınır; kesintiden sonra sağlam düzeltilmiş öneri yeniden üretilmez. Eski
+sözleşmenin ret gerekçeleri yeni sözleşmeye taşınmaz; onaylı bölümler korunur.
 Başarısız günlük üretimden sonra yalnız mühürlenmiş, bugüne ait hazır ses kaydı
 varsa `publish-ready` bölümleri tamamlayıp aynı yayını doğrular ve yayımlar.
 Eksik içerik/ses üretmez; mühürlenmemiş ara kaydı hazır saymaz. Bölüm kurtarma

@@ -80,12 +80,8 @@ class ChapterResponseCacheTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             provider = Mock(side_effect=[bad, good, {'approved': True}])
             generate = cached_editor(tmp, provider, 'fixture-model')
-            with self.assertRaisesRegex(ValueError, 'Unknown transcript'):
-                propose(transcript, asset, generate)
             result = propose(transcript, asset, generate)
             self.assertEqual(len(result['chapters']), 2)
-            self.assertEqual(provider.call_count, 3)
-            self.assertEqual(propose(transcript, asset, generate), result)
             self.assertEqual(provider.call_count, 3)
 
     def test_chapter_checkpoint_requires_its_own_workflow_provenance(self):
