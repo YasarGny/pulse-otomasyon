@@ -1,0 +1,175 @@
+{
+  "asset": {
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "duration": 120
+  },
+  "cases": [
+    {
+      "name": "real four-second opening",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 4,
+          "title": "İlk konu"
+        }
+      ],
+      "valid": true
+    },
+    {
+      "name": "short real cue",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 0.75,
+          "title": "Konu"
+        }
+      ],
+      "valid": true
+    },
+    {
+      "name": "duplicate",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 0,
+          "title": "Konu"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "reverse",
+      "chapters": [
+        {
+          "start": 4,
+          "title": "Konu"
+        },
+        {
+          "start": 0,
+          "title": "Açılış"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "outside recording",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 120,
+          "title": "Konu"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "string time",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": "4",
+          "title": "Konu"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "boolean time",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": true,
+          "title": "Konu"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "control in title",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 4,
+          "title": "Konu\nbaşlığı"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "empty title",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 4,
+          "title": " "
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "long title",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 4,
+          "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "valid": false
+    },
+    {
+      "name": "unicode length",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        },
+        {
+          "start": 4,
+          "title": "🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀"
+        }
+      ],
+      "valid": true
+    },
+    {
+      "name": "bad audio identity",
+      "chapters": [
+        {
+          "start": 0,
+          "title": "Açılış"
+        }
+      ],
+      "valid": false,
+      "asset": {
+        "sha256": "invalid"
+      }
+    }
+  ]
+}

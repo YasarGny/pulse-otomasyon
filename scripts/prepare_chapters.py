@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pulse.chapters import validate_chapters, load_chapters
+from pulse.chapters import validate_chapters, load_chapters, CHAPTER_RULES, CHAPTER_POLICY_VERSION
 from pulse.publication import write_json, read_json
 from pulse.usage import invoke, reused
 
@@ -21,9 +21,11 @@ class ChapterReviewRejected(ValueError):
 
 
 class ChapterProposalInvalid(ValueError):
-    def __init__(self, reason, proposal):
+    def __init__(self, reason, proposal, *, retryable=True):
         self.reason = reason
         self.proposal = proposal
+        self.retryable = retryable
+        self.repair_consumed = False
         super().__init__(reason)
 
 
@@ -62,7 +64,33 @@ def cached_editor(folder, generate, model, *, context=None):
     return request
 
 
+def correction_feedback(reason, proposal):
+    if proposal is None:
+        return reason[:600]
+    return json.dumps({'reason': reason[:600], 'proposal': proposal,
+                      'instruction': 'Yalnız bildirilen kusurları düzelt; diğer konu başlıklarını koru. Son önerinin tamamı yeniden bağımsız denetlenecek.'}, ensure_ascii=False)
+
+
+def corrected_transcript(transcript, generate, reason, proposal):
+    save = getattr(generate, 'on_correction', None)
+    if callable(save):
+        save(reason, proposal)
+    return {**transcript, 'review_feedback': correction_feedback(reason, proposal)}
+
+
 def propose(transcript, asset, generate, *, retry=True):
+    try:
+        return _propose(transcript, asset, generate, retry=retry)
+    except ChapterProposalInvalid as error:
+        if not retry:
+            error.repair_consumed = True
+        if not retry or error.repair_consumed or not error.retryable:
+            raise
+        revised = corrected_transcript(transcript, generate, error.reason, error.proposal)
+        return propose(revised, asset, generate, retry=False)
+
+
+def _propose(transcript, asset, generate, *, retry):
     segments = transcript['segments']
     if transcript['audio_sha256'] != asset['sha256'] or not segments:
         raise ValueError('Transcript does not match the final recording')
@@ -76,6 +104,10 @@ def propose(transcript, asset, generate, *, retry=True):
               'duyurulmayan konu veya iddia ekleme. Zaman tahmin etme. '
               'Özel adların yazımında spelling_guide içindeki kaynak başlıklarını kullan; '
               'yalnız yazım rehberidir, konuşulmayan habere işaret ekleme.')
+    system += (' Bölüm sözleşmesi: ' + json.dumps(CHAPTER_RULES, ensure_ascii=False) +
+               '. Her segment_id farklı olmalı; gerçek başlangıçlar kesin artan sırada olmalı. '
+               'Asgari bölüm süresi şartı yoktur; kısa ama doğal açılış/kapanışı atlama veya zamanını kaydırma. '
+               'Başlıklarda satır sonu veya kontrol karakteri kullanma.')
     if transcript.get('sentence_units_version'):
         system += (' Döküm satırları ölçülmüş zamanları koruyan cümle birimleridir; '
                    'complete_end=false olan satırı haber kesitinin bitişi olarak seçme. '
@@ -99,13 +131,13 @@ def propose(transcript, asset, generate, *, retry=True):
                         'JSON: {"chapters":[{"segment_id":0,"title":"Açılış"}],"story_ranges":[{"story_id":"id","start_segment_id":1,"end_segment_id":5}]}.\n'
                         + json.dumps({'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system,section=transcript.get('section'))
     proposal_path = getattr(generate, 'last_path', None)
-    def invalid(message):
+    def invalid(message, *, retryable=True):
         # Structurally invalid proposals must not trap future recovery in a bad
         # cached response. Valid proposals survive a later review/network failure.
         discard = getattr(generate, 'invalidate', None)
         if callable(discard):
             discard()
-        raise ChapterProposalInvalid(message, response)
+        raise ChapterProposalInvalid(message, response, retryable=retryable)
     if not isinstance(response, dict):
         invalid('Invalid proposed topics response')
     rows = response.get('chapters')
@@ -141,8 +173,7 @@ def propose(transcript, asset, generate, *, retry=True):
                     discard = getattr(generate, 'invalidate', None)
                     if callable(discard):
                         discard()
-                    revised = dict(transcript)
-                    revised['review_feedback'] = json.dumps({'error': 'Story range must use complete measured sentence boundaries', 'proposal': response}, ensure_ascii=False)
+                    revised = corrected_transcript(transcript, generate, 'Story range must use complete measured sentence boundaries', response)
                     return propose(revised, asset, generate, retry=False)
                 invalid('Story range must use complete measured sentence boundaries')
             result['story_ranges'].append({'story_id': row.get('story_id'),
@@ -157,8 +188,7 @@ def propose(transcript, asset, generate, *, retry=True):
                 discard = getattr(generate, 'invalidate', None)
                 if callable(discard):
                     discard()
-                revised = dict(transcript)
-                revised['review_feedback'] = json.dumps({'error':str(error), 'proposal':response}, ensure_ascii=False)
+                revised = corrected_transcript(transcript, generate, str(error), response)
                 return propose(revised, asset, generate, retry=False)
             invalid(str(error))
     review = invoke('chapters.review',generate,'Aşağıdaki öneriyi döküme karşı bağımsız denetle. '
@@ -167,7 +197,7 @@ def propose(transcript, asset, generate, *, retry=True):
                       'story_ranges eşleşmelerinin her birini stories ve dökümle denetle; başlangıç/bitiş tam cümle olmalı, başka konu taşmamalı. Emin değilsen reddet. JSON {"approved":true/false,"reason":"..."}.\n'
                       + json.dumps({'proposal': response, 'transcript': evidence, 'spelling_guide': spelling_guide, 'stories': stories}, ensure_ascii=False), system=system,section=transcript.get('section'))
     if not isinstance(review, dict) or type(review.get('approved')) is not bool:
-        invalid('Invalid independent chapter review')
+        invalid('Invalid independent chapter review', retryable=False)
     if review.get('approved') is True:
         return result
     reject = getattr(generate, 'reject', None)
@@ -175,9 +205,7 @@ def propose(transcript, asset, generate, *, retry=True):
         reject(proposal_path)
     reason = str(review.get('reason', 'No review reason supplied'))[:600]
     if retry:
-        revised = dict(transcript)
-        revised['review_feedback'] = json.dumps({'reason': reason, 'proposal': response,
-                                                'instruction': 'Denetimin işaret ettiği eşleşme ve sınırları düzelt; sorun bildirilmeyen konu başlıklarını koru. Son önerinin tamamı yeniden bağımsız denetlenecek.'}, ensure_ascii=False)
+        revised = corrected_transcript(transcript, generate, reason, response)
         return propose(revised, asset, generate, retry=False)
     raise ChapterReviewRejected(reason, response)
 
@@ -232,14 +260,20 @@ def prepare(release, previous=None):
                 saved_feedback = {}
             if (isinstance(saved_feedback, dict) and saved_feedback.get('audio_sha256') == asset['sha256']
                     and saved_feedback.get('transcript_sha256') == transcript_sha
+                    and saved_feedback.get('chapter_policy_version') == CHAPTER_POLICY_VERSION
                     and saved_feedback.get('model') == MODEL
                     and isinstance(saved_feedback.get('reason'), str)):
-                transcript['review_feedback'] = saved_feedback['reason'][:600]
-                if 'proposal' in saved_feedback:
-                    transcript['review_feedback'] += '\nGeçersiz öneri: ' + json.dumps(saved_feedback['proposal'],ensure_ascii=False)
+                transcript['review_feedback'] = correction_feedback(saved_feedback['reason'], saved_feedback.get('proposal'))
             generate = cached_editor(release / 'chapter-requests', gemini, MODEL,
                                      context={'audio_sha256': asset['sha256'],
+                                              'chapter_policy_version': CHAPTER_POLICY_VERSION,
                                               'transcript_sha256': transcript_sha})
+            def save_correction(reason, proposal):
+                write_json(feedback_path, {'audio_sha256': asset['sha256'],
+                                          'chapter_policy_version': CHAPTER_POLICY_VERSION,
+                                          'transcript_sha256': transcript_sha,
+                                          'model': MODEL, 'reason': reason[:600], 'proposal': proposal})
+            generate.on_correction = save_correction
             result = propose(transcript, asset, generate)
             write_json(target / (asset['sha256'] + '.json'), result)
             feedback_path.unlink(missing_ok=True)
@@ -247,8 +281,10 @@ def prepare(release, previous=None):
             print(f'::notice title=PULSE verified chapters::{section}: {len(result["chapters"])} markers; audio {asset["sha256"]}', flush=True)
         except Exception as error:
             failures.append(section)
-            if isinstance(error, (ChapterReviewRejected, ChapterProposalInvalid)) and transcript_sha:
+            if (isinstance(error, (ChapterReviewRejected, ChapterProposalInvalid)) and transcript_sha
+                    and getattr(error, 'retryable', True)):
                 write_json(feedback_path, {'audio_sha256': asset['sha256'],
+                                          'chapter_policy_version': CHAPTER_POLICY_VERSION,
                                           'transcript_sha256': transcript_sha,
                                           'model': MODEL, 'reason': error.reason[:600],
                                           **({'proposal':error.proposal} if getattr(error, 'proposal', None) is not None else {})})

@@ -5,6 +5,15 @@ import math
 import re
 from pathlib import Path
 
+CHAPTER_RULES = {'max_chapters': 40, 'max_title_chars': 240, 'ordered_unique_starts': True}
+CHAPTER_POLICY_VERSION = 2
+
+
+class ChapterValidationError(ValueError):
+    def __init__(self, code, index, detail):
+        self.code, self.index = code, index
+        super().__init__(f'Chapter {index}: {detail}')
+
 
 def validate_chapters(data, asset):
     if (not isinstance(data, dict) or data.get('schema_version') != 1
@@ -16,18 +25,25 @@ def validate_chapters(data, asset):
     if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
         raise ValueError('Invalid audio duration')
     chapters = data.get('chapters')
-    if not isinstance(chapters, list) or not 1 <= len(chapters) <= 40:
+    if not isinstance(chapters, list) or not 1 <= len(chapters) <= CHAPTER_RULES['max_chapters']:
         raise ValueError('Invalid chapter count')
-    previous = -10
-    for chapter in chapters:
+    previous = -math.inf
+    for index, chapter in enumerate(chapters):
         if not isinstance(chapter, dict):
             raise ValueError('Invalid chapter')
         start, title = chapter.get('start'), chapter.get('title')
-        if (isinstance(start, bool) or not isinstance(start, (int, float))
-                or not math.isfinite(start) or not 0 <= start < duration or start - previous < 5
-                or not isinstance(title, str) or not title.strip() or len(title) > 240
-                or re.search(r'[\x00-\x1f]', title)):
-            raise ValueError('Invalid chapter timing or title')
+        if isinstance(start, bool) or not isinstance(start, (int, float)) or not math.isfinite(start):
+            raise ChapterValidationError('start_type', index, 'start must be a finite number')
+        if not 0 <= start < duration:
+            raise ChapterValidationError('start_bounds', index, f'start {start} outside recording [0, {duration})')
+        if start <= previous:
+            raise ChapterValidationError('start_order', index, f'start {start} must be greater than previous start {previous}')
+        if not isinstance(title, str) or not title.strip():
+            raise ChapterValidationError('title_empty', index, 'title must be nonempty text')
+        if len(title) > CHAPTER_RULES['max_title_chars']:
+            raise ChapterValidationError('title_length', index, f'title exceeds {CHAPTER_RULES["max_title_chars"]} characters')
+        if re.search(r'[\x00-\x1f]', title):
+            raise ChapterValidationError('title_control', index, 'title contains control characters')
         previous = start
     return data
 

@@ -55,12 +55,20 @@ class ChapterPreparationTests(unittest.TestCase):
                     prepare(root)
             feedback_path = root / 'chapter-feedback' / (self.asset['sha256'] + '.json')
             self.assertTrue(feedback_path.exists())
+            old_feedback = json.loads(feedback_path.read_text())
             with patch('scripts.transcribe_podcasts.transcribe'), patch('scripts.prepare_chapters.propose',
                     return_value=accepted(self.asset)) as review, redirect_stdout(io.StringIO()):
                 prepare(root)
             self.assertEqual(review.call_count, 1)
             self.assertEqual(review.call_args.args[0]['review_feedback'], 'Include the omitted main science topics')
             self.assertFalse(feedback_path.exists())
+            # A rejection under an obsolete contract must not contaminate a new request.
+            (root / 'chapters' / (self.asset['sha256'] + '.json')).unlink()
+            feedback_path.write_text(json.dumps({**old_feedback, 'chapter_policy_version': 0}))
+            with patch('scripts.transcribe_podcasts.transcribe'), patch('scripts.prepare_chapters.propose',
+                    return_value=accepted(self.asset)) as review, redirect_stdout(io.StringIO()):
+                prepare(root)
+            self.assertNotIn('review_feedback', review.call_args.args[0])
 
     def test_rejected_review_unknown_sentence_or_changed_audio_is_not_published(self):
         for generate in (self.generate(False), self.generate(index=99)):

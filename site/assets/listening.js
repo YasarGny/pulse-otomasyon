@@ -5,16 +5,17 @@
   else root.PulseListening = api;
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
+  const rules = Object.freeze({max_chapters: 40, max_title_chars: 240, ordered_unique_starts: true});
   function validate(data, asset) {
     if (!data || data.schema_version !== 1 || data.reviewed !== true ||
-        data.audio_sha256 !== asset.sha256 || !Number.isFinite(asset.duration) ||
-        !Array.isArray(data.chapters) || !data.chapters.length || data.chapters.length > 40)
+        data.audio_sha256 !== asset.sha256 || typeof asset.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(asset.sha256) || !Number.isFinite(asset.duration) || asset.duration <= 0 ||
+        !Array.isArray(data.chapters) || !data.chapters.length || data.chapters.length > rules.max_chapters)
       return null;
-    let previous = -10;
+    let previous = -Infinity;
     for (const item of data.chapters) {
       if (!item || typeof item !== "object" || !Number.isFinite(item.start) || item.start < 0 || item.start >= asset.duration ||
-          item.start - previous < 5 || typeof item.title !== "string" ||
-          !item.title.trim() || item.title.length > 240 || /[\x00-\x1f]/.test(item.title))
+          item.start <= previous || typeof item.title !== "string" ||
+          !item.title.trim() || Array.from(item.title).length > rules.max_title_chars || /[\x00-\x1f]/.test(item.title))
         return null;
       previous = item.start;
     }
@@ -59,5 +60,5 @@
     new ResizeObserver(refresh).observe(viewport);
     return { refresh, sync };
   }
-  return { validate, activeIndex, marquee };
+  return { validate, activeIndex, marquee, rules };
 });
