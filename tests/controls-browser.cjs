@@ -14,26 +14,46 @@ module.exports = async (browser, run, base) => {
     finally { await c.close(); }
   }
   for (const width of [390,1280]) {
-    await run(`owner global pause closes the whole site at ${width}px`, () => scenario(width, async (p,set) => {
-      set({schema_version:1,enabled:false,podcasts:{teknoloji:true,oyun:true}});
-      await p.goto(base);
-      await p.getByRole('heading',{name:'Yayınlara kısa bir ara verdik.'}).waitFor();
-      assert.equal(await p.locator('.site-shell').count(),0);
+    await run(`production pause keeps publication and playing audio across 06:00 at ${width}px`, () => scenario(width, async (p,set) => {
+      await p.goto(base); await opened(p);
+      const manifest=await p.evaluate(()=>window.PULSE_RELEASE.manifest);
+      const identity=await p.evaluate(()=>window.PULSE_RELEASE.manifest.release_id);
+      await p.locator('.podcast-box .audio-start').first().click();
+      await p.waitForFunction(() => !document.querySelector('audio').paused);
+      set({schema_version:1,enabled:true,automation_enabled:false,retained_release_id:identity,podcasts:{teknoloji:true,oyun:true}});
+      await p.evaluate(()=>dispatchEvent(new Event('online')));
+      await p.waitForFunction(()=>window.PulseControls.state.automation_enabled===false);
+      assert.equal(await p.locator('audio').evaluate(a=>a.paused),false);
+      await p.route('**/data/publication.json*',async route=>{
+        try {
+          await route.fulfill({contentType:'application/json',body:JSON.stringify(manifest),
+            headers:{date:'Sat, 17 Oct 2026 03:00:00 GMT',age:'0'}});
+        } catch(error) {
+          if (!/closed|disposed/i.test(error.message)) throw error;
+        }
+      });
+      await p.evaluate(()=>new Promise(resolve=>{
+        addEventListener('pulse:verified',resolve,{once:true});
+        dispatchEvent(new Event('online'));
+      }));
+      await p.waitForTimeout(1200); // Include the independent 1-second freshness check.
       assert.equal(await p.locator('#pulse-printing').count(),0);
-      assert.equal(await p.evaluate(() => document.querySelector('audio')?.paused !== false),true);
-      assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
-      await p.screenshot({path:`test-results/owner-pause-${width}.png`,fullPage:true});
+      assert.equal(await p.locator('.site-shell').isVisible(),true);
+      assert.equal(await p.locator('audio').evaluate(a=>a.paused),false);
+      assert.match(await p.locator('.nav-issue').innerText(),/Son yayın · 16\.10\.2026/);
+      assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      await p.locator('.selection-grid .story-detail-link').first().click();
+      await p.locator('.article-reader').waitFor();
+      assert.equal(await p.locator('#pulse-printing').count(),0);
+      assert.equal(await p.locator('audio').evaluate(a=>a.paused),false);
+      await p.screenshot({path:`test-results/production-pause-${width}.png`,fullPage:true});
+      // Re-enabling restores normal freshness rules; it does not manufacture today's edition.
+      set({schema_version:1,enabled:true,automation_enabled:true,podcasts:{teknoloji:true,oyun:true}});
+      await p.evaluate(()=>dispatchEvent(new Event('online')));
+      await p.waitForFunction(()=>!window.PULSE_RELEASE);
+      await p.locator('#pulse-printing').waitFor();
     }));
   }
-  await run('owner global pause stops an already playing audio session', () => scenario(390, async (p,set) => {
-    await p.goto(base); await opened(p);
-    await p.locator('.podcast-box .audio-start').first().click();
-    await p.waitForFunction(() => !document.querySelector('audio').paused);
-    set({schema_version:1,enabled:false,podcasts:{teknoloji:true,oyun:true}});
-    await p.evaluate(() => dispatchEvent(new Event('online')));
-    await p.getByRole('heading',{name:'Yayınlara kısa bir ara verdik.'}).waitFor();
-    assert.equal(await p.evaluate(() => document.querySelector('audio')?.paused !== false),true);
-  }));
   for (const section of ['teknoloji','oyun']) {
     await run(`individual ${section} podcast pause preserves news, summaries and the partner`, () => scenario(390, async (p,set) => {
       await p.goto(base); await opened(p);

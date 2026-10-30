@@ -1,5 +1,6 @@
 """Apply owner controls without changing news/audio or calling an AI service."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -17,8 +18,7 @@ def git(root, *args):
     return subprocess.run(['git', '-C', str(root), *args], check=True, capture_output=True).stdout
 
 
-def paused_page(prefix):
-    return '''<!doctype html><html lang="tr" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta name="theme-color" content="#151618"><title>Yayınlara ara verdik · PULSE</title><link rel="stylesheet" href="''' + prefix + '''assets/style.css"><script src="''' + prefix + '''assets/controls.js?v=1" defer></script><style>body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#151618;color:#f2f1ed;font-family:system-ui,sans-serif}main{width:min(440px,calc(100vw - 48px));padding:48px 0}.brand{font-size:40px;letter-spacing:-2px}h1{font-size:clamp(30px,7vw,42px);line-height:1.15;margin:64px 0 20px}p{color:#babbc1;font-size:17px;line-height:1.7}.brand span{color:#ff3d85}</style></head><body data-pulse-paused="true"><main><div class="brand">PULSE<span>.</span></div><h1>Yayınlara kısa bir ara verdik.</h1><p>Yeniden buluşmak üzere.</p></main></body></html>'''
+CONTROL_ASSETS = {'controls.js': '2', 'publication.js': '7', 'printing.js': '12'}
 
 
 def apply(root, desired, source='site'):
@@ -26,15 +26,11 @@ def apply(root, desired, source='site'):
     path = root / 'data/controls.json'
     previous = read_json(path) if path.exists() else None
     old = previous or {'enabled': True, 'podcasts': {'teknoloji': True, 'oyun': True}}
-    state = dict(desired)
-    if not state['enabled']:
-        commit = old.get('resume_commit') if old['enabled'] is False else git(root, 'rev-parse', 'HEAD').decode().strip()
-        if not isinstance(commit, str) or not re.fullmatch('[a-f0-9]{40}', commit):
-            raise ValueError('Verified resume commit is required')
-        state['resume_commit'] = commit
-    if previous == state:
-        return False
-    if old['enabled'] is False and state['enabled']:
+    state = {**desired, 'enabled': True,
+             'automation_enabled': desired.get('automation_enabled', desired.get('enabled', True))}
+    changed = False
+    # Migrate a site closed by the former master switch, even if production is off.
+    if old['enabled'] is False:
         commit = old.get('resume_commit', '')
         if not re.fullmatch('[a-f0-9]{40}', commit):
             raise ValueError('Unsafe resume commit')
@@ -49,23 +45,42 @@ def apply(root, desired, source='site'):
                     raise ValueError('Unsafe resume page')
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(git(root, 'show', commit + ':' + name))
-    if not state['enabled']:
-        for page in root.rglob('*.html'):
-            if '.git' in page.relative_to(root).parts:
-                continue
-            if page.is_symlink() or not page.resolve().is_relative_to(root.resolve()):
-                raise ValueError('Unsafe maintenance page')
-            prefix = '../' * len(page.parent.relative_to(root).parts) or './'
-            page.write_text(paused_page(prefix))
+                changed = True
+    manifest_path = root / 'data/publication.json'
+    manifest = read_json(manifest_path) if manifest_path.exists() else {}
+    if state['automation_enabled'] is False and manifest.get('status') == 'ready':
+        identity = manifest.get('release_id', '')
+        if not isinstance(identity, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}-[a-f0-9]{16}', identity):
+            raise ValueError('A valid published release is required for retention')
+        state['retained_release_id'] = (old.get('retained_release_id')
+                                        if old.get('automation_enabled') is False and old.get('retained_release_id')
+                                        else identity)
     (root / 'assets').mkdir(exist_ok=True)
-    shutil.copyfile(Path(source) / 'assets/controls.js', root / 'assets/controls.js')
-    write_json(path, state)
-    return True
+    for name in CONTROL_ASSETS:
+        src, dst = Path(source) / 'assets' / name, root / 'assets' / name
+        if not dst.exists() or src.read_bytes() != dst.read_bytes():
+            shutil.copyfile(src, dst)
+            changed = True
+    for page in root.rglob('*.html'):
+        if '.git' in page.relative_to(root).parts:
+            continue
+        if page.is_symlink() or not page.resolve().is_relative_to(root.resolve()):
+            raise ValueError('Unsafe control page')
+        content = updated = page.read_text()
+        for name, version in CONTROL_ASSETS.items():
+            updated = re.sub(r'(assets/' + re.escape(name) + r')(?:\?v=\d+)?(?=["\'])', r'\g<1>?v=' + version, updated)
+        if updated != content:
+            page.write_text(updated)
+            changed = True
+    if previous != state:
+        write_json(path, state)
+        changed = True
+    return changed
 
 
 def cancel_paused_runs(repo, desired, previous):
     """Cancel active work; requests already sent to a provider cannot be undone."""
-    global_pause = not desired['enabled']
+    global_pause = not desired.get('automation_enabled', desired['enabled'])
     newly_disabled = any(not on and (previous or {}).get('podcasts', {}).get(section, True)
                          for section, on in desired['podcasts'].items())
     if not global_pause and not newly_disabled:
@@ -112,7 +127,11 @@ def main():
                         return response.read()
                 actual = json.loads(fetch('data/controls.json'))
                 html = fetch('').decode()
-                if actual == previous and ('data-pulse-paused="true"' in html) == (not previous['enabled']):
+                assets_ready = all(
+                    hashlib.sha256(fetch('assets/' + name)).digest() == hashlib.sha256((Path(args.root) / 'assets' / name).read_bytes()).digest()
+                    and f'assets/{name}?v={version}' in html
+                    for name, version in CONTROL_ASSETS.items())
+                if actual == previous and 'data-pulse-paused="true"' not in html and assets_ready:
                     print('Live owner controls verified; no news or audio changed.')
                     return
             except (OSError, ValueError):

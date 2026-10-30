@@ -42,12 +42,17 @@
       throw Error("Sunucu zamanı doğrulanamadı");
     return new Date(epoch + age * 1000);
   }
-  function isReady(m, at) {
+  function isReady(m, at, controls = null) {
+    const paused = controls?.automation_enabled === false;
+    if (controls?.enabled === false || (paused &&
+        (typeof controls.retained_release_id !== "string" || controls.retained_release_id !== m?.release_id)))
+      return false;
+    const retained = paused && m?.publish_date < expectedDate(at);
     if (
       !m ||
       m.schema_version !== 1 ||
       m.status !== "ready" ||
-      m.publish_date !== expectedDate(at) ||
+      (m.publish_date !== expectedDate(at) && !retained) ||
       m.validation !== "full-mp3-decode+sha256+content-v1"
     )
       return false;

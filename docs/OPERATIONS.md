@@ -47,10 +47,13 @@ Repository **Variables** alanında üç bağımsız anahtar vardır. Boş veya t
 olanlar mevcut yayını korumak için `true` kabul edilir; kapatmak için tam olarak
 `false`, açmak için `true` kullanılır.
 
-- `PULSE_AUTOMATION_ENABLED`: ana anahtar. Kapalıyken tüm üretim, yayın, bölüm
-  kurtarma, yedekleme ve tanı iş akışları manuel başlatılsa da çalışmaz. Kontrol
-  işi çalışan işleri iptal etmeyi dener; site tüm HTML sayfalarında ara ekranına
-  geçer. Haberler, sesler ve yeniden açılacak sayfalar silinmez.
+- `PULSE_AUTOMATION_ENABLED`: yeni üretim ve yayın otomasyonu anahtarı. `false`
+  olduğunda üretim, yeni yayın, bölüm kurtarma ve diğer operasyonel işler durur;
+  çalışan işler iptal edilmeye çalışılır. Mevcut site ve başlamış dinleme kapanmaz.
+  Son hazır sayı kimliği sabitlenir; ertesi gün 06:00'da baskı ekranına geçmez.
+  Sayı kendi tarihiyle “Son yayın” olarak okunur ve dinlenir. Tamamlanmamış veya
+  başka bir sayı bu istisnadan yararlanamaz. `true` normal günlük tarih kontrolünü
+  ve mevcut zamanlamayı geri getirir; tek başına yeni üretim başlatmaz.
 - `PULSE_TECH_PODCAST_ENABLED`: Yeni Sekme'nin senaryo, editör, inceleme, ses,
   döküm ve bölüm üretimi. Kapalıysa teknoloji haberleri ve Günün Özeti devam eder.
 - `PULSE_GAME_PODCAST_ENABLED`: aynı kontrol Moradon FM için geçerlidir.
@@ -68,10 +71,11 @@ iş akışında **Run workflow** seçilir. Bu iş içerik/ses üretmez, Google/A
 ve token tüketimi yapmaz. Ana anahtar kapalıyken yalnız bu küçük kontrol işi
 (yeniden açılmayı uygulamak için) ve geliştirme kalite testleri çalışabilir.
 Değişken kaydı anlık bildirim değildir. Açık tarayıcılar yayınlanan kontrolü
-30 saniyede bir ve yeniden odaklanınca alır; mevcut dinleme durur. Dış servise
+30 saniyede bir ve yeniden odaklanınca alır. Ana üretim anahtarı mevcut dinlemeyi
+durdurmaz; tek bir podcast kapatılırsa yalnız o podcastin dinlemesi durur. Dış servise
 önceden gönderilmiş istek geri alınamaz. Podcast kapatılırken aktif üretim işi
 iptal edilirse başarılı şifreli ara kayıtlar sonraki zamanlanmış denemede kullanılır.
-Tekrar açma yeni ses üretimi başlatmaz; korunmuş site sayfaları açılır ve günlük
+Tekrar açma yeni ses üretimi başlatmaz; mevcut sayfa korunur ve günlük
 üretim mevcut takviminde devam eder. Eski tarih güncel yayın gibi gösterilmez.
 
 ## Podcast sohbet denetimi

@@ -22,7 +22,7 @@ ENV = {'PULSE_AUTOMATION_ENABLED': 'true', 'PULSE_TECH_PODCAST_ENABLED': 'true',
 class ControlsTests(unittest.TestCase):
     def test_defaults_preserve_both_podcasts_and_global_false_overrides_both(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(settings(), {'schema_version': 1, 'enabled': True,
+            self.assertEqual(settings(), {'schema_version': 1, 'enabled': True, 'automation_enabled': True,
                                           'podcasts': {'teknoloji': True, 'oyun': True}})
         with patch.dict(os.environ, {**ENV, 'PULSE_AUTOMATION_ENABLED': 'false'}):
             with self.assertRaisesRegex(RuntimeError, 'paused'):
@@ -175,7 +175,7 @@ class MaintenanceControlTests(unittest.TestCase):
             return SimpleNamespace(returncode=0,stdout=json.dumps({'path':'.github/workflows/'+paths[identity],'status':'in_progress'}))
         previous={'enabled':True,'podcasts':{'teknoloji':True,'oyun':True}}
         with patch.dict(os.environ,{'GITHUB_RUN_ID':'600'}), patch('pulse.control_site.subprocess.run',side_effect=command) as calls:
-            cancel_paused_runs('fixture/repo',{'enabled':False,'podcasts':previous['podcasts']},previous)
+            cancel_paused_runs('fixture/repo',{'enabled':True,'automation_enabled':False,'podcasts':previous['podcasts']},previous)
             self.assertEqual(cancelled,[300,400,500])
             cancelled.clear()
             desired={'enabled':True,'podcasts':{'teknoloji':False,'oyun':True}}
@@ -185,39 +185,43 @@ class MaintenanceControlTests(unittest.TestCase):
             cancel_paused_runs('fixture/repo',desired,desired)
             calls.assert_not_called()
 
-    def test_pause_and_resume_restore_all_html_without_changing_content_or_audio(self):
+    def test_production_pause_keeps_html_audio_and_last_release_intact(self):
         from pulse.control_site import apply, git
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             subprocess.run(['git', 'init', '-q', str(root)], check=True)
             git(root, 'config', 'user.name', 'Synthetic test'); git(root, 'config', 'user.email', 'test@example.test')
+            identity = '2026-10-16-' + 'a' * 16
             original = {'index.html': b'<html><body>Home</body></html>',
                         'oyun/dinle/index.html': b'<html><body>Episode</body></html>',
-                        'data/publication.json': b'{"status":"ready"}',
+                        'data/publication.json': json.dumps({'status':'ready','release_id':identity}).encode(),
                         'releases/test/podcast.mp3': b'synthetic bytes'}
             for name, data in original.items():
                 path = root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(data)
             git(root, 'add', '.'); git(root, 'commit', '-qm', 'Original synthetic site')
             baseline = git(root, 'rev-parse', 'HEAD').decode().strip()
-            paused = {'schema_version': 1, 'enabled': False, 'podcasts': {'teknoloji': True, 'oyun': True}}
+            paused = {'schema_version': 1, 'enabled': True, 'automation_enabled': False,
+                      'podcasts': {'teknoloji': True, 'oyun': True}}
             self.assertTrue(apply(root, paused, ROOT / 'site'))
             self.assertFalse(apply(root, paused, ROOT / 'site'))
-            for name in original:
-                if name.endswith('.html'): self.assertIn('data-pulse-paused="true"', (root / name).read_text())
-                else: self.assertEqual((root / name).read_bytes(), original[name])
-            git(root, 'add', '.'); git(root, 'commit', '-qm', 'Paused synthetic site')
-            paused['podcasts']['teknoloji'] = False
+            self.assertEqual(read_json(root / 'data/controls.json')['retained_release_id'], identity)
+            for name, data in original.items(): self.assertEqual((root / name).read_bytes(), data)
+            paused['automation_enabled'] = True
             apply(root, paused, ROOT / 'site')
-            self.assertEqual(read_json(root / 'data/controls.json')['resume_commit'], baseline)
-            paused['enabled'] = True
+            self.assertNotIn('retained_release_id', read_json(root / 'data/controls.json'))
+            # An installation closed with the former switch is restored even while production stays off.
+            (root / 'index.html').write_text('<body data-pulse-paused="true">legacy pause</body>')
+            write_json(root / 'data/controls.json', {'enabled':False,'resume_commit':baseline})
+            paused['automation_enabled'] = False
             apply(root, paused, ROOT / 'site')
             for name, data in original.items(): self.assertEqual((root / name).read_bytes(), data)
-            self.assertFalse(apply(root, paused, ROOT / 'site'))
+            self.assertTrue(read_json(root / 'data/controls.json')['enabled'])
+            self.assertFalse(read_json(root / 'data/controls.json')['automation_enabled'])
 
     def test_normal_deployment_cannot_override_an_owner_pause(self):
         from scripts.sync_site import sync
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); target = root / 'published'
-            write_json(target / 'data/controls.json', {'enabled': False})
+            write_json(target / 'data/controls.json', {'enabled': True, 'automation_enabled': False})
             with self.assertRaisesRegex(ValueError, 'Owner pause'):
                 sync(root / 'unused', target)

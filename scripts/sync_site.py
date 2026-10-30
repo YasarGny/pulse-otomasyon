@@ -13,7 +13,7 @@ from pulse.publication import expected_date, not_before, now, read_json, verify_
 def sync(source, target, *, at=None):
     source, target = Path(source), Path(target)
     controls = target / 'data/controls.json'
-    if controls.is_file() and read_json(controls).get('enabled') is False:
+    if controls.is_file() and (read_json(controls).get('enabled') is False or read_json(controls).get('automation_enabled') is False):
         raise ValueError('Owner pause blocks normal site deployment; use Apply owner controls to resume')
     assert_public_tree(source)
     manifest = read_json(source / "data/publication.json")
