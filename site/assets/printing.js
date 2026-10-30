@@ -3,6 +3,9 @@
   "use strict";
   const rules = window.PulsePublication,
     base = new URL("../", document.currentScript.src);
+  function publicationReady(manifest, at) {
+    return rules.isReady(manifest, at, window.PulseControls?.state);
+  }
   /* press-projection:start */
   const pressProjection = {
     size: 640,
@@ -34,7 +37,7 @@
   function canKeepVerified() {
     return active && window.PULSE_RELEASE && serverEpoch !== null &&
       performance.now() - lastSuccess <= verifiedLifetime &&
-      rules.isReady(window.PULSE_RELEASE.manifest,
+      publicationReady(window.PULSE_RELEASE.manifest,
         new Date(serverEpoch + performance.now() - observed));
   }
   function retryState(checking) {
@@ -188,7 +191,7 @@
       return;
     if (
       serverEpoch !== null &&
-      !rules.isReady(
+      !publicationReady(
         window.PULSE_RELEASE.manifest,
         new Date(serverEpoch + performance.now() - observed),
       )
@@ -266,7 +269,7 @@
       serverEpoch = at.getTime();
       observed = performance.now();
       const manifest = await response.json();
-      if (!rules.isReady(manifest, at)) {
+      if (!publicationReady(manifest, at)) {
         lock();
         return;
       }
@@ -311,7 +314,7 @@
       );
       // Network requests may straddle 06:00. Recheck against elapsed server time.
       const current = new Date(serverEpoch + performance.now() - observed);
-      if (!rules.isReady(manifest, current)) {
+      if (!publicationReady(manifest, current)) {
         lock();
         return;
       }
@@ -358,7 +361,7 @@
     if (!active) return;
     const at = new Date(serverEpoch + performance.now() - observed);
     if (
-      !rules.isReady(window.PULSE_RELEASE.manifest, at)
+      !publicationReady(window.PULSE_RELEASE.manifest, at)
     ) lock();
     else if (performance.now() - lastSuccess > verifiedLifetime) {
       lock('', 'offline');
@@ -366,6 +369,7 @@
     }
   }, 1000);
   window.addEventListener('online', () => check());
+  window.addEventListener('pulse:controls', () => check());
   window.addEventListener('pageshow', (event) => { if (event.persisted) check(); });
   document.addEventListener("visibilitychange", () => {
     document.documentElement.classList.toggle(
@@ -376,7 +380,7 @@
       if (
         active &&
         serverEpoch !== null &&
-        !rules.isReady(
+        !publicationReady(
           window.PULSE_RELEASE.manifest,
           new Date(serverEpoch + performance.now() - observed),
         )

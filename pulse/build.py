@@ -122,14 +122,13 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
         build_views(output, manifest)
     write_json(output / "data/publication.json", manifest)
     from pulse.controls import settings
-    control = Path(previous) / 'data/controls.json' if previous else None
-    controls = read_json(control) if control and control.is_file() else settings()
+    controls = settings()
     write_json(output / 'data/controls.json', controls)
     for page in output.rglob('*.html'):
         content = page.read_text()
         if 'assets/controls.js' not in content:
             prefix = '../' * len(page.parent.relative_to(output).parts) or './'
-            script = '<script src="' + prefix + 'assets/controls.js?v=1" defer></script>'
+            script = '<script src="' + prefix + 'assets/controls.js?v=2" defer></script>'
             updated = re.sub(r'(?=<script src="[^"]*assets/publication\.js)', lambda _: script, content, count=1)
             page.write_text(updated if updated != content else content.replace('</head>', script + '</head>'))
     assert_public_tree(output)

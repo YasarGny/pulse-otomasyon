@@ -13,7 +13,8 @@ def flag(name):
 
 
 def settings():
-    return {'schema_version': 1, 'enabled': flag('PULSE_AUTOMATION_ENABLED'),
+    return {'schema_version': 1, 'enabled': True,
+            'automation_enabled': flag('PULSE_AUTOMATION_ENABLED'),
             'podcasts': {s: flag(name) for s, name in PODCAST_VARIABLES.items()}}
 
 

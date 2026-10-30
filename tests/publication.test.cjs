@@ -42,6 +42,21 @@ test("next day 06:00 closes yesterday", () =>
   assert.equal(r.isReady(m, new Date("2026-10-17T06:00:00+03:00")), false));
 test("next day 07:30 cannot resurrect yesterday", () =>
   assert.equal(r.isReady(m, new Date("2026-10-17T07:30:00+03:00")), false));
+test("production pause retains only the pinned verified release across later mornings",()=>{
+  const control={enabled:true,automation_enabled:false,retained_release_id:m.release_id};
+  for(const at of ['2026-10-17T06:00:00+03:00','2026-10-20T12:00:00+03:00'])
+    assert.equal(r.isReady(m,new Date(at),control),true);
+  const later=new Date('2026-10-20T12:00:00+03:00');
+  for(const control of [{enabled:true,automation_enabled:true,retained_release_id:m.release_id},
+    {enabled:true,automation_enabled:false},
+    {enabled:true,automation_enabled:false,retained_release_id:'another-release'}])
+    assert.equal(r.isReady(m,later,control),false);
+  for(const bad of [{...m,status:'preparing'},{...m,validation:'unverified'},{...m,editions:{teknoloji:m.editions.teknoloji}}])
+    assert.equal(r.isReady(bad,later,control),false);
+  assert.equal(r.isReady(m,new Date('2026-10-16T07:29:59+03:00'),control),false);
+  assert.equal(r.isReady(m,new Date('2026-10-16T12:00:00+03:00'),
+    {...control,retained_release_id:'another-release'}),false);
+});
 test("Istanbul date at UTC boundary", () =>
   assert.equal(r.expectedDate(new Date("2026-10-17T02:59:59Z")), "2026-10-16"));
 test("server Date and Age are authoritative", () =>

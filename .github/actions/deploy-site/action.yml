@@ -44,7 +44,7 @@ runs:
         from pulse.publication import read_json
         require_running()
         path=Path('.published/data/controls.json')
-        if path.exists() and read_json(path).get('enabled') is False:
+        if path.exists() and (read_json(path).get('enabled') is False or read_json(path).get('automation_enabled') is False):
             raise SystemExit('PULSE is paused; only the owner control job may reopen the site')
         PY
     - name: Build preparation status without closing an already-ready issue

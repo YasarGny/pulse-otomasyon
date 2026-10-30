@@ -45,12 +45,12 @@ jobs:
         run: python -m pulse.control_site .published --cancel-only
       - name: Apply reversible site controls without AI or audio
         run: python -m pulse.control_site .published
-      - name: Commit only owner controls and maintenance pages
+      - name: Commit owner controls and compatible publication readers
         working-directory: .published
         run: |
           git config user.name 'pulse-publisher[bot]'
           git config user.email 'pulse-publisher[bot]@users.noreply.github.com'
-          git add -- data/controls.json assets/controls.js
+          git add -- data/controls.json assets/controls.js assets/publication.js assets/printing.js
           git add -- '*.html'
           if ! git diff --cached --quiet; then
             git commit -m "Apply PULSE owner controls"
