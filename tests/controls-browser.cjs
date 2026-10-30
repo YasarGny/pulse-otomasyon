@@ -18,11 +18,16 @@ module.exports = async (browser, run, base) => {
       await p.goto(base); await opened(p);
       const manifest=await p.evaluate(()=>window.PULSE_RELEASE.manifest);
       const identity=await p.evaluate(()=>window.PULSE_RELEASE.manifest.release_id);
+      await p.evaluate(()=>{
+        const news=document.createElement('h2');news.id='fixture-news-heading';
+        news.textContent='Bugünün podcast teknolojisi haberi';document.querySelector('main').append(news);
+      });
       await p.locator('.podcast-box .audio-start').first().click();
       await p.waitForFunction(() => !document.querySelector('audio').paused);
       set({schema_version:1,enabled:true,automation_enabled:false,retained_release_id:identity,podcasts:{teknoloji:true,oyun:true}});
       await p.evaluate(()=>dispatchEvent(new Event('online')));
       await p.waitForFunction(()=>window.PulseControls.state.automation_enabled===false);
+      assert.equal(await p.locator('#fixture-news-heading').innerText(),'Bugünün podcast teknolojisi haberi');
       assert.equal(await p.locator('audio').evaluate(a=>a.paused),false);
       await p.route('**/data/publication.json*',async route=>{
         try {

@@ -18,7 +18,7 @@
       stamp.textContent = stamp.dataset.originalIssue;
       delete stamp.dataset.originalIssue;
     }
-    for (const heading of document.querySelectorAll('h2')) {
+    for (const heading of document.querySelectorAll('#listening-title')) {
       if (held && /^Bugünün podcast/.test(heading.textContent)) {
         heading.dataset.originalHeading = heading.textContent;
         heading.textContent = 'Podcast’ler';
