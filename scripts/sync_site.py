@@ -7,13 +7,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pulse.build import PUBLIC_ROOTS, assert_public_tree
-from pulse.publication import expected_date, not_before, now, read_json, verify_manifest
+from pulse.publication import expected_date, not_before, now, read_json, verify_manifest, write_json
+from pulse.site_visibility import apply_visibility
 
 
 def sync(source, target, *, at=None):
     source, target = Path(source), Path(target)
     controls = target / 'data/controls.json'
-    if controls.is_file() and (read_json(controls).get('enabled') is False or read_json(controls).get('automation_enabled') is False):
+    previous_controls = read_json(controls) if controls.is_file() else None
+    if previous_controls and previous_controls.get('automation_enabled') is False:
         raise ValueError('Owner pause blocks normal site deployment; use Apply owner controls to resume')
     assert_public_tree(source)
     manifest = read_json(source / "data/publication.json")
@@ -62,6 +64,14 @@ def sync(source, target, *, at=None):
     if obsolete.exists():
         shutil.rmtree(obsolete)
     # Releases are removed separately, only after verified Drive readback.
+    current_controls = target / 'data/controls.json'
+    if current_controls.is_file():
+        state = read_json(current_controls)
+        # Owner visibility already applied to the destination wins over a queued build.
+        if previous_controls is not None:
+            state['enabled'] = previous_controls.get('enabled', True)
+        write_json(current_controls, state)
+        apply_visibility(target, state.get('enabled', True))
     # The target's existing Pages workflow is retained.
     # No source code or generated prompts are copied to the publication repository.
 

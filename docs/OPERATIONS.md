@@ -41,12 +41,19 @@ Standart bağımlılık/model cache alanlarına kaynak kanıtları, taslaklar ve
 bilgileri eklenmez. Kalite kontrolünün ekran görüntüleri yalnız sentetik veri içerir.
 Günlükler herkese açıktır; gizli değerler veya tam kaynak metinleri yazdırılmaz.
 
-## Üç çalışma anahtarı
+## Çalışma ve görünürlük anahtarları
 
-Repository **Variables** alanında üç bağımsız anahtar vardır. Boş veya tanımsız
+Repository **Variables** alanında dört bağımsız anahtar vardır. Boş veya tanımsız
 olanlar mevcut yayını korumak için `true` kabul edilir; kapatmak için tam olarak
 `false`, açmak için `true` kullanılır.
 
+- `PULSE_SITE_ENABLED`: yalnız site görünürlüğü. `false` tüm HTML sayfalarına
+  ara ekranı koyar, açık dinlemeyi durdurur; `true` en son yayını tekrar gösterir.
+  Üretim, haberler, sesler ve yedekler bu anahtardan etkilenmez. Üretim açıkken
+  site gizli de olsa yeni sayılar hazırlanır ve gizli kalır. Sayfalar tersine
+  çevrilebilir bir görünürlük örtüsüyle korunur; sonraki yayın eski sayfa
+  yedeğinin geri yüklenmesine yol açmaz. Otomasyon da kapalıysa son sayı kendi
+  tarihiyle korunur. Bu bir erişim güvenliği veya dosya yetkilendirmesi değildir.
 - `PULSE_AUTOMATION_ENABLED`: yeni üretim ve yayın otomasyonu anahtarı. `false`
   olduğunda üretim, yeni yayın, bölüm kurtarma ve diğer operasyonel işler durur;
   çalışan işler iptal edilmeye çalışılır. Mevcut site ve başlamış dinleme kapanmaz.

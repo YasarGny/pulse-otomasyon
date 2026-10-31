@@ -38,6 +38,10 @@ clip_metadata = {'schema_version':1, 'reviewed':True, 'audio_sha256':fixture_ass
                     {'story_id':'teknoloji1', 'start':30, 'end':32}]}
 write_json(release / 'chapters' / (fixture_asset['sha256'] + '.json'), clip_metadata)
 build("site", root / "site", release=release, at=not_before(DATE))
+from pulse.control_site import apply as apply_controls
+build('site', root / 'site/site-hidden', release=release, at=not_before(DATE))
+apply_controls(root / 'site/site-hidden', {'schema_version':1,'enabled':False,'automation_enabled':True,
+                                         'podcasts':{'teknoloji':True,'oyun':True}})
 
 # Synthetic chapter metadata exercises final-audio binding, never production times.
 asset = read_json(release / 'teknoloji.json')['podcast']

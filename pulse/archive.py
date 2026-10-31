@@ -99,8 +99,9 @@ def package(site, destination, *, fetch=fetch_archive_image):
                        for data in editions.values() for story in data['stories'] if story.get('archive_image')}
         for path in root.rglob('*.html'):
             import html
+            from pulse.site_visibility import visible_page
             prefix = '../' * len(path.parent.relative_to(root).parts)
-            content = path.read_text()
+            content = visible_page(path.read_text())
             for url, filename in image_paths.items():
                 content = content.replace(html.escape(url, quote=True), prefix + 'media/' + filename)
             content = content.replace('class="pulse-loading"', '')

@@ -1,4 +1,4 @@
-"""Three reversible owner controls; defaults preserve the existing publication."""
+"""Independent website, automation and podcast controls; default on."""
 import os
 
 PODCAST_VARIABLES = {'teknoloji': 'PULSE_TECH_PODCAST_ENABLED',
@@ -13,7 +13,7 @@ def flag(name):
 
 
 def settings():
-    return {'schema_version': 1, 'enabled': True,
+    return {'schema_version': 1, 'enabled': flag('PULSE_SITE_ENABLED'),
             'automation_enabled': flag('PULSE_AUTOMATION_ENABLED'),
             'podcasts': {s: flag(name) for s, name in PODCAST_VARIABLES.items()}}
 
