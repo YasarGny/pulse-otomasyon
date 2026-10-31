@@ -128,7 +128,7 @@ def build(source, output, *, release=None, preparing=None, previous=None, at=Non
         content = page.read_text()
         if 'assets/controls.js' not in content:
             prefix = '../' * len(page.parent.relative_to(output).parts) or './'
-            script = '<script src="' + prefix + 'assets/controls.js?v=2" defer></script>'
+            script = '<script src="' + prefix + 'assets/controls.js?v=3" defer></script>'
             updated = re.sub(r'(?=<script src="[^"]*assets/publication\.js)', lambda _: script, content, count=1)
             page.write_text(updated if updated != content else content.replace('</head>', script + '</head>'))
     assert_public_tree(output)

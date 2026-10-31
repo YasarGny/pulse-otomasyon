@@ -5,6 +5,7 @@ on:
     - cron: '*/10 * * * *'
 env:
   PULSE_AUTOMATION_ENABLED: ${{ vars.PULSE_AUTOMATION_ENABLED }}
+  PULSE_SITE_ENABLED: ${{ vars.PULSE_SITE_ENABLED }}
   PULSE_TECH_PODCAST_ENABLED: ${{ vars.PULSE_TECH_PODCAST_ENABLED }}
   PULSE_GAME_PODCAST_ENABLED: ${{ vars.PULSE_GAME_PODCAST_ENABLED }}
 permissions:
@@ -15,7 +16,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   apply:
-    if: github.ref == 'refs/heads/main' && (vars.PULSE_LIVE_APPROVED == 'true' || vars.PULSE_AUTOMATION_ENABLED == 'false')
+    # Existing-page visibility is independent of permission to publish new issues.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

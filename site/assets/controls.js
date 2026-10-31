@@ -44,6 +44,13 @@
       if (next.schema_version !== 1 || typeof next.enabled !== 'boolean' ||
           (next.automation_enabled !== undefined && typeof next.automation_enabled !== 'boolean') ||
           !['teknoloji', 'oyun'].every(s => typeof next.podcasts?.[s] === 'boolean')) return;
+      // Keep readers locked until the public HTML is restored; never render into
+      // a removed page or reopen an old cached maintenance response.
+      if (next.enabled && document.body.dataset.pulsePaused === 'true') {
+        const page = await fetch(location.href, {cache:'no-store', signal:AbortSignal.timeout(10000)});
+        if (page.ok && !(await page.text()).includes('data-pulse-paused="true"')) location.reload();
+        return;
+      }
       const changed = JSON.stringify(next) !== JSON.stringify(api.state);
       api.state = next;
       refreshView();
@@ -57,12 +64,12 @@
         document.documentElement.classList.remove('pulse-loading', 'pulse-locked');
         document.body.dataset.pulsePaused = 'true';
         const main = document.createElement('main');
+        main.id = 'pulse-owner-visibility';
         main.className = 'owner-pause-card';
         main.innerHTML = '<div class="brand">PULSE<span class="brand-dot">.</span></div><h1>Yayınlara kısa bir ara verdik.</h1><p>Yeniden buluşmak üzere.</p>';
         document.body.append(main);
-      } else if (next.enabled && document.body.dataset.pulsePaused === 'true') {
-        const page = await fetch(location.href, {cache:'no-store', signal:AbortSignal.timeout(10000)});
-        if (page.ok && !(await page.text()).includes('data-pulse-paused="true"')) location.reload();
+        main.querySelector('h1').tabIndex = -1;
+        main.querySelector('h1').focus({preventScroll:true});
       }
     } catch (_) {
       // A network outage must not undo a previously observed owner pause.

@@ -59,6 +59,38 @@ module.exports = async (browser, run, base) => {
       await p.locator('#pulse-printing').waitFor();
     }));
   }
+  for (const width of [390,1280]) {
+    await run(`website visibility stops playback and reopens safely at ${width}px`,()=>scenario(width,async(p,set)=>{
+      await p.goto(base);await opened(p);
+      await p.locator('.podcast-box .audio-start').first().click();
+      await p.waitForFunction(()=>!document.querySelector('audio').paused);
+      set({schema_version:1,enabled:false,automation_enabled:true,podcasts:{teknoloji:true,oyun:true}});
+      await p.evaluate(()=>dispatchEvent(new Event('online')));
+      await p.getByRole('heading',{name:'Yayınlara kısa bir ara verdik.'}).waitFor();
+      assert.equal(await p.evaluate(()=>document.querySelector('audio')?.paused!==false),true);
+      assert.equal(await p.locator('.site-shell').count(),0);
+      assert.equal(await p.locator('#pulse-printing').count(),0);
+      assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      await p.screenshot({path:`test-results/site-hidden-${width}.png`,fullPage:true});
+      const navigation=p.waitForNavigation({waitUntil:'domcontentloaded'});
+      set({schema_version:1,enabled:true,automation_enabled:true,podcasts:{teknoloji:true,oyun:true}});
+      await p.evaluate(()=>dispatchEvent(new Event('online')));
+      await navigation;await opened(p);
+      assert.equal(await p.locator('.site-shell').isVisible(),true);
+      assert.equal(await p.locator('audio').evaluate(a=>a.paused),true);
+    }));
+  }
+  await run('server visibility cover remains effective with JavaScript disabled',async()=>{
+    const context=await browser.newContext({javaScriptEnabled:false,viewport:{width:390,height:850}});
+    try {
+      const p=await context.newPage();
+      await p.goto(base+'/site-hidden/teknoloji/');
+      await p.getByRole('heading',{name:'Yayınlara kısa bir ara verdik.'}).waitFor();
+      assert.equal(await p.locator('.site-shell').isHidden(),true);
+      assert.equal(await p.locator('.nojs-note').isHidden(),true);
+      assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    } finally {await context.close();}
+  });
   for (const section of ['teknoloji','oyun']) {
     await run(`individual ${section} podcast pause preserves news, summaries and the partner`, () => scenario(390, async (p,set) => {
       await p.goto(base); await opened(p);

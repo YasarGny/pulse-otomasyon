@@ -12,13 +12,14 @@ from urllib.request import Request, urlopen
 
 from pulse.controls import settings
 from pulse.publication import read_json, write_json
+from pulse.site_visibility import apply_visibility
 
 
 def git(root, *args):
     return subprocess.run(['git', '-C', str(root), *args], check=True, capture_output=True).stdout
 
 
-CONTROL_ASSETS = {'controls.js': '2', 'publication.js': '7', 'printing.js': '12'}
+CONTROL_ASSETS = {'controls.js': '3', 'publication.js': '7', 'printing.js': '12'}
 
 
 def apply(root, desired, source='site'):
@@ -26,11 +27,11 @@ def apply(root, desired, source='site'):
     path = root / 'data/controls.json'
     previous = read_json(path) if path.exists() else None
     old = previous or {'enabled': True, 'podcasts': {'teknoloji': True, 'oyun': True}}
-    state = {**desired, 'enabled': True,
-             'automation_enabled': desired.get('automation_enabled', desired.get('enabled', True))}
+    state = dict(desired)
+    state.setdefault('automation_enabled', True)
     changed = False
     # Migrate a site closed by the former master switch, even if production is off.
-    if old['enabled'] is False:
+    if old['enabled'] is False and old.get('resume_commit'):
         commit = old.get('resume_commit', '')
         if not re.fullmatch('[a-f0-9]{40}', commit):
             raise ValueError('Unsafe resume commit')
@@ -72,6 +73,7 @@ def apply(root, desired, source='site'):
         if updated != content:
             page.write_text(updated)
             changed = True
+    changed = apply_visibility(root, state['enabled']) or changed
     if previous != state:
         write_json(path, state)
         changed = True
@@ -80,7 +82,7 @@ def apply(root, desired, source='site'):
 
 def cancel_paused_runs(repo, desired, previous):
     """Cancel active work; requests already sent to a provider cannot be undone."""
-    global_pause = not desired.get('automation_enabled', desired['enabled'])
+    global_pause = not desired.get('automation_enabled', True)
     newly_disabled = any(not on and (previous or {}).get('podcasts', {}).get(section, True)
                          for section, on in desired['podcasts'].items())
     if not global_pause and not newly_disabled:
@@ -131,7 +133,8 @@ def main():
                     hashlib.sha256(fetch('assets/' + name)).digest() == hashlib.sha256((Path(args.root) / 'assets' / name).read_bytes()).digest()
                     and f'assets/{name}?v={version}' in html
                     for name, version in CONTROL_ASSETS.items())
-                if actual == previous and 'data-pulse-paused="true"' not in html and assets_ready:
+                if (actual == previous and ('data-pulse-paused="true"' in html) == (not previous['enabled'])
+                        and assets_ready):
                     print('Live owner controls verified; no news or audio changed.')
                     return
             except (OSError, ValueError):
